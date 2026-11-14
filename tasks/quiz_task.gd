@@ -20,6 +20,11 @@ var quiz  # The quiz manager, used for spawning targets and boards.
 # Optional text for the feedback label after the last hit; cleared by the quiz manager.
 var message: String = ""
 
+# Multi-step tasks report progress as "<progress_name>: done/total"; total 0 hides it.
+var progress_name: String = ""
+var done: int = 0
+var total: int = 0
+
 
 func start(new_question: Dictionary, quiz_manager) -> void:
 	question = new_question

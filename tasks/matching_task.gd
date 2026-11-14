@@ -6,15 +6,16 @@ extends "res://tasks/quiz_task.gd"
 var pair_of := {}  # target -> pair index
 var top_row := {}  # targets on the top (left) row
 var selected = null
-var matched: int = 0
 
 
 func hint() -> String:
-	return "Жоғарыдан біреуін, содан кейін оның жұбын төменнен атыңыз"
+	return "1) Жоғарғы қатардан біреуін атыңыз   2) Оның жұбын төменгі қатардан атыңыз"
 
 
 func _build() -> void:
 	var pairs: Array = question["pairs"]
+	progress_name = "Табылған жұптар"
+	total = pairs.size()
 	var order := range(pairs.size())
 
 	order.shuffle()
@@ -50,13 +51,14 @@ func on_target_hit(target) -> Outcome:
 		target.flash_wrong()
 		selected.set_state(Target.State.NORMAL)
 		selected = null
+		message = "Қате жұп!"
 		return Outcome.MISTAKE
 
 	selected.set_state(Target.State.DONE)
 	target.set_state(Target.State.DONE)
 	selected = null
-	matched += 1
+	done += 1
 
-	if matched == question["pairs"].size():
+	if done == total:
 		return Outcome.SOLVED
 	return Outcome.PROGRESS

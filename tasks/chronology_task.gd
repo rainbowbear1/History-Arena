@@ -7,11 +7,13 @@ var next_index: int = 0
 
 
 func hint() -> String:
-	return "Оқиғаларды ерте → кеш ретімен атыңыз"
+	return "Оқиғаларды ең ертесінен бастап ретімен атыңыз"
 
 
 func _build() -> void:
 	var items: Array = question["items"].duplicate()
+	progress_name = "Ретімен қойылды"
+	total = items.size()
 	items.shuffle()
 	var positions: Array = quiz.row_positions(items.size(), quiz.CHOICE_ROW_Y)
 
@@ -31,6 +33,7 @@ func on_target_hit(target) -> Outcome:
 		return Outcome.MISTAKE
 
 	next_index += 1
+	done = next_index
 	target.set_state(Target.State.DONE)
 	target.set_label("%d. %s" % [next_index, target.answer_text])
 
@@ -41,6 +44,7 @@ func on_target_hit(target) -> Outcome:
 
 func _reset() -> void:
 	next_index = 0
+	done = 0
 	for target in quiz.targets:
 		target.set_state(Target.State.NORMAL)
 		target.set_label(target.answer_text)

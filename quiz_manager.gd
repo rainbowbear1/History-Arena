@@ -44,6 +44,7 @@ var feedback_token: int = 0
 
 @onready var question_label: Label = $"../HUD/QuestionLabel"
 @onready var hint_label: Label = $"../HUD/HintLabel"
+@onready var progress_label: Label = $"../HUD/ProgressLabel"
 @onready var score_label: Label = $"../HUD/ScoreLabel"
 @onready var health_label: Label = $"../HUD/HealthLabel"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
@@ -88,6 +89,7 @@ func load_question() -> void:
 
 	current_task.start(question, self)
 	hint_label.text = current_task.hint()
+	update_progress()
 
 
 
@@ -98,13 +100,14 @@ func target_hit(target) -> void:
 	var outcome := current_task.on_target_hit(target)
 	var message := current_task.message
 	current_task.message = ""
+	update_progress()
 
 	match outcome:
 		QuizTask.Outcome.NONE:
 			if not message.is_empty():
 				show_feedback(message, Color.WHITE, 1.0)
 		QuizTask.Outcome.PROGRESS:
-			show_feedback("Дұрыс!", Color.GREEN, 0.6)
+			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
 			health -= 10
 			update_hud()
@@ -161,6 +164,13 @@ func show_results(title: String) -> void:
 
 
 
+func update_progress() -> void:
+	if current_task == null or current_task.total == 0:
+		progress_label.text = ""
+		return
+	progress_label.text = "%s: %d/%d" % [current_task.progress_name, current_task.done, current_task.total]
+
+
 func update_hud() -> void:
 	score_label.text = "Ұпай саны: " + str(score)
 	health_label.text = "HP: " + str(health)
@@ -212,6 +222,7 @@ func clear_arena() -> void:
 	targets.clear()
 	current_task = null
 	hint_label.text = ""
+	progress_label.text = ""
 	image_board.hide()
 	map_board.hide()
 

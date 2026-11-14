@@ -256,6 +256,7 @@ func test_choice_types(samples: Dictionary) -> void:
 	for type in ["fill_blank", "image"]:
 		var quiz = await _start_task(samples[type])
 		check(quiz.targets.size() == 4, "%s spawns 4 targets" % type)
+		check(quiz.progress_label.text.is_empty(), "%s shows no progress counter" % type)
 		check(not quiz.hint_label.text.is_empty(), "%s shows a hint" % type)
 		check(quiz.image_board.visible == (type == "image"), "%s image board visibility" % type)
 		if type == "image":
@@ -275,16 +276,19 @@ func test_chronology(question: Dictionary) -> void:
 	var quiz = await _start_task(question)
 	var items: Array = question["items"]
 	check(quiz.targets.size() == items.size(), "chronology spawns one target per item")
+	check(quiz.progress_label.text == "Ретімен қойылды: 0/%d" % items.size(), "chronology shows 0/%d progress" % items.size())
 
 	_by_text(quiz, items[0]).hit()
 	check(quiz.score == 0 and quiz.health == 100 and quiz.accepting_answers, "first correct item is progress only")
 	check(_by_text(quiz, items[0]).answer_label.text == "1. " + items[0], "placed item shows its order number")
+	check(quiz.progress_label.text == "Ретімен қойылды: 1/%d" % items.size(), "progress counts the placed item")
 	_by_text(quiz, items[0]).hit()
 	check(quiz.health == 100, "re-shooting a placed item does nothing")
 
 	_by_text(quiz, items[2]).hit()
 	check(quiz.health == 90, "out-of-order item costs 10 HP")
 	check(quiz.current_task.next_index == 0, "mistake restarts the sequence")
+	check(quiz.progress_label.text == "Ретімен қойылды: 0/%d" % items.size(), "mistake resets the progress counter")
 	check(_by_text(quiz, items[0]).state == Target.State.NORMAL, "mistake unlocks placed items")
 	check(quiz.accepting_answers, "chronology continues after a mistake")
 
@@ -301,6 +305,7 @@ func test_matching(question: Dictionary) -> void:
 	var quiz = await _start_task(question)
 	var pairs: Array = question["pairs"]
 	check(quiz.targets.size() == pairs.size() * 2, "matching spawns two targets per pair")
+	check(quiz.progress_label.text == "Табылған жұптар: 0/%d" % pairs.size(), "matching shows 0/%d progress" % pairs.size())
 	for pair in pairs:
 		check(_by_text(quiz, pair["left"]).starting_position.y == quiz.TOP_ROW_Y, "left item \"%s\" on the top row" % pair["left"])
 
@@ -316,6 +321,12 @@ func test_matching(question: Dictionary) -> void:
 	_by_text(quiz, pairs[0]["right"]).hit()
 	check(quiz.health == 90, "wrong partner costs 10 HP")
 	check(quiz.current_task.selected == null, "wrong partner clears the selection")
+	check(quiz.feedback_label.text == "Қате жұп!", "wrong partner says so")
+
+	_by_text(quiz, pairs[0]["left"]).hit()
+	_by_text(quiz, pairs[0]["right"]).hit()
+	check(quiz.progress_label.text == "Табылған жұптар: 1/%d" % pairs.size(), "progress counts the first pair")
+	check(quiz.feedback_label.text == "Дұрыс! 1/%d" % pairs.size(), "feedback shows pairs found so far")
 
 	for i in range(pairs.size()):
 		_by_text(quiz, pairs[i]["left"]).hit()
