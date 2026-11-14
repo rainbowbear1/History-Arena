@@ -7,6 +7,7 @@ extends SceneTree
 
 const QuestionValidator := preload("res://question_validator.gd")
 const LevelDatabaseScript := preload("res://level_database.gd")
+const Target := preload("res://answer_target.gd")
 
 var failures := 0
 var checks := 0
@@ -121,13 +122,15 @@ func test_question_types() -> void:
 		["chronology with repeated item rejected", {"type": "chronology", "question": "Q", "items": ["a", "b", "a"]}],
 		["map with coordinate above 1 rejected", _map_with(0, "x", 1.5)],
 		["map with missing coordinate rejected", _map_with(0, "y", null)],
-		["map with wrong correct rejected", _with(_map_with(0, "x", 0.5), "correct", "Нет")],
+		["map with wrong correct rejected", _with(_map_with(0, "x", 0.1), "correct", "Нет")],
+		["map with overlapping pins rejected", _map_with(1, "x", 0.15)],
 	]
 	for case in cases:
 		check(QuestionValidator.validate(case[1]) != "", case[0])
 
 	check(QuestionValidator.validate(_pairs_question(4)) == "", "matching with 4 pairs accepted")
 	check(QuestionValidator.validate({"type": "chronology", "question": "Q", "items": ["a", "b", "c"]}) == "", "chronology with 3 items accepted")
+	check(QuestionValidator.validate(_with(_map_with(0, "x", 0.1), "correct", "B")) == "", "spread-out map accepted")
 
 	# File-level problems
 	var dir := "user://test_fixtures"
@@ -180,7 +183,12 @@ func test_arena() -> void:
 		var arena := await _load_arena()
 		var quiz = arena.get_node("QuizManager")
 		check(quiz.question_file == level_db.get_level(level)["question_file"], "level %d uses its question file" % level)
-		check(quiz.questions.size() == 10, "level %d loads 10 playable questions" % level)
+		check(quiz.questions.size() == 13, "level %d loads 13 tasks" % level)
+		var types := {}
+		for question in quiz.questions:
+			types[QuestionValidator.get_type(question)] = true
+		check(types.has("fill_blank") and types.has("matching") and types.has("chronology"),
+			"level %d mixes in fill_blank, matching and chronology" % level)
 		arena.queue_free()
 		await process_frame
 
@@ -188,6 +196,10 @@ func test_arena() -> void:
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
 
+	check(quiz.targets.size() == 4, "first question spawns 4 targets")
+	var xs: Array = quiz.targets.map(func(t): return t.starting_position.x)
+	xs.sort()
+	check(xs == [-4.5, -1.5, 1.5, 4.5], "targets keep the original row positions")
 	var correct_targets: Array = quiz.targets.filter(func(t): return t.is_correct)
 	check(correct_targets.size() == 1, "exactly one correct target")
 
@@ -197,6 +209,7 @@ func test_arena() -> void:
 	check(quiz.score == 100, "second hit during feedback ignored")
 	await wait(1.3)
 	check(quiz.question_index == 1, "advanced to next question")
+	check(quiz.targets.size() == 4 and is_instance_valid(quiz.targets[0]), "fresh targets for the next question")
 
 	quiz.health = 20
 	for i in range(5):
@@ -209,6 +222,7 @@ func test_arena() -> void:
 	check(quiz.results_container.visible, "results shown on game over")
 	check(quiz.results_label.text.begins_with("Ойын аяқталды!"), "game over title shown")
 	check(not quiz.accepting_answers, "answers blocked after game over")
+	check(quiz.targets.is_empty(), "targets cleared on results")
 
 	var ray: RayCast3D = arena.get_node("Player/Camera3D/ShootRay")
 	check(ray.target_position == Vector3(0, 0, -100), "ray points along camera -Z")
@@ -227,6 +241,133 @@ func test_arena() -> void:
 
 	arena.queue_free()
 	await process_frame
+
+	print("== Task types")
+	var samples := {}
+	for question in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(question)] = question
+	await test_choice_types(samples)
+	await test_chronology(samples["chronology"])
+	await test_matching(samples["matching"])
+	await test_map(samples["map"])
+
+
+func test_choice_types(samples: Dictionary) -> void:
+	for type in ["fill_blank", "image"]:
+		var quiz = await _start_task(samples[type])
+		check(quiz.targets.size() == 4, "%s spawns 4 targets" % type)
+		check(not quiz.hint_label.text.is_empty(), "%s shows a hint" % type)
+		check(quiz.image_board.visible == (type == "image"), "%s image board visibility" % type)
+		if type == "image":
+			check(quiz.image_board.texture != null, "image task loads its picture")
+		var wrong = quiz.targets.filter(func(t): return not t.is_correct)[0]
+		wrong.hit()
+		check(quiz.health == 90 and quiz.score == 0, "%s wrong answer costs 10 HP" % type)
+		var correct = quiz.targets.filter(func(t): return t.is_correct)[0]
+		check(correct.state == Target.State.DONE, "%s reveals the correct answer after a miss" % type)
+		await wait(1.2)
+		check(quiz.results_container.visible, "%s ends after one answer" % type)
+		quiz.get_parent().queue_free()
+		await process_frame
+
+
+func test_chronology(question: Dictionary) -> void:
+	var quiz = await _start_task(question)
+	var items: Array = question["items"]
+	check(quiz.targets.size() == items.size(), "chronology spawns one target per item")
+
+	_by_text(quiz, items[0]).hit()
+	check(quiz.score == 0 and quiz.health == 100 and quiz.accepting_answers, "first correct item is progress only")
+	check(_by_text(quiz, items[0]).answer_label.text == "1. " + items[0], "placed item shows its order number")
+	_by_text(quiz, items[0]).hit()
+	check(quiz.health == 100, "re-shooting a placed item does nothing")
+
+	_by_text(quiz, items[2]).hit()
+	check(quiz.health == 90, "out-of-order item costs 10 HP")
+	check(quiz.current_task.next_index == 0, "mistake restarts the sequence")
+	check(_by_text(quiz, items[0]).state == Target.State.NORMAL, "mistake unlocks placed items")
+	check(quiz.accepting_answers, "chronology continues after a mistake")
+
+	for item in items:
+		_by_text(quiz, item).hit()
+	check(quiz.score == 100, "completing the order scores 100")
+	await wait(1.2)
+	check(quiz.results_container.visible, "chronology moves on when solved")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+
+func test_matching(question: Dictionary) -> void:
+	var quiz = await _start_task(question)
+	var pairs: Array = question["pairs"]
+	check(quiz.targets.size() == pairs.size() * 2, "matching spawns two targets per pair")
+	for pair in pairs:
+		check(_by_text(quiz, pair["left"]).starting_position.y == quiz.TOP_ROW_Y, "left item \"%s\" on the top row" % pair["left"])
+
+	_by_text(quiz, pairs[0]["right"]).hit()
+	check(quiz.health == 100 and quiz.feedback_label.text.begins_with("Алдымен"), "bottom first shows a hint, no penalty")
+
+	_by_text(quiz, pairs[0]["left"]).hit()
+	check(_by_text(quiz, pairs[0]["left"]).state == Target.State.SELECTED, "top item becomes selected")
+	_by_text(quiz, pairs[1]["left"]).hit()
+	check(_by_text(quiz, pairs[0]["left"]).state == Target.State.NORMAL
+		and _by_text(quiz, pairs[1]["left"]).state == Target.State.SELECTED, "selecting another top item switches selection")
+
+	_by_text(quiz, pairs[0]["right"]).hit()
+	check(quiz.health == 90, "wrong partner costs 10 HP")
+	check(quiz.current_task.selected == null, "wrong partner clears the selection")
+
+	for i in range(pairs.size()):
+		_by_text(quiz, pairs[i]["left"]).hit()
+		_by_text(quiz, pairs[i]["right"]).hit()
+	check(_by_text(quiz, pairs[0]["right"]).state == Target.State.DONE, "matched pair locks")
+	check(quiz.score == 100, "all pairs matched scores 100")
+	await wait(1.2)
+	check(quiz.results_container.visible, "matching moves on when solved")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+
+func test_map(question: Dictionary) -> void:
+	var quiz = await _start_task(question)
+	check(quiz.map_board.visible, "map board shown")
+	check(quiz.targets.size() == 4, "map spawns 4 pins")
+	var labels: Array = quiz.targets.map(func(t): return t.answer_label.text)
+	labels.sort()
+	check(labels == ["1", "2", "3", "4"], "pins are labelled 1-4, not with the answer")
+	check(quiz.targets.all(func(t): return t.move_distance == 0.0), "pins do not sway")
+	var location: Dictionary = question["locations"].filter(func(l): return l["name"] == question["correct"])[0]
+	var pin = quiz.targets.filter(func(t): return t.is_correct)[0]
+	check(pin.position.is_equal_approx(quiz.map_point(location["x"], location["y"])), "correct pin sits at its map coordinate")
+	# Fire the player's real raycast at the small pin rather than calling hit() directly.
+	await physics_frame
+	var camera: Camera3D = quiz.get_parent().get_node("Player/Camera3D")
+	camera.look_at(pin.global_position)
+	quiz.get_parent().get_node("Player").shoot()
+	check(quiz.score == 100, "shooting the correct pin through the crosshair scores 100")
+	await wait(1.2)
+	check(not quiz.map_board.visible, "map board hidden after the task")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+
+# Loads the arena and replaces its questions with a single task.
+func _start_task(question: Dictionary):
+	game_state.selected_level = 1
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	quiz.questions = [question]
+	quiz.question_index = 0
+	quiz.load_question()
+	await process_frame
+	return quiz
+
+
+func _by_text(quiz, text: String):
+	for target in quiz.targets:
+		if target.answer_text == text:
+			return target
+	return null
 
 
 func _load_arena() -> Node:
@@ -262,8 +403,8 @@ func _pairs_question(count: int) -> Dictionary:
 
 func _map_with(index: int, axis: String, value) -> Dictionary:
 	var locations := []
-	for name in ["A", "B", "C", "D"]:
-		locations.append({"name": name, "x": 0.5, "y": 0.5})
+	for i in range(4):
+		locations.append({"name": "ABCD"[i], "x": 0.1 + i * 0.25, "y": 0.5})
 	if value == null:
 		locations[index].erase(axis)
 	else:

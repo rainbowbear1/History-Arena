@@ -1,0 +1,41 @@
+extends "res://tasks/quiz_task.gd"
+
+# single_choice, fill_blank and image: shoot the one correct answer out of four.
+
+
+func hint() -> String:
+	match question.get("type"):
+		"fill_blank":
+			return "Бос орынға сәйкес жауапты атыңыз"
+		"image":
+			return "Суретке қарап, дұрыс жауапты атыңыз"
+	return ""
+
+
+func _build() -> void:
+	if question.get("type") == "image":
+		quiz.show_image(question["image"])
+
+	var answers: Array = question["answers"].duplicate()
+	answers.shuffle()
+	var positions: Array = quiz.row_positions(answers.size(), quiz.CHOICE_ROW_Y)
+
+	for i in range(answers.size()):
+		var target = quiz.spawn_target(answers[i], positions[i])
+		target.is_correct = answers[i] == question["correct"]
+
+
+func on_target_hit(target) -> Outcome:
+	if target.is_correct:
+		target.set_state(Target.State.DONE)
+		return Outcome.SOLVED
+
+	target.flash_wrong()
+	_reveal_correct()
+	return Outcome.FAILED
+
+
+func _reveal_correct() -> void:
+	for target in quiz.targets:
+		if target.is_correct:
+			target.set_state(Target.State.DONE)

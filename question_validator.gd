@@ -6,6 +6,8 @@ const TYPES := ["single_choice", "fill_blank", "matching", "chronology", "map", 
 const DEFAULT_TYPE := "single_choice"
 const OPTION_COUNT := 4
 const BLANK := "___"
+# Smallest distance between two map locations (0–1 map units) so their pins don't overlap.
+const MIN_PIN_GAP := 0.08
 
 
 static func get_type(question: Dictionary) -> String:
@@ -173,6 +175,13 @@ static func _check_map(question: Dictionary) -> String:
 
 	if _has_duplicates(names):
 		return "location names must be unique"
+
+	for i in range(locations.size()):
+		for j in range(i + 1, locations.size()):
+			var a := Vector2(locations[i]["x"], locations[i]["y"])
+			var b := Vector2(locations[j]["x"], locations[j]["y"])
+			if a.distance_to(b) < MIN_PIN_GAP:
+				return "locations \"%s\" and \"%s\" are too close together" % [names[i], names[j]]
 
 	if not question.get("correct") is String or not names.has(question["correct"]):
 		return "\"correct\" must be one of the location names"

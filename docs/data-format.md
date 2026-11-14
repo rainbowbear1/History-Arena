@@ -50,8 +50,10 @@ Examples of every type: `tests/fixtures/all_types.json`.
 `items`: 3–5 unique texts **in the correct order**. The game shuffles them.
 
 ### 4. `map` — find a place on the map of Kazakhstan
-`locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, where x/y are positions
+`locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, at least 0.08 apart, where x/y are positions
 on the map image (0,0 = top-left, 1,1 = bottom-right). `correct`: one of the names.
+Pins show numbers 1–4, not names. Put the map image at `assets/maps/kazakhstan.png` (2:1 aspect,
+e.g. 2048×1024); until then a plain placeholder board is shown.
 
 ### 5. `image` — identify the period of an image or artifact
 `image`: `res://` path to an image in the project. `answers` and `correct` as in `single_choice`.

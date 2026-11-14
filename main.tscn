@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://o647kfqybs8h"]
 
 [ext_resource type="Script" uid="uid://b455eq2qacwvl" path="res://player.gd" id="1_ig7tw"]
-[ext_resource type="PackedScene" uid="uid://bc2p4f31wlnra" path="res://answer_target.tscn" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://ci0d1yv5rwtbw" path="res://pause_menu.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://v0ik8lrjeaw" path="res://quiz_manager.gd" id="3_h2yge"]
 
@@ -26,6 +25,12 @@ sky_material = SubResource("ProceduralSkyMaterial_nd5yf")
 [sub_resource type="Environment" id="Environment_o6pq0"]
 background_mode = 2
 sky = SubResource("Sky_xpti3")
+
+[sub_resource type="QuadMesh" id="QuadMesh_map"]
+size = Vector2(12, 6)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_map"]
+albedo_color = Color(0.83, 0.74, 0.55, 1)
 
 [node name="Main" type="Node3D" unique_id=51386826]
 
@@ -92,6 +97,18 @@ offset_bottom = 90.0
 grow_horizontal = 2
 theme_override_font_sizes/font_size = 24
 text = "Қазақ хандығы қай жылы құрылды?"
+horizontal_alignment = 1
+
+[node name="HintLabel" type="Label" parent="HUD"]
+anchors_preset = -1
+anchor_right = 1.0
+offset_left = 200.0
+offset_top = 58.0
+offset_right = -200.0
+offset_bottom = 82.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 18
 horizontal_alignment = 1
 
 [node name="ScoreLabel" type="Label" parent="HUD" unique_id=1284406417]
@@ -195,23 +212,25 @@ text = "Қайта бастау"
 layout_mode = 2
 text = "Деңгейлер"
 
-[node name="AnswerTarget" parent="." unique_id=1801829814 instance=ExtResource("2_0xm2m")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1.5, -8)
-answer_text = "1456"
-is_correct = false
+[node name="Targets" type="Node3D" parent="."]
 
-[node name="AnswerTarget2" parent="." unique_id=1055180224 instance=ExtResource("2_0xm2m")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 1.5, -8)
+[node name="ImageBoard" type="Sprite3D" parent="."]
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.3, -8.5)
 
-[node name="AnswerTarget3" parent="." unique_id=1856128455 instance=ExtResource("2_0xm2m")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, -8.06243)
-answer_text = "1505"
-is_correct = false
+[node name="MapBoard" type="MeshInstance3D" parent="."]
+visible = false
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -9.5)
+mesh = SubResource("QuadMesh_map")
+surface_material_override/0 = SubResource("StandardMaterial3D_map")
 
-[node name="AnswerTarget4" parent="." unique_id=170237191 instance=ExtResource("2_0xm2m")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1.5, -8)
-answer_text = "1511"
-is_correct = false
+[node name="PlaceholderLabel" type="Label3D" parent="MapBoard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0.01)
+pixel_size = 0.01
+modulate = Color(0.2, 0.15, 0.1, 1)
+outline_size = 0
+text = "Қазақстан картасы (уақытша)"
+font_size = 32
 
 [node name="QuizManager" type="Node" parent="." unique_id=2032224658]
 script = ExtResource("3_h2yge")
