@@ -32,7 +32,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if get_tree().paused:
 				return
 
-			if quiz_manager.results_container.visible:
+			if quiz_manager.overlay_open():
 				return
 
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

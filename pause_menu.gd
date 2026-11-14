@@ -4,7 +4,7 @@ extends Control
 @onready var resume_button: Button = $CenterContainer/PausePanel/PauseVBox/ResumeButton
 @onready var restart_button: Button = $CenterContainer/PausePanel/PauseVBox/RestartButton
 @onready var levels_button: Button = $CenterContainer/PausePanel/PauseVBox/LevelsButton
-@onready var results_container: Control = $"../ResultsContainer"
+@onready var quiz_manager = $"../../QuizManager"
 
 func _ready() -> void:
 	hide()
@@ -18,7 +18,7 @@ func _ready() -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 
-		if results_container.visible:
+		if quiz_manager.overlay_open():
 			return
 
 		if get_tree().paused:

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b455eq2qacwvl" path="res://player.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://ci0d1yv5rwtbw" path="res://pause_menu.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://v0ik8lrjeaw" path="res://quiz_manager.gd" id="3_h2yge"]
+[ext_resource type="Script" path="res://revival_panel.gd" id="4_revival"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
 
@@ -169,6 +170,104 @@ layout_mode = 2
 text = "Play again"
 
 [node name="LevelsButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=474327765]
+layout_mode = 2
+text = "Деңгейлер"
+
+[node name="LivesLabel" type="Label" parent="HUD"]
+offset_left = 20.0
+offset_top = 90.0
+offset_right = 160.0
+offset_bottom = 113.0
+theme_override_font_sizes/font_size = 22
+text = "Жан: 3"
+
+[node name="RevivalContainer" type="CenterContainer" parent="HUD"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_revival")
+
+[node name="RevivalPanel" type="PanelContainer" parent="HUD/RevivalContainer"]
+custom_minimum_size = Vector2(640, 0)
+layout_mode = 2
+
+[node name="RevivalMargin" type="MarginContainer" parent="HUD/RevivalContainer/RevivalPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="RevivalVBox" type="VBoxContainer" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 36
+text = "СІЗ ЖЕҢІЛДІҢІЗ!"
+horizontal_alignment = 1
+
+[node name="MessageLabel" type="Label" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="QuestionLabel" type="Label" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="AnswersGrid" type="GridContainer" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="Answer1" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox/AnswersGrid"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="Answer2" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox/AnswersGrid"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="Answer3" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox/AnswersGrid"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="Answer4" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox/AnswersGrid"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="ResultLabel" type="Label" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Қайта бастау"
+
+[node name="LevelsButton" type="Button" parent="HUD/RevivalContainer/RevivalPanel/RevivalMargin/RevivalVBox"]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Деңгейлер"
 

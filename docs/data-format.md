@@ -24,8 +24,16 @@ Run the tests (below) after every content change; they report the exact file, en
 | `revivals` | whole number | How many times the medical-help task can restore a life. |
 | `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass and unlock the next level. |
 
-Fields that drive later milestones (timer, speed, decoys, enemies, lives, revivals, pass mark)
-are validated now and used by the gameplay as each milestone lands.
+`lives` and `revivals` are used now. The timer, speed, decoys, enemies and pass mark are validated
+and will be used by the gameplay as later milestones land.
+
+### Lives and medical help
+Each life holds 100 HP and every mistake costs 10 HP. When HP runs out the player loses a life and
+HP refills. When the last life is lost the "СІЗ ЖЕҢІЛДІҢІЗ!" screen offers one historical question
+as medical help (up to `revivals` times per run). It asks a `single_choice` or `fill_blank` question
+from the same level, preferring one the player got wrong. A correct answer gives back one life with
+full HP and play continues with the next task, keeping the score; a wrong answer means no medical
+help, leaving Restart and Levels.
 
 ## Questions — `questions/*.json`
 

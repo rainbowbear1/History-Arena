@@ -211,18 +211,6 @@ func test_arena() -> void:
 	check(quiz.question_index == 1, "advanced to next question")
 	check(quiz.targets.size() == 4 and is_instance_valid(quiz.targets[0]), "fresh targets for the next question")
 
-	quiz.health = 20
-	for i in range(5):
-		var wrong = quiz.targets.filter(func(t): return not t.is_correct)[0]
-		wrong.hit()
-		await wait(1.2)
-		if quiz.health <= 0:
-			break
-	check(quiz.health <= 0, "health reached 0")
-	check(quiz.results_container.visible, "results shown on game over")
-	check(quiz.results_label.text.begins_with("Ойын аяқталды!"), "game over title shown")
-	check(not quiz.accepting_answers, "answers blocked after game over")
-	check(quiz.targets.is_empty(), "targets cleared on results")
 
 	var ray: RayCast3D = arena.get_node("Player/Camera3D/ShootRay")
 	check(ray.target_position == Vector3(0, 0, -100), "ray points along camera -Z")
@@ -250,6 +238,7 @@ func test_arena() -> void:
 	await test_chronology(samples["chronology"])
 	await test_matching(samples["matching"])
 	await test_map(samples["map"])
+	await test_lives_and_revival()
 
 
 func test_choice_types(samples: Dictionary) -> void:
@@ -360,6 +349,139 @@ func test_map(question: Dictionary) -> void:
 	check(not quiz.map_board.visible, "map board hidden after the task")
 	quiz.get_parent().queue_free()
 	await process_frame
+
+
+func test_lives_and_revival() -> void:
+	print("== Lives and medical help")
+	print("   (levels 5 and 9 have no question files yet: their 'No questions loaded' errors are expected)")
+	for level in [1, 5, 9]:
+		var data: Dictionary = level_db.get_level(level)
+		game_state.selected_level = level
+		var probe := await _load_arena()
+		var probe_quiz = probe.get_node("QuizManager")
+		check(probe_quiz.lives == data["lives"] and probe_quiz.revivals_left == data["revivals"],
+			"level %d starts with %d lives and %d revivals from level data" % [level, data["lives"], data["revivals"]])
+		probe.queue_free()
+		await process_frame
+
+	# Losing a life with lives to spare: HP refills, the run continues.
+	game_state.selected_level = 1
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	check(quiz.lives_label.text == "Жан: 3", "HUD shows 3 lives")
+	quiz.health = 10
+	_wrong_target(quiz).hit()
+	check(quiz.lives == 2 and quiz.health == 100, "losing all HP costs one life and refills HP")
+	check(quiz.lives_label.text == "Жан: 2" and quiz.health_label.text == "HP: 100", "HUD updates lives and HP")
+	check(quiz.feedback_label.text == "Қате! Бір жан жоғалды!", "life loss is announced")
+	await wait(1.2)
+	check(quiz.question_index == 1 and not quiz.revival_panel.visible, "play continues after losing a life")
+
+	# Losing the last life opens the defeat screen with a medical-help question.
+	quiz.score = 300
+	quiz.lives = 1
+	quiz.health = 10
+	quiz.missed_questions.clear()
+	var missed: Dictionary = quiz.questions[quiz.question_index]
+	_wrong_target(quiz).hit()
+	check(quiz.lives == 0, "last life lost")
+	check(not quiz.revival_panel.visible, "defeat waits for the feedback")
+	await wait(1.2)
+	var panel = quiz.revival_panel
+	check(panel.visible, "defeat screen shown")
+	check(quiz.overlay_open(), "defeat screen counts as an open overlay")
+	check(not quiz.results_container.visible, "results screen not shown on defeat")
+	check(quiz.targets.is_empty(), "arena cleared on defeat")
+	check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "mouse released on defeat")
+	check(panel.question == missed, "medical help asks the question just missed")
+	check(panel.question_label.visible and panel.question_label.text == missed["question"], "help question shown")
+	var shown: Array = panel.answer_buttons.map(func(b): return b.text)
+	shown.sort()
+	var expected: Array = missed["answers"].duplicate()
+	expected.sort()
+	check(shown == expected, "help answers shown on four buttons")
+	check(quiz.revivals_left == 1, "offering help uses one revival")
+
+	_press_correct(panel)
+	check(panel.result_label.text.begins_with("Дұрыс! +1 жан"), "correct help answer announced")
+	check(panel.answer_buttons.all(func(b): return b.disabled), "answers locked after choosing")
+	await wait(1.7)
+	check(not panel.visible, "defeat screen closes after a correct answer")
+	check(quiz.lives == 1 and quiz.health == 100, "revival restores one life with full HP")
+	check(quiz.score == 300, "score kept after revival (score=%d)" % quiz.score)
+	check(quiz.question_index == 2, "play continues with the next task")
+	check(quiz.accepting_answers and quiz.targets.size() > 0, "arena is live again")
+
+	# Second defeat: a wrong medical-help answer gives no help.
+	quiz.health = 10
+	_wrong_target(quiz).hit()
+	await wait(1.2)
+	check(panel.visible and quiz.revivals_left == 0, "second defeat uses the last revival")
+	check(panel.question != missed, "a different help question is asked")
+	_press_wrong(panel)
+	check(panel.result_label.text == "Медициналық көмек көрсетілмеді.", "wrong help answer: no medical help")
+	await wait(1.7)
+	check(panel.visible and quiz.lives == 0, "no revival after a wrong help answer")
+	check(panel.restart_button.visible and panel.levels_button.visible, "restart and levels offered")
+
+	# Escape must not open the pause menu over the defeat screen.
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	arena.get_viewport().push_input(escape)
+	check(not arena.get_node("HUD/PauseMenu").visible and not paused, "Esc ignored on the defeat screen")
+	arena.queue_free()
+	await process_frame
+
+	# No revivals left: defeat screen without a question.
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	quiz.revivals_left = 0
+	quiz.lives = 1
+	quiz.health = 10
+	_wrong_target(quiz).hit()
+	await wait(1.2)
+	check(quiz.revival_panel.visible and not quiz.revival_panel.question_label.visible, "no help question when revivals are used up")
+	check(quiz.revival_panel.message_label.text.begins_with("Медициналық көмек мүмкіндігі қалмады"), "says medical help is used up")
+	arena.queue_free()
+	await process_frame
+
+	# A mistake inside a multi-step task can cost a life without ending the task.
+	var samples := {}
+	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(q)] = q
+	quiz = await _start_task(samples["chronology"])
+	quiz.health = 10
+	_by_text(quiz, samples["chronology"]["items"][2]).hit()
+	check(quiz.lives == 2 and quiz.accepting_answers, "chronology mistake costs a life, task continues")
+	check(quiz.feedback_label.text == "Бір жан жоғалды!", "mid-task life loss announced")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	# Levels with no plain-answer questions cannot offer medical help.
+	quiz = await _start_task(samples["matching"])
+	quiz.questions = [samples["matching"], samples["chronology"]]
+	check(quiz.pick_revival_question().is_empty(), "no help question without single_choice/fill_blank tasks")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+
+func _wrong_target(quiz):
+	return quiz.targets.filter(func(t): return not t.is_correct)[0]
+
+
+func _press_correct(panel) -> void:
+	for button in panel.answer_buttons:
+		if button.text == panel.question["correct"]:
+			button.pressed.emit()
+			return
+
+
+func _press_wrong(panel) -> void:
+	for button in panel.answer_buttons:
+		if button.text != panel.question["correct"]:
+			button.pressed.emit()
+			return
 
 
 # Loads the arena and replaces its questions with a single task.

@@ -23,10 +23,21 @@ const MAP_SIZE := Vector2(12.0, 6.0)
 # Drop a real map here and it replaces the placeholder board.
 const MAP_TEXTURE := "res://assets/maps/kazakhstan.png"
 
+const MAX_HEALTH := 100
+const DAMAGE := 10
+# Question types that can be asked on the medical-help screen (plain four-button answers).
+const REVIVAL_TYPES := ["single_choice", "fill_blank"]
+
 var score: int = 0
-var health: int = 100
+var health: int = MAX_HEALTH
+var lives: int = 3
+var revivals_left: int = 1
 var question_index: int = 0
 var accepting_answers: bool = true
+
+# Questions the player got wrong this run; asked first on the medical-help screen.
+var missed_questions: Array = []
+var used_revival_questions: Array = []
 
 
 @export_file("*.json") var question_file: String = "res://questions/saka.json"
@@ -47,6 +58,8 @@ var feedback_token: int = 0
 @onready var progress_label: Label = $"../HUD/ProgressLabel"
 @onready var score_label: Label = $"../HUD/ScoreLabel"
 @onready var health_label: Label = $"../HUD/HealthLabel"
+@onready var lives_label: Label = $"../HUD/LivesLabel"
+@onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
 @onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
 @onready var feedback_label: Label = $"../HUD/FeedbackLabel"
@@ -59,6 +72,10 @@ func _ready() -> void:
 	var level := LevelDatabase.get_level(GameState.selected_level)
 	if not level.is_empty():
 		question_file = level["question_file"]
+		lives = level["lives"]
+		revivals_left = level["revivals"]
+
+	revival_panel.revived.connect(_on_revived)
 
 	load_questions_from_file()
 
@@ -109,10 +126,11 @@ func target_hit(target) -> void:
 		QuizTask.Outcome.PROGRESS:
 			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
-			health -= 10
-			update_hud()
-			if health <= 0:
+			var life_lost := take_damage()
+			if lives <= 0:
 				finish_task("Қате!", Color.RED)
+			elif life_lost:
+				show_feedback("Бір жан жоғалды!", Color.RED, 1.2)
 			else:
 				show_feedback(message if not message.is_empty() else "Қате!", Color.RED, 1.0)
 		QuizTask.Outcome.SOLVED:
@@ -120,24 +138,87 @@ func target_hit(target) -> void:
 			update_hud()
 			finish_task("Дұрыс!", Color.GREEN)
 		QuizTask.Outcome.FAILED:
-			health -= 10
-			update_hud()
-			finish_task("Қате!", Color.RED)
+			missed_questions.append(current_task.question)
+			var life_lost := take_damage()
+			finish_task("Қате! Бір жан жоғалды!" if life_lost and lives > 0 else "Қате!", Color.RED)
 
 
-# Shows the final feedback for a task, then moves on (or ends the game at 0 HP).
+# Applies one mistake. Returns true if it cost a life; HP refills while lives remain.
+func take_damage() -> bool:
+	health -= DAMAGE
+	var life_lost := health <= 0
+	if life_lost:
+		lives -= 1
+		health = MAX_HEALTH if lives > 0 else 0
+	update_hud()
+	return life_lost
+
+
+# Shows the final feedback for a task, then moves on (or to the defeat screen with no lives left).
 func finish_task(text: String, color: Color) -> void:
 	accepting_answers = false
 	show_feedback(text, color, 1.0)
 
 	await get_tree().create_timer(1.0, false).timeout
 
-	if health <= 0:
-		show_results("Ойын аяқталды!")
+	if lives <= 0:
+		show_defeat()
 		return
 
 	question_index += 1
 	load_question()
+
+
+func show_defeat() -> void:
+	accepting_answers = false
+	clear_arena()
+	question_label.text = ""
+
+	var help_question := {}
+	if revivals_left > 0:
+		help_question = pick_revival_question()
+		if not help_question.is_empty():
+			revivals_left -= 1
+			used_revival_questions.append(help_question)
+
+	revival_panel.open(score, help_question)
+
+
+# Prefers a question the player missed this run, then any unused one, so the
+# medical-help task reinforces what they got wrong.
+func pick_revival_question() -> Dictionary:
+	var eligible := questions.filter(func(q): return REVIVAL_TYPES.has(QuestionValidator.get_type(q)))
+	var unused := eligible.filter(func(q): return not used_revival_questions.has(q))
+
+	var missed := unused.filter(func(q): return missed_questions.has(q))
+	if not missed.is_empty():
+		return missed.pick_random()
+	if not unused.is_empty():
+		return unused.pick_random()
+	if not eligible.is_empty():
+		return eligible.pick_random()
+	return {}
+
+
+# Medical help succeeded: one life back with full HP; score and progress are kept,
+# and play continues with the next task.
+func _on_revived() -> void:
+	lives = 1
+	health = MAX_HEALTH
+	update_hud()
+
+	if OS.has_feature("web"):
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+	question_index += 1
+	load_question()
+
+
+# True while a full-screen menu (results or defeat) is open.
+func overlay_open() -> bool:
+	return results_container.visible or revival_panel.visible
 
 
 func show_feedback(text: String, color: Color, duration: float) -> void:
@@ -174,6 +255,7 @@ func update_progress() -> void:
 func update_hud() -> void:
 	score_label.text = "Ұпай саны: " + str(score)
 	health_label.text = "HP: " + str(health)
+	lives_label.text = "Жан: " + str(lives)
 
 
 func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1.0):
