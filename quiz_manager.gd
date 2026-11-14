@@ -1,5 +1,10 @@
 extends Node
 
+const QuestionValidator := preload("res://question_validator.gd")
+
+# Question types the arena can play so far; other valid types are skipped.
+const PLAYABLE_TYPES := ["single_choice"]
+
 var score: int = 0
 var health: int = 100
 var question_index: int = 0
@@ -9,14 +14,6 @@ var accepting_answers: bool = true
 @export_file("*.json") var question_file: String = "res://questions/saka.json"
 
 var questions: Array = []
-
-
-const LEVEL_FILES = {
-	1: "res://questions/saka.json",
-	2: "res://questions/huns.json",
-	3: "res://questions/turkic.json"
-}
-
 
 @onready var targets = [
 	$"../AnswerTarget",
@@ -36,12 +33,9 @@ const LEVEL_FILES = {
 
 
 func _ready() -> void:
-	randomize()
-
-	question_file = LEVEL_FILES.get(
-		GameState.selected_level,
-        "res://questions/saka.json"
-	)
+	var level := LevelDatabase.get_level(GameState.selected_level)
+	if not level.is_empty():
+		question_file = level["question_file"]
 
 	load_questions_from_file()
 
@@ -133,74 +127,16 @@ func _on_levels_button_pressed() -> void:
 
 
 func load_questions_from_file() -> void:
-	if not FileAccess.file_exists(question_file):
-		push_error("Question file not found: " + question_file)
-		return
+	var result := QuestionValidator.load_file(question_file)
 
-	var file := FileAccess.open(question_file, FileAccess.READ)
-
-	if file == null:
-		push_error("Cannot open question file: " + question_file)
-		return
-
-	var json := JSON.new()
-	var error := json.parse(file.get_as_text())
-
-	if error != OK:
-		push_error("JSON error: " + json.get_error_message())
-		return
-
-	if not json.data is Array:
-		push_error("Question file must contain an array.")
-		return
+	for error in result.errors:
+		push_warning(error)
 
 	questions = []
-	for i in range(json.data.size()):
-		var question = json.data[i]
-		var problem := validate_question(question)
-		if problem.is_empty():
+	for question in result.questions:
+		if PLAYABLE_TYPES.has(QuestionValidator.get_type(question)):
 			questions.append(question)
 		else:
-			push_warning("Skipping question %d in %s: %s" % [i, question_file, problem])
+			push_warning("Skipping %s question (not playable yet) in %s" % [QuestionValidator.get_type(question), question_file])
 
 	print("Loaded ", questions.size(), " questions from ", question_file)
-
-
-# Returns an empty string if the question is usable, otherwise the reason it is not.
-func validate_question(question) -> String:
-	if not question is Dictionary:
-		return "entry is not an object"
-
-	if not question.get("question") is String or question["question"].strip_edges().is_empty():
-		return "missing or empty \"question\" text"
-
-	if not question.get("answers") is Array:
-		return "missing \"answers\" array"
-
-	var answers: Array = question["answers"]
-	if answers.size() != targets.size():
-		return "expected %d answers, got %d" % [targets.size(), answers.size()]
-
-	for answer in answers:
-		if not answer is String or answer.strip_edges().is_empty():
-			return "every answer must be a non-empty string"
-
-	if has_duplicates(answers):
-		return "answers must be unique"
-
-	if not question.get("correct") is String:
-		return "missing \"correct\" answer"
-
-	if not answers.has(question["correct"]):
-		return "\"correct\" answer is not one of the answers"
-
-	return ""
-
-
-func has_duplicates(values: Array) -> bool:
-	var seen := {}
-	for value in values:
-		if seen.has(value):
-			return true
-		seen[value] = true
-	return false

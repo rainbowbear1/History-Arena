@@ -41,55 +41,11 @@ horizontal_alignment = 1
 layout_mode = 2
 columns = 5
 
-[node name="Level1Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=1323824845]
-custom_minimum_size = Vector2(90, 90)
+[node name="LevelInfoLabel" type="Label" parent="CenterContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-text = "1"
-
-[node name="Level2Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=1204763022]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "2"
-
-[node name="Level3Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=460996348]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "3"
-
-[node name="Level4Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=970978240]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "4"
-
-[node name="Level5Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=576525678]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "5"
-
-[node name="Level6Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=1624956236]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "6"
-
-[node name="Level7Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=1272631626]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "7"
-
-[node name="Level8Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=27472061]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "8"
-
-[node name="Level9Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=213010040]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "9"
-
-[node name="Level10Button" type="Button" parent="CenterContainer/VBoxContainer/LevelGrid" unique_id=107131681]
-custom_minimum_size = Vector2(90, 90)
-layout_mode = 2
-text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="BackButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1747922307]
 layout_mode = 2

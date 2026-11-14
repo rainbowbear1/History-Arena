@@ -2,26 +2,45 @@
 extends Control
 
 @onready var level_grid: GridContainer = $CenterContainer/VBoxContainer/LevelGrid
+@onready var level_info_label: Label = $CenterContainer/VBoxContainer/LevelInfoLabel
 @onready var back_button: Button = $CenterContainer/VBoxContainer/BackButton
 
 func _ready() -> void:
-	for i in range(10):
-		var button: Button = level_grid.get_child(i)
-		var level_number := i + 1
+	for level in LevelDatabase.levels:
+		var level_number: int = level["id"]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(90, 90)
+		button.text = str(level_number)
+		level_grid.add_child(button)
 
-		if level_number <= 3:
+		if LevelDatabase.is_playable(level_number):
 			button.focus_mode = Control.FOCUS_ALL
 			button.pressed.connect(_on_level_selected.bind(level_number))
+			button.focus_entered.connect(_show_level_info.bind(level_number))
 		else:
-			button.text = str(level_number) + " 🔒"
 			button.disabled = true
 			button.focus_mode = Control.FOCUS_NONE
-	
+
+		button.mouse_entered.connect(_show_level_info.bind(level_number))
+
 	back_button.pressed.connect(_on_back_pressed)
 
-	level_grid.get_child(0).grab_focus.call_deferred()
+	if level_grid.get_child_count() > 0:
+		level_grid.get_child(0).grab_focus.call_deferred()
+		_show_level_info(1)
 
 
+
+
+func _show_level_info(level_number: int) -> void:
+	var level := LevelDatabase.get_level(level_number)
+	var difficulty := "BOSS" if level["boss"] else "%d/5" % level["stars"]
+	var text := "%d. %s\nҚиындық: %s" % [level_number, level["title"], difficulty]
+
+	if not LevelDatabase.is_playable(level_number):
+		text += " · жабық"
+
+	level_info_label.text = text
 
 
 func _on_level_selected(level_number: int) -> void:
