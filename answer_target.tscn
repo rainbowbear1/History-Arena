@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://bc2p4f31wlnra"]
+
+[ext_resource type="Script" uid="uid://bnkiqfyfego2o" path="res://answer_target.gd" id="1_dxsin"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_o6pq0"]
+size = Vector3(2, 2, 0.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
+size = Vector3(2, 2, 0.2)
+
+[node name="AnswerTarget" type="StaticBody3D" unique_id=1801829814]
+script = ExtResource("1_dxsin")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=970906642]
+shape = SubResource("BoxShape3D_o6pq0")
+
+[node name="TargetVisual" type="Node3D" parent="." unique_id=1019419406]
+
+[node name="AnswerLabel" type="Label3D" parent="TargetVisual" unique_id=1544567580]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.12)
+pixel_size = 0.01
+text = "1465"
+font_size = 24
+autowrap_mode = 2
+width = 180.0
+
+[node name="TargetMesh" type="MeshInstance3D" parent="TargetVisual" unique_id=1656038390]
+mesh = SubResource("BoxMesh_o6pq0")

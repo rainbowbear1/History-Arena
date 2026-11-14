@@ -1,0 +1,38 @@
+# Godot 4+ generated data (import cache, editor state, export credentials)
+.godot/
+/android/
+
+# Godot temporary / translation build files
+*.tmp
+*.translation
+mono_crash.*.json
+
+# Web/desktop build outputs (exported games live outside source control)
+/Tarikh_Arenasy/
+/Tarikh_Arenasy_test/
+/Tarikh_Arenasy_Web/
+/build/
+/builds/
+/export/
+/exports/
+*.zip
+*.rar
+*.7z
+*.pck
+*.wasm
+
+# Secrets
+*.keystore
+!debug.keystore
+*.jks
+.env
+.env.*
+export_credentials.cfg
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/

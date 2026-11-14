@@ -1,0 +1,153 @@
+extends Node
+
+var score: int = 0
+var health: int = 100
+var question_index: int = 0
+var accepting_answers: bool = true
+
+
+@export_file("*.json") var question_file: String = "res://questions/saka.json"
+
+var questions: Array = []
+
+
+const LEVEL_FILES = {
+	1: "res://questions/saka.json",
+	2: "res://questions/huns.json",
+	3: "res://questions/turkic.json"
+}
+
+
+@onready var targets = [
+	$"../AnswerTarget",
+	$"../AnswerTarget2",
+	$"../AnswerTarget3",
+	$"../AnswerTarget4"
+]
+
+
+@onready var question_label: Label = $"../HUD/QuestionLabel"
+@onready var score_label: Label = $"../HUD/ScoreLabel"
+@onready var health_label: Label = $"../HUD/HealthLabel"
+@onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
+@onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
+@onready var feedback_label: Label = $"../HUD/FeedbackLabel"
+
+
+
+func _ready() -> void:
+	randomize()
+
+	question_file = LEVEL_FILES.get(
+		GameState.selected_level,
+        "res://questions/saka.json"
+	)
+
+	load_questions_from_file()
+
+	if questions.is_empty():
+		push_error("No questions loaded!")
+		return
+
+	load_question()
+
+
+
+
+func load_question() -> void:
+	accepting_answers = true
+
+	if question_index >= questions.size():
+		accepting_answers = false
+		question_label.text = ""
+		results_label.text = "Тест аяқталды!\n\nЖалпы ұпай: " + str(score)
+		results_container.show()
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
+
+	var question = questions[question_index]
+	var answers = question["answers"].duplicate()
+	answers.shuffle()
+
+	question_label.text = question["question"]
+	update_hud()
+
+	print("QUESTION: ", question["question"])
+
+	for i in range(targets.size()):
+		targets[i].answer_text = answers[i]
+		targets[i].is_correct = answers[i] == question["correct"]
+		targets[i].get_node("TargetVisual/AnswerLabel").text = answers[i]
+
+
+
+func answer_selected(correct: bool) -> void:
+	if not accepting_answers:
+		return
+
+	accepting_answers = false
+
+	if correct:
+		score += 100
+		feedback_label.text = "Дұрыс!"
+		feedback_label.add_theme_color_override("font_color", Color.GREEN)
+	else:
+		health -= 10
+		feedback_label.text = "Қате!"
+		feedback_label.add_theme_color_override("font_color", Color.RED)
+
+	update_hud()
+	feedback_label.show()
+
+	await get_tree().create_timer(1.0, false).timeout
+
+	feedback_label.hide()
+
+	if health <= 0:
+		question_label.text = "Ойын аяқталды!"
+		print("GAME OVER!")
+		return
+
+	question_index += 1
+	load_question()
+
+
+
+func update_hud() -> void:
+	score_label.text = "Ұпай саны: " + str(score)
+	health_label.text = "HP: " + str(health)
+
+
+func _on_restart_button_pressed() -> void:
+	get_tree().reload_current_scene()
+
+
+func _on_levels_button_pressed() -> void:
+	get_tree().change_scene_to_file("res://level_select.tscn")
+
+
+
+func load_questions_from_file() -> void:
+	if not FileAccess.file_exists(question_file):
+		push_error("Question file not found: " + question_file)
+		return
+
+	var file := FileAccess.open(question_file, FileAccess.READ)
+
+	if file == null:
+		push_error("Cannot open question file: " + question_file)
+		return
+
+	var json := JSON.new()
+	var error := json.parse(file.get_as_text())
+
+	if error != OK:
+		push_error("JSON error: " + json.get_error_message())
+		return
+
+	if not json.data is Array:
+		push_error("Question file must contain an array.")
+		return
+
+	questions = json.data
+	print("Loaded ", questions.size(), " questions from ", question_file)

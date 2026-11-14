@@ -1,0 +1,221 @@
+[gd_scene format=3 uid="uid://o647kfqybs8h"]
+
+[ext_resource type="Script" uid="uid://b455eq2qacwvl" path="res://player.gd" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://bc2p4f31wlnra" path="res://answer_target.tscn" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://ci0d1yv5rwtbw" path="res://pause_menu.gd" id="2_1bvp3"]
+[ext_resource type="Script" uid="uid://v0ik8lrjeaw" path="res://quiz_manager.gd" id="3_h2yge"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ayaha"]
+albedo_color = Color(0.44705883, 0.5882353, 0.3529412, 1)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_7dm0k"]
+data = PackedVector3Array(-0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, -0.5, -0.5, -0.5)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_o6pq0"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_xpti3"]
+size = Vector3(0.15, 0.15, 0.7)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_nd5yf"]
+
+[sub_resource type="Sky" id="Sky_xpti3"]
+sky_material = SubResource("ProceduralSkyMaterial_nd5yf")
+
+[sub_resource type="Environment" id="Environment_o6pq0"]
+background_mode = 2
+sky = SubResource("Sky_xpti3")
+
+[node name="Main" type="Node3D" unique_id=51386826]
+
+[node name="Ground" type="MeshInstance3D" parent="." unique_id=1277609653]
+transform = Transform3D(30, 0, 0, 0, 0.2, 0, 0, 0, 30, 0, 0, 0)
+mesh = SubResource("BoxMesh_o6pq0")
+surface_material_override/0 = SubResource("StandardMaterial3D_ayaha")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Ground" unique_id=515636385]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground/StaticBody3D" unique_id=1884457464]
+shape = SubResource("ConcavePolygonShape3D_7dm0k")
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=795066124]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+script = ExtResource("1_ig7tw")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=419986718]
+shape = SubResource("CapsuleShape3D_o6pq0")
+
+[node name="Camera3D" type="Camera3D" parent="Player" unique_id=2023929147]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+
+[node name="ShootRay" type="RayCast3D" parent="Player/Camera3D" unique_id=1877846778]
+target_position = Vector3(0, -1, -100)
+
+[node name="WeaponHolder" type="Node3D" parent="Player/Camera3D" unique_id=512388303]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, -0.35, -0.7)
+
+[node name="WeaponMesh" type="MeshInstance3D" parent="Player/Camera3D/WeaponHolder" unique_id=2015645510]
+mesh = SubResource("BoxMesh_xpti3")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=89356052]
+transform = Transform3D(0.8660254, -0.35355338, 0.35355338, 0, 0.70710677, 0.70710677, -0.5, -0.6123724, 0.6123724, 0, 0, 0)
+light_energy = 1.2
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=888634113]
+environment = SubResource("Environment_o6pq0")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=343047306]
+
+[node name="CenterContainer" type="CenterContainer" parent="HUD" unique_id=800592071]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Crosshair" type="Label" parent="HUD/CenterContainer" unique_id=1035828437]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 28
+text = "+"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="QuestionLabel" type="Label" parent="HUD" unique_id=200959144]
+anchors_preset = -1
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 90.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 24
+text = "Қазақ хандығы қай жылы құрылды?"
+horizontal_alignment = 1
+
+[node name="ScoreLabel" type="Label" parent="HUD" unique_id=1284406417]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 123.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 22
+text = "Ұпай саны: 0"
+
+[node name="HealthLabel" type="Label" parent="HUD" unique_id=799726897]
+offset_left = 20.0
+offset_top = 55.0
+offset_right = 78.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 22
+text = "HP: 100"
+
+[node name="ResultsContainer" type="CenterContainer" parent="HUD" unique_id=456787760]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ResultsPanel" type="PanelContainer" parent="HUD/ResultsContainer" unique_id=1677257675]
+custom_minimum_size = Vector2(400, 280)
+layout_mode = 2
+
+[node name="ResultsVBox" type="VBoxContainer" parent="HUD/ResultsContainer/ResultsPanel" unique_id=1317422448]
+layout_mode = 2
+
+[node name="ResultsLabel" type="Label" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=121929219]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "QUIZ COMPLETE!
+
+Final Score: 0"
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=1131899783]
+layout_mode = 2
+text = "Play again"
+
+[node name="LevelsButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=474327765]
+layout_mode = 2
+text = "Деңгейлер"
+
+[node name="FeedbackLabel" type="Label" parent="HUD" unique_id=721242640]
+visible = false
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -55.5
+offset_top = 80.0
+offset_right = 55.5
+offset_bottom = 125.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 32
+text = "Дұрыс!"
+
+[node name="PauseMenu" type="Control" parent="HUD" unique_id=181673631]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_1bvp3")
+
+[node name="CenterContainer" type="CenterContainer" parent="HUD/PauseMenu" unique_id=1108636041]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="HUD/PauseMenu/CenterContainer" unique_id=863705172]
+layout_mode = 2
+
+[node name="PauseVBox" type="VBoxContainer" parent="HUD/PauseMenu/CenterContainer/PausePanel" unique_id=678461786]
+layout_mode = 2
+
+[node name="PauseLabel" type="Label" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=846470578]
+layout_mode = 2
+text = "Ойын тоқталды"
+
+[node name="ResumeButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=399429686]
+layout_mode = 2
+text = "Жалғастыру"
+
+[node name="RestartButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1639498069]
+layout_mode = 2
+text = "Қайта бастау"
+
+[node name="LevelsButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1078300344]
+layout_mode = 2
+text = "Деңгейлер"
+
+[node name="AnswerTarget" parent="." unique_id=1801829814 instance=ExtResource("2_0xm2m")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1.5, -8)
+answer_text = "1456"
+is_correct = false
+
+[node name="AnswerTarget2" parent="." unique_id=1055180224 instance=ExtResource("2_0xm2m")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 1.5, -8)
+
+[node name="AnswerTarget3" parent="." unique_id=1856128455 instance=ExtResource("2_0xm2m")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 1.5, -8.06243)
+answer_text = "1505"
+is_correct = false
+
+[node name="AnswerTarget4" parent="." unique_id=170237191 instance=ExtResource("2_0xm2m")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1.5, -8)
+answer_text = "1511"
+is_correct = false
+
+[node name="QuizManager" type="Node" parent="." unique_id=2032224658]
+script = ExtResource("3_h2yge")
+question_file = null
+
+[connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/RestartButton" to="QuizManager" method="_on_restart_button_pressed"]
+[connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/LevelsButton" to="QuizManager" method="_on_levels_button_pressed"]

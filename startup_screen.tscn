@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://kvklh4hv343t"]
+
+[ext_resource type="Script" uid="uid://dr7aylhxegvga" path="res://startup_screen.gd" id="1_ofogw"]
+
+[node name="StartupScreen" type="Control" unique_id=1552315401]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ofogw")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=955671970]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08235294, 0.13333334, 0.20784314, 1)
+
+[node name="LoginCenter" type="CenterContainer" parent="." unique_id=818476828]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LoginPanel" type="PanelContainer" parent="LoginCenter" unique_id=19725943]
+custom_minimum_size = Vector2(500, 280)
+layout_mode = 2
+
+[node name="LoginVBox" type="VBoxContainer" parent="LoginCenter/LoginPanel" unique_id=2134096607]
+layout_mode = 2
+
+[node name="UsernameInput" type="LineEdit" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=1505367599]
+layout_mode = 2
+placeholder_text = "Логин"
+
+[node name="PasswordInput" type="LineEdit" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=256652090]
+layout_mode = 2
+placeholder_text = "Құпиясөз"
+secret = true
+
+[node name="EnterButton" type="Button" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=657767782]
+layout_mode = 2
+text = "Кіру	"
