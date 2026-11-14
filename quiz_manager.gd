@@ -30,7 +30,7 @@ const REVIVAL_TYPES := ["single_choice", "fill_blank"]
 
 var score: int = 0
 var health: int = MAX_HEALTH
-var lives: int = 3
+var revive_hp: int = 50
 var revivals_left: int = 1
 var question_index: int = 0
 var accepting_answers: bool = true
@@ -58,7 +58,6 @@ var feedback_token: int = 0
 @onready var progress_label: Label = $"../HUD/ProgressLabel"
 @onready var score_label: Label = $"../HUD/ScoreLabel"
 @onready var health_label: Label = $"../HUD/HealthLabel"
-@onready var lives_label: Label = $"../HUD/LivesLabel"
 @onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
 @onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
@@ -72,7 +71,7 @@ func _ready() -> void:
 	var level := LevelDatabase.get_level(GameState.selected_level)
 	if not level.is_empty():
 		question_file = level["question_file"]
-		lives = level["lives"]
+		revive_hp = level["revive_hp"]
 		revivals_left = level["revivals"]
 
 	revival_panel.revived.connect(_on_revived)
@@ -126,11 +125,9 @@ func target_hit(target) -> void:
 		QuizTask.Outcome.PROGRESS:
 			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
-			var life_lost := take_damage()
-			if lives <= 0:
+			take_damage()
+			if health <= 0:
 				finish_task("Қате!", Color.RED)
-			elif life_lost:
-				show_feedback("Бір жан жоғалды!", Color.RED, 1.2)
 			else:
 				show_feedback(message if not message.is_empty() else "Қате!", Color.RED, 1.0)
 		QuizTask.Outcome.SOLVED:
@@ -139,29 +136,23 @@ func target_hit(target) -> void:
 			finish_task("Дұрыс!", Color.GREEN)
 		QuizTask.Outcome.FAILED:
 			missed_questions.append(current_task.question)
-			var life_lost := take_damage()
-			finish_task("Қате! Бір жан жоғалды!" if life_lost and lives > 0 else "Қате!", Color.RED)
+			take_damage()
+			finish_task("Қате!", Color.RED)
 
 
-# Applies one mistake. Returns true if it cost a life; HP refills while lives remain.
-func take_damage() -> bool:
-	health -= DAMAGE
-	var life_lost := health <= 0
-	if life_lost:
-		lives -= 1
-		health = MAX_HEALTH if lives > 0 else 0
+func take_damage() -> void:
+	health = maxi(health - DAMAGE, 0)
 	update_hud()
-	return life_lost
 
 
-# Shows the final feedback for a task, then moves on (or to the defeat screen with no lives left).
+# Shows the final feedback for a task, then moves on (or to the defeat screen at 0 HP).
 func finish_task(text: String, color: Color) -> void:
 	accepting_answers = false
 	show_feedback(text, color, 1.0)
 
 	await get_tree().create_timer(1.0, false).timeout
 
-	if lives <= 0:
+	if health <= 0:
 		show_defeat()
 		return
 
@@ -181,13 +172,15 @@ func show_defeat() -> void:
 			revivals_left -= 1
 			used_revival_questions.append(help_question)
 
-	revival_panel.open(score, help_question)
+	revival_panel.open(score, help_question, revive_hp)
 
 
-# Prefers a question the player missed this run, then any unused one, so the
-# medical-help task reinforces what they got wrong.
+# Never the task being retried (its answer may have just been shown). Prefers a
+# question missed earlier this run, then one not asked yet, so the medical-help
+# task reinforces what the player got wrong.
 func pick_revival_question() -> Dictionary:
-	var eligible := questions.filter(func(q): return REVIVAL_TYPES.has(QuestionValidator.get_type(q)))
+	var current = questions[question_index] if question_index < questions.size() else null
+	var eligible := questions.filter(func(q): return q != current and REVIVAL_TYPES.has(QuestionValidator.get_type(q)))
 	var unused := eligible.filter(func(q): return not used_revival_questions.has(q))
 
 	var missed := unused.filter(func(q): return missed_questions.has(q))
@@ -200,11 +193,10 @@ func pick_revival_question() -> Dictionary:
 	return {}
 
 
-# Medical help succeeded: one life back with full HP; score and progress are kept,
-# and play continues with the next task.
+# Medical help succeeded: restore the level's revive_hp and retry the task the
+# player was on (answers reshuffled). Score and completed tasks are kept.
 func _on_revived() -> void:
-	lives = 1
-	health = MAX_HEALTH
+	health = mini(revive_hp, MAX_HEALTH)
 	update_hud()
 
 	if OS.has_feature("web"):
@@ -212,7 +204,6 @@ func _on_revived() -> void:
 	else:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
-	question_index += 1
 	load_question()
 
 
@@ -255,7 +246,6 @@ func update_progress() -> void:
 func update_hud() -> void:
 	score_label.text = "Ұпай саны: " + str(score)
 	health_label.text = "HP: " + str(health)
-	lives_label.text = "Жан: " + str(lives)
 
 
 func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1.0):

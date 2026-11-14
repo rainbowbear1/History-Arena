@@ -20,20 +20,21 @@ Run the tests (below) after every content change; they report the exact file, en
 | `target_speed` | number | Multiplier for target movement speed. |
 | `extra_decoys` | whole number | Extra fake-answer targets added on top of the 4 options. |
 | `enemies` | whole number | Enemies active in the arena. |
-| `lives` | whole number ≥ 1 | Lives at the start of the level. |
-| `revivals` | whole number | How many times the medical-help task can restore a life. |
+| `revive_hp` | 1–100 | HP restored by a correct medical-help answer (50 / 40 / 30 by difficulty). |
+| `revivals` | whole number | How many times medical help can be offered in one run. |
 | `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass and unlock the next level. |
 
-`lives` and `revivals` are used now. The timer, speed, decoys, enemies and pass mark are validated
+`revive_hp` and `revivals` are used now. The timer, speed, decoys, enemies and pass mark are validated
 and will be used by the gameplay as later milestones land.
 
-### Lives and medical help
-Each life holds 100 HP and every mistake costs 10 HP. When HP runs out the player loses a life and
-HP refills. When the last life is lost the "СІЗ ЖЕҢІЛДІҢІЗ!" screen offers one historical question
-as medical help (up to `revivals` times per run). It asks a `single_choice` or `fill_blank` question
-from the same level, preferring one the player got wrong. A correct answer gives back one life with
-full HP and play continues with the next task, keeping the score; a wrong answer means no medical
-help, leaving Restart and Levels.
+### HP and medical help
+The player has one pool of 100 HP; every mistake costs 10 HP. At 0 HP the "СІЗ ЖЕҢІЛДІҢІЗ!" screen
+offers one historical question as medical help (up to `revivals` times per run). It asks a
+`single_choice` or `fill_blank` question from the same level — never the task the player just failed,
+preferring a question missed earlier, then one not asked yet. A correct answer restores `revive_hp`
+HP and the player retries the task they failed (answers reshuffled; matching/chronology start over),
+keeping their score and completed tasks. A wrong answer means no medical help, leaving Restart and
+Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
 
 ## Questions — `questions/*.json`
 

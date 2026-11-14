@@ -1,6 +1,6 @@
 extends CenterContainer
 
-# "СІЗ ЖЕҢІЛДІҢІЗ!" screen shown when the player runs out of lives. Offers one
+# "СІЗ ЖЕҢІЛДІҢІЗ!" screen shown when the player's HP runs out. Offers one
 # historical question as medical help: a correct answer emits `revived`, a wrong
 # one leaves only Restart and Levels.
 
@@ -11,6 +11,7 @@ const WRONG_COLOR := Color(0.85, 0.3, 0.3)
 const REVIVE_DELAY := 1.5
 
 var question: Dictionary = {}
+var restore_hp: int = 0
 
 @onready var message_label: Label = %MessageLabel
 @onready var question_label: Label = %QuestionLabel
@@ -30,8 +31,9 @@ func _ready() -> void:
 
 
 # Shows the defeat screen. An empty `help_question` means no medical help is left.
-func open(score: int, help_question: Dictionary) -> void:
+func open(score: int, help_question: Dictionary, hp: int) -> void:
 	question = help_question
+	restore_hp = hp
 	result_label.text = ""
 
 	if question.is_empty():
@@ -74,7 +76,7 @@ func _on_answer_pressed(button: Button) -> void:
 		return
 
 	result_label.add_theme_color_override("font_color", CORRECT_COLOR)
-	result_label.text = "Дұрыс! +1 жан. Ойын жалғасады."
+	result_label.text = "Дұрыс! +%d HP. Тапсырмаға қайта ораласыз." % restore_hp
 	await get_tree().create_timer(REVIVE_DELAY, false).timeout
 	hide()
 	revived.emit()

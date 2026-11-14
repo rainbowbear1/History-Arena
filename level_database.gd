@@ -3,7 +3,7 @@ extends Node
 # Loads the arena list from data/levels.json. The format is described in docs/data-format.md.
 
 const LEVELS_FILE := "res://data/levels.json"
-const INT_FIELDS := ["id", "stars", "extra_decoys", "enemies", "lives", "revivals"]
+const INT_FIELDS := ["id", "stars", "extra_decoys", "enemies", "revive_hp", "revivals"]
 const NUMBER_FIELDS := ["time_per_question", "target_speed", "pass_percent"]
 
 var levels: Array = []
@@ -86,8 +86,8 @@ static func validate_level(level) -> String:
 	if level["extra_decoys"] < 0 or level["enemies"] < 0 or level["revivals"] < 0:
 		return "\"extra_decoys\", \"enemies\" and \"revivals\" cannot be negative"
 
-	if level["lives"] < 1:
-		return "\"lives\" must be at least 1"
+	if level["revive_hp"] < 1 or level["revive_hp"] > 100:
+		return "\"revive_hp\" must be 1 to 100"
 
 	if level["pass_percent"] < 0 or level["pass_percent"] > 100:
 		return "\"pass_percent\" must be 0 to 100"

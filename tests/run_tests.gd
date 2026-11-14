@@ -68,10 +68,10 @@ func test_level_data() -> void:
 		check(not level_db.is_playable(id), "level %d is locked until its question file exists" % id)
 
 	var good := {"id": 1, "title": "T", "stars": 1, "question_file": "res://q.json", "time_per_question": 30,
-		"target_speed": 1.0, "extra_decoys": 0, "enemies": 0, "lives": 3, "revivals": 2, "pass_percent": 60}
+		"target_speed": 1.0, "extra_decoys": 0, "enemies": 0, "revive_hp": 50, "revivals": 2, "pass_percent": 60}
 	check(LevelDatabaseScript.validate_level(good) == "", "valid level accepted")
 	for broken in [
-		["stars", 6], ["stars", 0], ["lives", 0], ["pass_percent", 120], ["target_speed", 0],
+		["stars", 6], ["stars", 0], ["revive_hp", 0], ["revive_hp", 101], ["pass_percent", 120], ["target_speed", 0],
 		["enemies", -1], ["id", 1.5], ["question_file", "questions/x.json"], ["title", " "], ["boss", "yes"],
 	]:
 		var level := good.duplicate()
@@ -238,7 +238,7 @@ func test_arena() -> void:
 	await test_chronology(samples["chronology"])
 	await test_matching(samples["matching"])
 	await test_map(samples["map"])
-	await test_lives_and_revival()
+	await test_hp_and_medical_help()
 
 
 func test_choice_types(samples: Dictionary) -> void:
@@ -351,77 +351,86 @@ func test_map(question: Dictionary) -> void:
 	await process_frame
 
 
-func test_lives_and_revival() -> void:
-	print("== Lives and medical help")
+func test_hp_and_medical_help() -> void:
+	print("== HP and medical help")
 	print("   (levels 5 and 9 have no question files yet: their 'No questions loaded' errors are expected)")
 	for level in [1, 5, 9]:
 		var data: Dictionary = level_db.get_level(level)
 		game_state.selected_level = level
 		var probe := await _load_arena()
 		var probe_quiz = probe.get_node("QuizManager")
-		check(probe_quiz.lives == data["lives"] and probe_quiz.revivals_left == data["revivals"],
-			"level %d starts with %d lives and %d revivals from level data" % [level, data["lives"], data["revivals"]])
+		check(probe_quiz.revive_hp == data["revive_hp"] and probe_quiz.revivals_left == data["revivals"],
+			"level %d: medical help restores %d HP, %d times (from level data)" % [level, data["revive_hp"], data["revivals"]])
 		probe.queue_free()
 		await process_frame
+	check([1, 2, 3, 4].all(func(l): return level_db.get_level(l)["revive_hp"] == 50), "levels 1-4 restore 50 HP")
+	check([5, 6, 7, 8].all(func(l): return level_db.get_level(l)["revive_hp"] == 40), "levels 5-8 restore 40 HP")
+	check([9, 10].all(func(l): return level_db.get_level(l)["revive_hp"] == 30), "levels 9-10 restore 30 HP")
 
-	# Losing a life with lives to spare: HP refills, the run continues.
+	# One HP pool: ten mistakes from 100 HP reach defeat.
 	game_state.selected_level = 1
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
-	check(quiz.lives_label.text == "Жан: 3", "HUD shows 3 lives")
-	quiz.health = 10
+	check(quiz.health == 100 and quiz.health_label.text == "HP: 100", "run starts with 100 HP")
+	check(not arena.has_node("HUD/LivesLabel"), "no lives counter in the HUD")
 	_wrong_target(quiz).hit()
-	check(quiz.lives == 2 and quiz.health == 100, "losing all HP costs one life and refills HP")
-	check(quiz.lives_label.text == "Жан: 2" and quiz.health_label.text == "HP: 100", "HUD updates lives and HP")
-	check(quiz.feedback_label.text == "Қате! Бір жан жоғалды!", "life loss is announced")
+	check(quiz.health == 90, "a wrong answer costs 10 HP")
 	await wait(1.2)
-	check(quiz.question_index == 1 and not quiz.revival_panel.visible, "play continues after losing a life")
+	check(quiz.question_index == 1 and not quiz.revival_panel.visible, "play continues above 0 HP")
 
-	# Losing the last life opens the defeat screen with a medical-help question.
+	# Reaching 0 HP opens the defeat screen with a medical-help question.
 	quiz.score = 300
-	quiz.lives = 1
 	quiz.health = 10
-	quiz.missed_questions.clear()
-	var missed: Dictionary = quiz.questions[quiz.question_index]
+	var earlier_miss: Dictionary = quiz.questions[0]
+	quiz.missed_questions = [earlier_miss]
+	var retry_index: int = quiz.question_index
+	var retry_question: Dictionary = quiz.questions[retry_index]
 	_wrong_target(quiz).hit()
-	check(quiz.lives == 0, "last life lost")
+	check(quiz.health == 0, "HP reaches 0")
 	check(not quiz.revival_panel.visible, "defeat waits for the feedback")
 	await wait(1.2)
 	var panel = quiz.revival_panel
-	check(panel.visible, "defeat screen shown")
+	check(panel.visible, "defeat screen shown at 0 HP")
 	check(quiz.overlay_open(), "defeat screen counts as an open overlay")
 	check(not quiz.results_container.visible, "results screen not shown on defeat")
 	check(quiz.targets.is_empty(), "arena cleared on defeat")
 	check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "mouse released on defeat")
-	check(panel.question == missed, "medical help asks the question just missed")
-	check(panel.question_label.visible and panel.question_label.text == missed["question"], "help question shown")
+	check(panel.question != retry_question, "medical help never asks the task being retried")
+	check(panel.question == earlier_miss, "medical help prefers a question missed earlier")
+	check(panel.question_label.visible and panel.question_label.text == earlier_miss["question"], "help question shown")
 	var shown: Array = panel.answer_buttons.map(func(b): return b.text)
 	shown.sort()
-	var expected: Array = missed["answers"].duplicate()
+	var expected: Array = earlier_miss["answers"].duplicate()
 	expected.sort()
 	check(shown == expected, "help answers shown on four buttons")
-	check(quiz.revivals_left == 1, "offering help uses one revival")
+	check(quiz.revivals_left == 1, "offering help uses one medical-help attempt")
 
 	_press_correct(panel)
-	check(panel.result_label.text.begins_with("Дұрыс! +1 жан"), "correct help answer announced")
+	check(panel.result_label.text.begins_with("Дұрыс! +50 HP"), "correct help answer announces +50 HP")
 	check(panel.answer_buttons.all(func(b): return b.disabled), "answers locked after choosing")
 	await wait(1.7)
 	check(not panel.visible, "defeat screen closes after a correct answer")
-	check(quiz.lives == 1 and quiz.health == 100, "revival restores one life with full HP")
-	check(quiz.score == 300, "score kept after revival (score=%d)" % quiz.score)
-	check(quiz.question_index == 2, "play continues with the next task")
-	check(quiz.accepting_answers and quiz.targets.size() > 0, "arena is live again")
+	check(quiz.health == 50 and quiz.health_label.text == "HP: 50", "medical help restores the level's 50 HP")
+	check(quiz.score == 300, "score kept after medical help (score=%d)" % quiz.score)
+	check(quiz.question_index == retry_index, "the failed task is retried, not skipped")
+	check(quiz.question_label.text == retry_question["question"], "retried task is shown again")
+	check(quiz.accepting_answers and quiz.targets.size() == 4, "arena is live again with fresh targets")
+	_correct_target(quiz).hit()
+	check(quiz.score == 400, "solving the retried task scores normally")
+	await wait(1.2)
+	check(quiz.question_index == retry_index + 1, "after the retry the run moves on")
 
 	# Second defeat: a wrong medical-help answer gives no help.
 	quiz.health = 10
+	var second_retry: Dictionary = quiz.questions[quiz.question_index]
 	_wrong_target(quiz).hit()
 	await wait(1.2)
-	check(panel.visible and quiz.revivals_left == 0, "second defeat uses the last revival")
-	check(panel.question != missed, "a different help question is asked")
+	check(panel.visible and quiz.revivals_left == 0, "second defeat uses the last medical-help attempt")
+	check(panel.question != earlier_miss and panel.question != second_retry, "a fresh help question is asked")
 	_press_wrong(panel)
 	check(panel.result_label.text == "Медициналық көмек көрсетілмеді.", "wrong help answer: no medical help")
 	await wait(1.7)
-	check(panel.visible and quiz.lives == 0, "no revival after a wrong help answer")
+	check(panel.visible and quiz.health == 0, "no HP restored after a wrong help answer")
 	check(panel.restart_button.visible and panel.levels_button.visible, "restart and levels offered")
 
 	# Escape must not open the pause menu over the defeat screen.
@@ -433,41 +442,55 @@ func test_lives_and_revival() -> void:
 	arena.queue_free()
 	await process_frame
 
-	# No revivals left: defeat screen without a question.
+	# No medical help left: defeat screen without a question.
 	arena = await _load_arena()
 	quiz = arena.get_node("QuizManager")
 	quiz.revivals_left = 0
-	quiz.lives = 1
 	quiz.health = 10
 	_wrong_target(quiz).hit()
 	await wait(1.2)
-	check(quiz.revival_panel.visible and not quiz.revival_panel.question_label.visible, "no help question when revivals are used up")
+	check(quiz.revival_panel.visible and not quiz.revival_panel.question_label.visible, "no help question when attempts are used up")
 	check(quiz.revival_panel.message_label.text.begins_with("Медициналық көмек мүмкіндігі қалмады"), "says medical help is used up")
 	arena.queue_free()
 	await process_frame
 
-	# A mistake inside a multi-step task can cost a life without ending the task.
+	# Multi-step task: a mistake at 0 HP ends in defeat; after medical help the task restarts from scratch.
 	var samples := {}
 	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
 		samples[QuestionValidator.get_type(q)] = q
-	quiz = await _start_task(samples["chronology"])
-	quiz.health = 10
-	_by_text(quiz, samples["chronology"]["items"][2]).hit()
-	check(quiz.lives == 2 and quiz.accepting_answers, "chronology mistake costs a life, task continues")
-	check(quiz.feedback_label.text == "Бір жан жоғалды!", "mid-task life loss announced")
+	var chronology: Dictionary = samples["chronology"]
+	quiz = await _start_task(chronology)
+	quiz.questions = [chronology, samples["single_choice"]]
+	_by_text(quiz, chronology["items"][0]).hit()
+	quiz.health = 20
+	_by_text(quiz, chronology["items"][2]).hit()
+	check(quiz.health == 10 and quiz.accepting_answers, "chronology mistake above 0 HP: task continues")
+	_by_text(quiz, chronology["items"][0]).hit()
+	_by_text(quiz, chronology["items"][3]).hit()
+	check(quiz.health == 0 and not quiz.accepting_answers, "chronology mistake at 0 HP ends the task")
+	await wait(1.2)
+	check(quiz.revival_panel.visible and quiz.revival_panel.question == samples["single_choice"], "help question comes from another task")
+	_press_correct(quiz.revival_panel)
+	await wait(1.7)
+	check(quiz.question_index == 0 and quiz.current_task.done == 0, "chronology retried from the start")
+	check(quiz.progress_label.text == "Ретімен қойылды: 0/%d" % chronology["items"].size(), "retried chronology progress reset")
 	quiz.get_parent().queue_free()
 	await process_frame
 
-	# Levels with no plain-answer questions cannot offer medical help.
-	quiz = await _start_task(samples["matching"])
-	quiz.questions = [samples["matching"], samples["chronology"]]
-	check(quiz.pick_revival_question().is_empty(), "no help question without single_choice/fill_blank tasks")
+	# Only the retried task is eligible: no medical-help question.
+	quiz = await _start_task(samples["single_choice"])
+	quiz.questions = [samples["single_choice"], samples["matching"], samples["chronology"]]
+	check(quiz.pick_revival_question().is_empty(), "no help question when only the retried task qualifies")
 	quiz.get_parent().queue_free()
 	await process_frame
 
 
 func _wrong_target(quiz):
 	return quiz.targets.filter(func(t): return not t.is_correct)[0]
+
+
+func _correct_target(quiz):
+	return quiz.targets.filter(func(t): return t.is_correct)[0]
 
 
 func _press_correct(panel) -> void:
