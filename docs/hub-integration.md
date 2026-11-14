@@ -50,7 +50,7 @@ is required; the game shows `name`.
   "game_id": "history-arena",
   "client_version": "0.9.0",
   "level": 4,
-  "character": "al_farabi",
+  "character": "kaiyrkhan",
   "score": 1100,
   "max_score": 1300,
   "correct": 11,

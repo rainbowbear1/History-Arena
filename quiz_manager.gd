@@ -17,8 +17,13 @@ const TASK_SCRIPTS := {
 # Arena layout for spawned targets.
 const TARGET_Z := -8.0
 const ROW_SPACING := 3.0
-const CHOICE_ROW_Y := 1.5
-const TOP_ROW_Y := 4.0
+# Answer placards: the bottom row is held by soldiers on the ground, the top row by soldiers
+# standing on the rampart behind them (see environment_builder.gd).
+const CHOICE_ROW_Y := 2.6
+const TOP_ROW_Y := 5.6
+const TOP_ROW_Z := -10.0
+const GROUND_Y := 0.1
+const LEDGE_TOP := 3.1
 const IMAGE_HEIGHT := 3.0
 const MAP_SIZE := Vector2(12.0, 6.0)
 # Drop a real map here and it replaces the placeholder board.
@@ -39,6 +44,7 @@ const REVIVAL_TYPES := ["single_choice", "fill_blank"]
 
 var score: int = 0
 var level: Dictionary = {}
+var theme: Dictionary = {}
 
 # Run statistics saved with the result (and later sent to the Game Hub).
 var correct_count: int = 0
@@ -81,6 +87,8 @@ var feedback_token: int = 0
 @onready var image_board: Sprite3D = $"../ImageBoard"
 @onready var map_board: MeshInstance3D = $"../MapBoard"
 @onready var enemy_spawner: Node3D = $"../Enemies"
+@onready var environment: Node3D = $"../Environment"
+@onready var damage_flash: ColorRect = $"../HUD/DamageFlash"
 
 
 @onready var question_label: Label = $"../HUD/QuestionLabel"
@@ -120,7 +128,10 @@ func _ready() -> void:
 
 	revival_panel.revived.connect(_on_revived)
 	revival_panel.help_failed.connect(_record_defeat)
-	enemy_spawner.configure(self, $"../Player", level)
+	environment.apply(level.get("theme", ""), level.get("id", 0), $"../WorldEnvironment", $"../Sun", $"../Ground")
+	theme = environment.theme
+	enemy_spawner.configure(self, $"../Player", level, theme)
+	enemy_spawner.background_shooters = environment.background_enemies
 
 	load_questions_from_file()
 
@@ -179,6 +190,7 @@ func _on_time_up() -> void:
 		missed_questions.append(current_task.question)
 		current_task.reveal_correct()
 	wrong_count += 1
+	enemy_spawner.reaction_shot()
 	var blocked := take_damage(DAMAGE)
 	finish_task("Уақыт бітті! Қалқан қорғады" if blocked else "Уақыт бітті!", Color.RED)
 
@@ -206,6 +218,7 @@ func target_hit(target) -> void:
 			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
 			wrong_count += 1
+			enemy_spawner.reaction_shot()
 			var blocked := take_damage(DAMAGE)
 			if health <= 0:
 				finish_task("Қате!", Color.RED)
@@ -223,6 +236,7 @@ func target_hit(target) -> void:
 		QuizTask.Outcome.FAILED:
 			missed_questions.append(current_task.question)
 			wrong_count += 1
+			enemy_spawner.reaction_shot()
 			var blocked := take_damage(DAMAGE)
 			finish_task("Қате! Қалқан қорғады" if blocked else "Қате!", Color.RED)
 
@@ -235,7 +249,13 @@ func take_damage(amount: int) -> bool:
 		return true
 	health = maxi(health - amount, 0)
 	update_hud()
+	flash_damage()
 	return false
+
+
+func flash_damage() -> void:
+	damage_flash.color.a = 0.35
+	create_tween().tween_property(damage_flash, "color:a", 0.0, 0.45)
 
 
 # An enemy strike: the character's defense blocks part of it (at least 1 HP gets through).
@@ -532,6 +552,11 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 	targets_root.add_child(target)
 	if size != 1.0:
 		target.set_size(size)
+	elif not theme.is_empty():
+		# Positions are 32-bit floats, so compare against the midpoint between the rows.
+		var on_ledge := at.y > (CHOICE_ROW_Y + TOP_ROW_Y) / 2.0
+		var feet_y := (LEDGE_TOP if on_ledge else GROUND_Y) - at.y
+		target.apply_style(theme.get("target_style", "board"), theme.get("enemy_look", {}), Color.html(theme.get("placard", "#f2e6c4")), feet_y)
 
 	targets.append(target)
 	return target
@@ -541,7 +566,7 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 func row_positions(count: int, y: float) -> Array:
 	var positions := []
 	for i in range(count):
-		positions.append(Vector3((i - (count - 1) / 2.0) * ROW_SPACING, y, TARGET_Z))
+		positions.append(Vector3((i - (count - 1) / 2.0) * ROW_SPACING, y, TOP_ROW_Z if y == TOP_ROW_Y else TARGET_Z))
 	return positions
 
 

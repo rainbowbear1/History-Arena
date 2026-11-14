@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "themes": {
+    "saka": {
+      "sky_top": "#5d8fc7", "sky_horizon": "#e8d3a2", "ground": "#c9a45c", "fog_color": "#e8d3a2", "fog_density": 0.006,
+      "sun_color": "#ffe2a8", "sun_energy": 1.3, "sun_pitch": -35, "sun_yaw": 40,
+      "ledge": "#9b7b45", "placard": "#f2e6c4", "target_style": "soldier",
+      "props": [["kurgan", 7], ["hill", 10], ["banner", 4]],
+      "enemy_look": {"coat": "#6b3fa0", "pants": "#3b2a55", "headgear": "turban", "headgear_color": "#e6dcc8", "weapon": "spear", "shield": true, "trim": "#c9a24a", "robe": true},
+      "ally_look": {"coat": "#b8392b", "pants": "#5b2a1c", "headgear": "pointed", "headgear_color": "#d9a93b", "weapon": "bow", "trim": "#d9a93b"},
+      "background": {"allies": 6, "enemies": 10, "motion": "fight"}
+    },
+    "huns": {
+      "sky_top": "#3f5f8f", "sky_horizon": "#d99a6c", "ground": "#8f9a55", "fog_color": "#d9a27a", "fog_density": 0.008,
+      "sun_color": "#ffb36b", "sun_energy": 1.1, "sun_pitch": -18, "sun_yaw": 70,
+      "ledge": "#6f6a3a", "placard": "#efe3c0", "target_style": "soldier",
+      "props": [["yurt", 6], ["hill", 10], ["banner", 4]],
+      "enemy_look": {"coat": "#4d5a6b", "pants": "#2c323b", "headgear": "helmet", "headgear_color": "#9aa3ad", "weapon": "spear", "shield": true, "trim": "#7a2e2e"},
+      "ally_look": {"coat": "#7a5230", "pants": "#3d2b1f", "headgear": "fur", "headgear_color": "#5e432b", "weapon": "bow", "trim": "#a8823c"},
+      "background": {"allies": 8, "enemies": 10, "motion": "fight"}
+    },
+    "turkic": {
+      "sky_top": "#4f86c6", "sky_horizon": "#cfe0e8", "ground": "#7fa65a", "fog_color": "#cfe0e8", "fog_density": 0.005,
+      "sun_color": "#fff2d6", "sun_energy": 1.3, "sun_pitch": -45, "sun_yaw": 20,
+      "ledge": "#6e7a5a", "placard": "#f2ead2", "target_style": "soldier",
+      "props": [["balbal", 8], ["stele", 2], ["hill", 10], ["banner", 4]],
+      "enemy_look": {"coat": "#5b5f7a", "pants": "#30334a", "headgear": "helmet", "headgear_color": "#8b8fa3", "weapon": "spear", "shield": true, "trim": "#a83a3a"},
+      "ally_look": {"coat": "#2f6f8f", "pants": "#2b3a40", "headgear": "helmet", "headgear_color": "#c9a24a", "weapon": "bow", "trim": "#c9a24a"},
+      "background": {"allies": 8, "enemies": 10, "motion": "fight"}
+    },
+    "otyrar": {
+      "sky_top": "#b9a27e", "sky_horizon": "#d8c3a0", "ground": "#c2a26f", "fog_color": "#cdb38a", "fog_density": 0.035,
+      "sun_color": "#ffd9a0", "sun_energy": 0.9, "sun_pitch": -30, "sun_yaw": 60,
+      "ledge": "#a5835a", "ledge_style": "fortress", "placard": "#f3e3bf", "target_style": "soldier",
+      "props": [["tower", 6], ["wall", 8], ["dome", 2], ["tent", 6]],
+      "enemy_look": {"coat": "#5a4632", "pants": "#2e241a", "headgear": "fur", "headgear_color": "#6e5a3c", "weapon": "bow", "trim": "#8c2f22"},
+      "ally_look": {"coat": "#d6c29b", "pants": "#6b5638", "headgear": "turban", "headgear_color": "#f2ece0", "weapon": "spear", "shield": true, "trim": "#3f6f8f"},
+      "background": {"allies": 8, "enemies": 14, "motion": "march"}
+    },
+    "golden_horde": {
+      "sky_top": "#5b86b8", "sky_horizon": "#e9d9b3", "ground": "#b9a66a", "fog_color": "#e9d9b3", "fog_density": 0.007,
+      "sun_color": "#ffe7b0", "sun_energy": 1.25, "sun_pitch": -40, "sun_yaw": 30,
+      "ledge": "#8f7a4a", "placard": "#f5e9c8", "target_style": "soldier",
+      "props": [["dome", 4], ["tent", 8], ["yurt", 4], ["banner", 6]],
+      "enemy_look": {"coat": "#6a6f78", "pants": "#30343a", "headgear": "helmet", "headgear_color": "#b0b5bd", "weapon": "sword", "shield": true, "trim": "#7a2a2a"},
+      "ally_look": {"coat": "#a13a2a", "pants": "#3a2a20", "headgear": "fur", "headgear_color": "#d9b25a", "weapon": "bow", "trim": "#d9b25a", "robe": true},
+      "background": {"allies": 8, "enemies": 12, "motion": "fight"}
+    },
+    "kazakh_khanate": {
+      "sky_top": "#3f7fd0", "sky_horizon": "#d7ecf2", "ground": "#6fae5b", "fog_color": "#d7ecf2", "fog_density": 0.004,
+      "sun_color": "#fff6dc", "sun_energy": 1.35, "sun_pitch": -50, "sun_yaw": 15,
+      "ledge": "#6b8a55", "placard": "#f7efd6", "target_style": "soldier",
+      "props": [["yurt", 8], ["mountain", 6], ["dome", 1], ["banner", 6]],
+      "enemy_look": {"coat": "#6b5a3a", "pants": "#3a3024", "headgear": "helmet", "headgear_color": "#8f8a7a", "weapon": "spear", "shield": true, "trim": "#5a2a2a"},
+      "ally_look": {"coat": "#2f5f9f", "pants": "#2a2f3a", "headgear": "kalpak", "headgear_color": "#f2f2ea", "weapon": "bow", "trim": "#d9b25a", "robe": true},
+      "background": {"allies": 10, "enemies": 10, "motion": "fight"}
+    },
+    "dzungar": {
+      "sky_top": "#5a7499", "sky_horizon": "#b9c7cf", "ground": "#7c8a5d", "fog_color": "#b3c0c8", "fog_density": 0.012,
+      "sun_color": "#f2ead8", "sun_energy": 1.0, "sun_pitch": -25, "sun_yaw": 50,
+      "ledge": "#7a7466", "ledge_style": "rock", "placard": "#efe7d2", "target_style": "soldier",
+      "props": [["mountain", 10], ["rock", 12], ["banner", 6]],
+      "enemy_look": {"coat": "#8c3a2a", "pants": "#3a2620", "headgear": "fur", "headgear_color": "#3a2a1c", "weapon": "rifle", "trim": "#d9a23b"},
+      "ally_look": {"coat": "#3a5f8f", "pants": "#2a2f3a", "headgear": "kalpak", "headgear_color": "#e8e2d2", "weapon": "spear", "shield": true, "trim": "#c9a24a"},
+      "background": {"allies": 10, "enemies": 14, "motion": "fight"}
+    },
+    "xviii_xix": {
+      "sky_top": "#6c8bb3", "sky_horizon": "#e2d2b8", "ground": "#a79a5a", "fog_color": "#e2d2b8", "fog_density": 0.006,
+      "sun_color": "#ffd9a8", "sun_energy": 1.1, "sun_pitch": -22, "sun_yaw": 65,
+      "ledge": "#7a6040", "ledge_style": "palisade", "placard": "#f2e6cc", "target_style": "soldier",
+      "props": [["yurt", 7], ["palisade", 10], ["hill", 8], ["banner", 4]],
+      "enemy_look": {"coat": "#3d5a3a", "pants": "#2a2e2a", "headgear": "cap", "headgear_color": "#2a3328", "weapon": "rifle", "trim": "#b22a2a"},
+      "ally_look": {"coat": "#6a4a2a", "pants": "#3a2a1c", "headgear": "kalpak", "headgear_color": "#ece4d0", "weapon": "rifle", "trim": "#c9a24a", "robe": true},
+      "background": {"allies": 8, "enemies": 10, "motion": "march"}
+    },
+    "xx_century": {
+      "sky_top": "#8a97a6", "sky_horizon": "#d4d8dc", "ground": "#e6ebef", "fog_color": "#d4d8dc", "fog_density": 0.018,
+      "sun_color": "#e8eef5", "sun_energy": 0.8, "sun_pitch": -20, "sun_yaw": 40,
+      "ledge": "#8a7a5a", "ledge_style": "sandbags", "placard": "#f2efe6", "target_style": "soldier",
+      "props": [["birch", 16], ["sandbags", 8], ["rock", 6]],
+      "enemy_look": {"coat": "#5f6461", "pants": "#3f4441", "headgear": "steel_helmet", "headgear_color": "#4a504c", "weapon": "rifle", "trim": "#2c2f2d"},
+      "ally_look": {"coat": "#7d7a52", "pants": "#4a4a32", "headgear": "steel_helmet", "headgear_color": "#5d6a45", "weapon": "rifle", "trim": "#4a3a24"},
+      "background": {"allies": 10, "enemies": 12, "motion": "march"}
+    },
+    "independence": {
+      "sky_top": "#2f8fe0", "sky_horizon": "#cfeaf7", "ground": "#bfc7cc", "fog_color": "#cfeaf7", "fog_density": 0.003,
+      "sun_color": "#fffaf0", "sun_energy": 1.4, "sun_pitch": -55, "sun_yaw": 10,
+      "ledge": "#2f8fc9", "ledge_style": "stand", "placard": "#ffffff", "target_style": "gallery",
+      "props": [["monument", 1], ["flag", 8], ["booth", 6], ["tree", 10]],
+      "enemy_look": {},
+      "ally_look": {"coat": "#2f8fc9", "pants": "#2a3440", "headgear": "cap", "headgear_color": "#e8c33a", "weapon": "none", "trim": "#e8c33a"},
+      "background": {"allies": 14, "enemies": 0, "motion": "idle"},
+      "enemy_mode": "gallery"
+    }
+  }
+}

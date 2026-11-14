@@ -11,6 +11,9 @@ const Target := preload("res://answer_target.gd")
 const CharacterDatabaseScript := preload("res://character_database.gd")
 const Abilities := preload("res://abilities.gd")
 const ProgressStoreScript := preload("res://progress_store.gd")
+const Projectile := preload("res://projectile.gd")
+const Soldier := preload("res://soldier.gd")
+const EnvironmentBuilder := preload("res://environment_builder.gd")
 
 var failures := 0
 var checks := 0
@@ -78,8 +81,13 @@ func test_level_data() -> void:
 	check(level_db.get_level(10).get("boss") == true, "level 10 is the boss level")
 	check(level_db.get_level(0).is_empty() and level_db.get_level(11).is_empty(), "out-of-range ids return {}")
 
+	var themes: Dictionary = EnvironmentBuilder.load_themes()
 	for id in range(1, 11):
 		check(level_db.is_playable(id), "level %d is playable (question file exists)" % id)
+		var theme: Dictionary = themes.get(level_db.get_level(id).get("theme", ""), {})
+		var keys_ok := ["sky_top", "sky_horizon", "ground", "fog_color", "fog_density", "sun_color", "sun_energy", "ledge", "placard", "target_style", "props", "ally_look", "enemy_look", "background"].all(func(k): return theme.has(k))
+		var colors_ok := ["sky_top", "sky_horizon", "ground", "fog_color", "sun_color", "ledge", "placard"].all(func(k): return theme.get(k, "") is String and Color.html_is_valid(theme.get(k, "")))
+		check(keys_ok and colors_ok, "level %d has a complete theme" % id)
 		var protagonist: String = level_db.get_level(id).get("protagonist", "")
 		check(protagonist.is_empty() or char_db.get_character(protagonist)["id"] == protagonist,
 			"level %d protagonist \"%s\" is a real character" % [id, protagonist])
@@ -343,7 +351,7 @@ func test_matching(question: Dictionary) -> void:
 	check(quiz.targets.size() == pairs.size() * 2, "matching spawns two targets per pair")
 	check(quiz.progress_label.text == "Табылған жұптар: 0/%d" % pairs.size(), "matching shows 0/%d progress" % pairs.size())
 	for pair in pairs:
-		check(_by_text(quiz, pair["left"]).starting_position.y == quiz.TOP_ROW_Y, "left item \"%s\" on the top row" % pair["left"])
+		check(is_equal_approx(_by_text(quiz, pair["left"]).starting_position.y, quiz.TOP_ROW_Y), "left item \"%s\" on the top row" % pair["left"])
 
 	_by_text(quiz, pairs[0]["right"]).hit()
 	check(quiz.health == 100 and quiz.feedback_label.text.begins_with("Алдымен"), "bottom first shows a hint, no penalty")
@@ -672,7 +680,7 @@ func test_characters() -> void:
 	quiz.get_parent().queue_free()
 	await process_frame
 
-	game_state.selected_character = "al_farabi"
+	game_state.selected_character = "kaiyrkhan"
 	quiz = await _start_task(samples["single_choice"])
 	quiz.use_ability()
 	await process_frame
@@ -793,7 +801,7 @@ func test_difficulty() -> void:
 	await process_frame
 
 	# Fewer ability uses on harder levels (level 5 has no questions yet; its error is expected).
-	game_state.selected_character = "al_farabi"
+	game_state.selected_character = "kaiyrkhan"
 	for case in [[1, 3], [3, 3], [5, 2]]:
 		game_state.selected_level = case[0]
 		var probe := await _load_arena()
@@ -811,7 +819,7 @@ func test_difficulty() -> void:
 	check(quiz.targets.size() == 5, "level 3 adds one decoy target (got %d)" % quiz.targets.size())
 	var decoys: Array = quiz.targets.filter(func(t): return not question["answers"].has(t.answer_text))
 	check(decoys.size() == 1 and not decoys[0].is_correct, "decoy is a wrong answer from another question")
-	check(decoys[0].starting_position.y == quiz.TOP_ROW_Y, "decoy sits on the top row")
+	check(is_equal_approx(decoys[0].starting_position.y, quiz.TOP_ROW_Y), "decoy sits on the top row")
 	check(quiz.targets.filter(func(t): return t.is_correct).size() == 1, "still exactly one correct target")
 	var year_question: Dictionary = quiz.questions.filter(func(q): return q.get("correct") == "751")[0]
 	var year_decoys: Array = quiz.decoy_answers(year_question, 2)
@@ -831,7 +839,7 @@ func test_difficulty() -> void:
 	arena.queue_free()
 	await process_frame
 
-	print("== Enemies")
+	print("== Enemies and the battle scene")
 	game_state.selected_level = 3
 	arena = await _load_arena()
 	quiz = arena.get_node("QuizManager")
@@ -839,34 +847,56 @@ func test_difficulty() -> void:
 	var spawner = quiz.enemy_spawner
 	check(spawner.enemies.size() == 1, "level 3 has one enemy")
 	var enemy = spawner.enemies[0]
-	check(enemy.max_hp == 2 and enemy.damage == 8 and is_equal_approx(enemy.move_speed, 2.6), "enemy stats scale with stars")
-	check(absf(absf(enemy.position.x) - 13.0) < 0.5 or absf(enemy.position.z - 13.0) < 0.5, "enemy enters from the side or back")
+	check(enemy.max_hp == 2 and enemy.damage == 5, "enemy stats scale with stars (hp %d, damage %d)" % [enemy.max_hp, enemy.damage])
+	check(absf(enemy.position.x) >= 8.0, "enemy holds a post on the flank")
+	check(enemy.soldier != null, "enemy is a low-poly soldier")
+	check(not quiz.environment.background_soldiers.is_empty(), "background soldiers fill the scene")
 	await physics_frame
-	var start_distance: float = enemy.global_position.distance_to(player.global_position)
+	var posted_at: Vector3 = enemy.global_position
 	await wait(1.0)
-	check(enemy.global_position.distance_to(player.global_position) < start_distance - 1.0, "enemy walks toward the player")
+	check(Vector2(enemy.global_position.x, enemy.global_position.z).distance_to(Vector2(posted_at.x, posted_at.z)) < 0.05, "enemies do not chase the player")
 
+	var expected: int = maxi(1, roundi(enemy.damage * (100 - quiz.character["defense"]) / 100.0))
+	var hp_before: int = quiz.health
+	spawner.volley_left = 0.05
+	await wait(0.15)
+	check(enemy.aim_left >= 0.0 and enemy.aim_label.visible, "the enemy line orders a shot: enemy aims with a visible warning")
 	quiz.accepting_answers = false
-	var frozen_at: Vector3 = enemy.global_position
-	await wait(0.5)
-	check(Vector2(enemy.global_position.x, enemy.global_position.z).distance_to(Vector2(frozen_at.x, frozen_at.z)) < 0.01, "enemies freeze between tasks")
+	await wait(0.1)
+	check(enemy.aim_left < 0.0 and not enemy.aim_label.visible, "aiming stops between tasks")
+	await wait(enemy.AIM_TIME + 0.6)
+	check(quiz.health == hp_before, "no shot between tasks")
 	quiz.accepting_answers = true
 
-	enemy.global_position = player.global_position + Vector3(1.2, 0, 0)
-	enemy.attack_cooldown = 0.0
-	var hp_before: int = quiz.health
-	await wait(0.3)
-	check(quiz.health == hp_before - 7, "enemy hit deals 8 minus Томирис' 10%% defense = 7 (HP %d -> %d)" % [hp_before, quiz.health])
-	check(quiz.feedback_label.text == "Жау шабуылы! −7 HP", "enemy hit announced")
-	await wait(0.6)
-	check(quiz.health == hp_before - 7, "attacks have a cooldown")
+	enemy.begin_aim()
+	await wait(enemy.AIM_TIME + 0.8)
+	check(quiz.health == hp_before - expected, "an aimed shot hits a standing player for %d (damage minus defense)" % expected)
+	check(quiz.feedback_label.text == "Жау шабуылы! −%d HP" % expected, "enemy hit announced")
 
-	enemy.global_position = player.global_position + Vector3(0, 0, 6)
-	# physics_frame fires before the physics step, so wait two for the move to reach the physics space.
+	hp_before = quiz.health
+	enemy.begin_aim()
+	await wait(enemy.AIM_TIME + 0.02)
+	player.global_position += Vector3(3.0, 0, 0)
+	await wait(0.8)
+	check(quiz.health == hp_before, "stepping aside dodges the shot")
+	player.global_position -= Vector3(3.0, 0, 0)
+
+	# Wrong answer: a visible reaction shot, but only the usual 10 HP.
+	var projectiles_before: int = current_scene.get_children().filter(func(c): return c.get_script() == Projectile).size()
+	hp_before = quiz.health
+	_wrong_target(quiz).hit()
+	await process_frame
+	var projectiles_after: int = current_scene.get_children().filter(func(c): return c.get_script() == Projectile).size()
+	check(projectiles_after > projectiles_before, "a wrong answer shows an enemy landing a shot")
+	check(quiz.damage_flash.color.a > 0.05, "the screen flashes red")
+	await wait(0.8)
+	check(quiz.health == hp_before - 10, "the reaction shot adds no damage beyond the wrong answer")
+	await wait(1.2)
+
 	await physics_frame
 	await physics_frame
 	var score_before: int = quiz.score
-	player.get_node("Camera3D").look_at(enemy.global_position + Vector3(0, 0.9, 0))
+	player.get_node("Camera3D").look_at(enemy.global_position + Vector3(0, 1.0, 0))
 	player.cooldown_left = 0.0
 	player.shoot()
 	check(enemy.hp == 1, "shooting an enemy deals weapon damage")
@@ -876,7 +906,7 @@ func test_difficulty() -> void:
 	check(spawner.enemies.is_empty(), "enemy dies at 0 HP")
 	check(quiz.score == score_before, "killing enemies gives no points (no score farming)")
 	await wait(spawner.RESPAWN_DELAY + 0.3)
-	check(spawner.enemies.size() == 1, "a new enemy arrives after a delay")
+	check(spawner.enemies.size() == 1, "the enemy returns to its post after a delay")
 
 	quiz.set_slow(true)
 	check(spawner.enemies[0].speed_scale == Abilities.SLOW_FACTOR, "slow time slows enemies")
@@ -894,6 +924,22 @@ func test_difficulty() -> void:
 	check(quiz.question_index == retry_index and spawner.enemies.size() == 1, "after medical help the task is retried and enemies return")
 	arena.queue_free()
 	await process_frame
+
+	# Level 10 is a peaceful shooting gallery: sliding panels, no shooting at the player.
+	game_state.selected_level = 10
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	spawner = quiz.enemy_spawner
+	var panels: Array = spawner.enemies.filter(func(e): return not e.get_meta("boss"))
+	check(spawner.mode == "panel" and panels.size() <= spawner.MAX_PANELS and spawner.enemies.size() == panels.size() + 1, "gallery: a few sliding panels plus the boss panel")
+	check(spawner.enemies.all(func(e): return not e.begin_aim()), "gallery panels never shoot")
+	check(quiz.targets.all(func(t): return t.get_node("TargetVisual").get_children().all(func(c): return c.get_script() != Soldier)), "gallery targets are placards on posts, not soldiers")
+	hp_before = quiz.health
+	await wait(3.0)
+	check(quiz.health == hp_before, "nothing damages the player in the gallery")
+	arena.queue_free()
+	await process_frame
+	game_state.selected_level = 3
 
 	game_state.selected_character = "kabanbay"
 	arena = await _load_arena()

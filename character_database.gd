@@ -78,6 +78,8 @@ static func validate_character(character) -> String:
 		return "\"weapon.cooldown\" must be above 0"
 	if not _is_number(weapon.get("damage")) or weapon["damage"] != floor(weapon["damage"]) or weapon["damage"] < 1:
 		return "\"weapon.damage\" must be a whole number of at least 1"
+	if weapon.has("model") and not weapon["model"] in ["bow", "musket", "rifle", "mg"]:
+		return "\"weapon.model\" must be bow, musket, rifle or mg"
 	if weapon.has("auto") and not weapon["auto"] is bool:
 		return "\"weapon.auto\" must be true or false"
 

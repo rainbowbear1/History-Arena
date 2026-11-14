@@ -36,7 +36,7 @@ pages 3 and 7–10), not the full vision in `docs/vision.md`.
 |---|---|---|
 | M6 Progress & results | Save file, stars, unlocks, results screen, fade-to-white ending, demo unlock/reset in Settings | 15–16 Nov |
 | M7 Content | Levels 4–10 question files (~13 tasks each, all six types), map board image, image tasks | 16–19 Nov (needs your review) |
-| M8 Presentation (optional) | Background soldiers + reaction shot, per-level look, protagonist per level | 18–20 Nov |
+| M8 Presentation | Done: low-poly soldiers, ten themed environments, enemies at posts with dodgeable shots, reaction shot, gallery level 10 | 15 Nov |
 | M9 Auth & Hub | Login screen with Google, backend adapter, API contract, offline fallback; real connection when the Hub is ready | 17–21 Nov (parallel) |
 | M10 Defense build | Final export, hosting, GitHub, demo script, architecture notes | 21–23 Nov |
 

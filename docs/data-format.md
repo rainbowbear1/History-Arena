@@ -15,6 +15,7 @@ Run the tests (below) after every content change; they report the exact file, en
 | `title` | text | Arena name shown in level select. |
 | `stars` | 1–5 | Difficulty shown to the player. |
 | `boss` | true/false | Boss level (shown as "BOSS"). Optional, default false. |
+| `theme` | theme name | Look of the arena from `data/themes.json` (sky, fog, props, soldiers). |
 | `protagonist` | character id or `""` | Historical protagonist preselected on the character screen (free choice stays available). Optional. |
 | `question_file` | `res://` path | Question file for this arena. The level stays locked until this file exists. |
 | `time_per_question` | seconds | Time limit per task. |
@@ -35,12 +36,17 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   on the top row for `single_choice` and `fill_blank` tasks (image tasks need the top row for the
   picture). Dates get date decoys, and a decoy never restates an option in another form ("552" next
   to "552 ж.").
-- **Enemies:** `enemies` simple enemies enter from the sides and back, walk to the player and strike
-  in melee range. With `stars` = s: HP 1 + s/2, speed 2 + 0.3·s m/s, damage 4 + 2·s, reduced by the
-  character's `defense` (at least 1). They only move and attack while a task is being answered,
-  return 3 s after being killed, and give no points (so the score cannot be farmed).
-- **Boss:** a `boss` level adds one large boss enemy (12 HP, 20 damage) that does not come back once
-  defeated.
+- **Enemies:** `enemies` enemy soldiers hold posts on the flanks; they do not chase the player. One
+  shared volley clock (every 12 − 1.5·s seconds, at least 3.5 s) picks one enemy, which aims for
+  0.9 s (a red "!") and fires an arrow or bullet at where the player stood: step aside to dodge, or
+  shoot the enemy first. With `stars` = s: HP 1 + s/2, damage 3 + s, reduced by the character's
+  `defense` (at least 1). They only act while a task is being answered, return 6 s after being
+  killed, and give no points (so the score cannot be farmed).
+- **Wrong answers** trigger a visible reaction shot from an enemy (or a distant soldier) and a red
+  screen flash; the HP loss is still the usual 10.
+- **Boss:** a `boss` level adds one large boss enemy (12 HP, 12 damage) on the rampart's flank that
+  does not come back once defeated. In the shooting gallery (`enemy_mode: gallery`) enemies are up
+  to three sliding panels plus a gold boss panel; they block shots but never attack.
 - **Fewer resources:** ability uses drop by one for every two stars above 1 (never below 1), on top
   of the smaller `revive_hp` and `revivals` on later levels.
 
@@ -75,6 +81,18 @@ level, the best score, best stars, whether it was passed and the number of attem
 - A run that ends in defeat (no medical help left, or a wrong medical-help answer) is saved with
   `completed: false` and 0 stars.
 
+## Themes — `data/themes.json`
+
+One entry per era: `sky_top`, `sky_horizon`, `ground`, `fog_color`, `fog_density`, `sun_color`,
+`sun_energy`, `sun_pitch`, `sun_yaw`, `ledge` (rampart colour) and `ledge_style` (`earth`, `fortress`,
+`palisade`, `sandbags`, `rock`, `stand`), `placard` (answer placard colour), `target_style`
+(`soldier` or `gallery`), `props` (list of `[kind, count]`: kurgan, hill, mountain, yurt, tent, banner,
+balbal, stele, tower, wall, dome, rock, palisade, birch, tree, sandbags, flag, booth, monument),
+`enemy_look` / `ally_look` (soldier `coat`, `pants`, `skin`, `trim`, `headgear` = none/pointed/fur/
+helmet/turban/cap/steel_helmet/kalpak, `headgear_color`, `weapon` = none/bow/spear/sword/rifle,
+`shield`, `robe`), `background` (`allies`, `enemies`, `motion` = fight/march/idle) and optional
+`enemy_mode: gallery`. Answer soldiers wear `enemy_look`; colours are `#rrggbb`.
+
 ## Characters — `data/characters.json`
 
 ```json
@@ -87,10 +105,11 @@ level, the best score, best stars, whether it was passed and the number of attem
 | `name`, `title`, `description` | text | Shown on the character select screen. |
 | `hp` | 50–200 | Size of the HP pool (wrong answers still cost 10 HP). |
 | `speed` | 3–10 | Movement speed in m/s (the old default was 6). |
-| `defense` | 0–60 | Percent of **enemy** damage blocked. Answer mistakes always cost 10 HP. |
+| `defense` | 0–60 | Percent of **enemy shot** damage blocked. Answer mistakes always cost 10 HP. |
 | `weapon.name` | text | Shown in the HUD. |
 | `weapon.cooldown` | seconds > 0 | Time between shots. |
 | `weapon.damage` | whole number ≥ 1 | Damage to enemies per hit. |
+| `weapon.model` | bow/musket/rifle/mg | First-person weapon model. Optional. |
 | `weapon.auto` | true/false | Optional. Hold the mouse button to keep firing. |
 | `ability.id` | see below | Special ability on the E key. |
 | `ability.uses` | whole number ≥ 1 | Uses per level. |

@@ -77,6 +77,9 @@ static func validate_level(level) -> String:
 	if level.has("boss") and not level["boss"] is bool:
 		return "\"boss\" must be true or false"
 
+	if level.has("theme") and not level["theme"] is String:
+		return "\"theme\" must be a theme name from data/themes.json"
+
 	if level.has("protagonist") and not level["protagonist"] is String:
 		return "\"protagonist\" must be a character id or \"\""
 

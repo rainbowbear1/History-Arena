@@ -40,6 +40,17 @@ final content.
   It must still work as the assignment's BOSS level.
 - Later: switching between first- and third-person cameras, and visible hands and weapon in first person.
 
+## What M8 already delivers (15 Nov)
+- Low-poly soldiers built from primitives, with era headgear, weapons and shields; answer carriers are
+  enemy soldiers holding answer placards (top row on a rampart).
+- Ten themed environments (`data/themes.json`): sky, fog, light, props such as kurgans, yurts, balbals,
+  Отырар's walls and towers, domes, mountains, palisades, WWII sandbags and birches, Бәйтерек.
+- Background battles (duels, marching troops) that never attack; enemy soldiers on the flanks fire
+  occasional, telegraphed, dodgeable shots; wrong answers show an enemy landing a shot.
+- Level 10 as a peaceful shooting gallery with sliding panels and a gold boss panel.
+- Not yet: horseback (Томирис), cinematic endings beyond the fade to white, hands in first person,
+  FPS/TPS switching.
+
 ## How it maps onto the current game
 The ten levels reuse one quiz-shooter engine. What changes per level is data and presentation:
 environment, protagonist, weapon, background soldiers and the ending. The quiz rules (six task

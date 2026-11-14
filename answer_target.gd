@@ -1,5 +1,7 @@
 extends StaticBody3D
 
+const SoldierScript := preload("res://soldier.gd")
+
 
 @export var answer_text: String = "1465"
 @export var is_correct: bool = true
@@ -16,6 +18,8 @@ const STATE_COLORS := {
 const WRONG_COLOR := Color(0.85, 0.3, 0.3)
 
 var state: State = State.NORMAL
+# Board colour when not highlighted (null keeps the default grey).
+var base_color = null
 # Multiplies sway speed; lowered by the slow_time ability.
 var speed_scale: float = 1.0
 
@@ -38,6 +42,40 @@ func hit() -> void:
 
 func set_label(text: String) -> void:
 	answer_label.text = text
+
+
+# "soldier": the answer is on a placard held above a low-poly soldier standing on the ground
+# (feet_y below the target's centre); "gallery": a placard on a post (shooting gallery).
+# "board" (default, used for map pins) keeps the plain board.
+func apply_style(style: String, look: Dictionary, placard_color: Color, feet_y: float) -> void:
+	if style == "board":
+		return
+	target_mesh.scale = Vector3(0.95, 0.6, 0.3)
+	base_color = placard_color
+	_set_color(null)
+
+	var collision: CollisionShape3D = $CollisionShape3D
+	var shape := BoxShape3D.new()
+	if style == "soldier" and not look.is_empty():
+		var soldier: Node3D = SoldierScript.new()
+		soldier.position = Vector3(0, feet_y, -0.12)
+		target_visual.add_child(soldier)
+		soldier.build(look)
+		soldier.set_motion("idle")
+		# Hitbox covers the placard and the soldier holding it.
+		shape.size = Vector3(1.9, 0.6 - feet_y, 0.6)
+		collision.position.y = (0.6 + feet_y) / 2.0
+	else:
+		var post := MeshInstance3D.new()
+		var post_mesh := BoxMesh.new()
+		post_mesh.size = Vector3(0.12, -feet_y - 0.6, 0.12)
+		post.mesh = post_mesh
+		post.position = Vector3(0, (feet_y - 0.6) / 2.0, -0.08)
+		post.material_override = target_mesh.material_override.duplicate()
+		post.material_override.albedo_color = Color(0.55, 0.38, 0.22)
+		target_visual.add_child(post)
+		shape.size = Vector3(1.9, 1.2, 0.6)
+	collision.shape = shape
 
 
 # Scales the board and its hitbox; the label keeps its on-screen text size.
@@ -64,6 +102,8 @@ func flash_wrong() -> void:
 
 
 func _set_color(color) -> void:
+	if color == null:
+		color = base_color
 	if color == null:
 		target_mesh.material_override = null
 		return

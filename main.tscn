@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://revival_panel.gd" id="4_revival"]
 [ext_resource type="Script" path="res://enemy_spawner.gd" id="5_spawner"]
 [ext_resource type="Script" path="res://star_row.gd" id="6_stars"]
+[ext_resource type="Script" path="res://environment_builder.gd" id="7_env"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
 
@@ -384,6 +385,9 @@ text = "Қайта бастау"
 layout_mode = 2
 text = "Деңгейлер"
 
+[node name="Environment" type="Node3D" parent="."]
+script = ExtResource("7_env")
+
 [node name="Enemies" type="Node3D" parent="."]
 script = ExtResource("5_spawner")
 
@@ -417,11 +421,11 @@ shape = SubResource("BoxShape3D_wall_z")
 
 [node name="ImageBoard" type="Sprite3D" parent="."]
 visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.4, -8.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.9, -8.5)
 
 [node name="MapBoard" type="MeshInstance3D" parent="."]
 visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -9.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -8.6)
 mesh = SubResource("QuadMesh_map")
 surface_material_override/0 = SubResource("StandardMaterial3D_map")
 
@@ -436,6 +440,15 @@ font_size = 32
 [node name="QuizManager" type="Node" parent="." unique_id=2032224658]
 script = ExtResource("3_h2yge")
 question_file = null
+
+[node name="DamageFlash" type="ColorRect" parent="HUD"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.85, 0.05, 0.05, 0)
 
 [node name="FadeRect" type="ColorRect" parent="HUD"]
 modulate = Color(1, 1, 1, 0)

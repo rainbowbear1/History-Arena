@@ -42,8 +42,8 @@ left out (for example the exact year of the Аңырақай battle, 1729 or 173
 - [ ] `abai.jpg` — confirm it is the commonly used photograph of Abai.
 
 ## Characters and protagonists (decision needed)
-- [ ] Level 4 (Отырар) suggests **Әл-Фараби**: he is the city's famous son but lived ~300 years before
-      the 1219 siege. Keep, or leave level 4 without a suggested protagonist?
+- [x] ~~Level 4 suggested Әл-Фараби~~ — fixed: the roster's Әл-Фараби was replaced by **Қайырхан**, the
+      ruler who led Отырар's defence in 1219–1220 (Әл-Фараби stays in the questions).
 - [ ] Levels 5 (Алтын Орда) and 10 (Тәуелсіздік) have **no suggested protagonist** — no roster character
       fits. Optionally replace one roster character (for example a second Kazakh Khanate khan) with a
       Golden Horde figure.
