@@ -29,21 +29,51 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="LoginPanel" type="PanelContainer" parent="LoginCenter" unique_id=19725943]
-custom_minimum_size = Vector2(500, 280)
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 
-[node name="LoginVBox" type="VBoxContainer" parent="LoginCenter/LoginPanel" unique_id=2134096607]
+[node name="LoginMargin" type="MarginContainer" parent="LoginCenter/LoginPanel"]
 layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
-[node name="UsernameInput" type="LineEdit" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=1505367599]
+[node name="LoginVBox" type="VBoxContainer" parent="LoginCenter/LoginPanel/LoginMargin" unique_id=2134096607]
 layout_mode = 2
-placeholder_text = "Логин"
+theme_override_constants/separation = 14
 
-[node name="PasswordInput" type="LineEdit" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=256652090]
+[node name="TitleLabel" type="Label" parent="LoginCenter/LoginPanel/LoginMargin/LoginVBox"]
 layout_mode = 2
-placeholder_text = "Құпиясөз"
-secret = true
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 40
+text = "ТАРИХ АРЕНАСЫ"
+horizontal_alignment = 1
 
-[node name="EnterButton" type="Button" parent="LoginCenter/LoginPanel/LoginVBox" unique_id=657767782]
+[node name="SubtitleLabel" type="Label" parent="LoginCenter/LoginPanel/LoginMargin/LoginVBox"]
 layout_mode = 2
-text = "Кіру	"
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "Нәтижелеріңіз Game Hub рейтингінде сақталуы үшін кіріңіз"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="GoogleButton" type="Button" parent="LoginCenter/LoginPanel/LoginMargin/LoginVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Google арқылы кіру"
+
+[node name="GuestButton" type="Button" parent="LoginCenter/LoginPanel/LoginMargin/LoginVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Қонақ ретінде ойнау"
+
+[node name="StatusLabel" type="Label" parent="LoginCenter/LoginPanel/LoginMargin/LoginVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1
+autowrap_mode = 3

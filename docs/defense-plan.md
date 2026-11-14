@@ -14,7 +14,7 @@ pages 3 and 7–10), not the full vision in `docs/vision.md`.
 | HP −10 per mistake, +100 per correct answer | Done |
 | "Жан біткенде" medical help | Done (single HP pool, help restores 50/40/30 HP, retry the task) |
 | Results saved (score, level, correct, wrong, playtime), progress | Done on the device (M6): stars, unlocks, results screen, demo mode; upload waits for M9 |
-| Google login, profile, shared leaderboard (Game Hub) | **Not started**; depends on the Hub team's backend choice |
+| Google login, profile, shared leaderboard (Game Hub) | Game side done (M9): Google login screen, guest mode, result outbox, JS bridge contract (docs/hub-integration.md); **waiting for the Hub team's bridge/backend** |
 | Security items (OAuth, no secrets in frontend, validation, rate limiting, leaderboard anti-cheat) | Mostly server-side (Hub); the game must not ship secrets and must send plausible, server-checkable results |
 | GitHub repository, deployed build | Local Git only; **no remote yet**; no public hosting yet |
 

@@ -20,6 +20,7 @@ var level_db: Node
 var game_state: Node
 var char_db: Node
 var progress: Node
+var backend: Node
 
 
 func _initialize() -> void:
@@ -48,6 +49,10 @@ func run() -> void:
 	progress.path = "user://test_progress.json"
 	progress.reset()
 	progress.set_demo_unlock(true)
+	backend = root.get_node("Backend")
+	backend.outbox_path = "user://test_outbox.json"
+	backend.outbox = []
+	backend.save_outbox()
 
 	print("== Level data")
 	test_level_data()
@@ -276,6 +281,9 @@ func test_arena() -> void:
 	await test_difficulty()
 	await test_progress()
 	await test_full_playthrough()
+	await test_backend()
+	backend.outbox_path = backend.OUTBOX_PATH
+	backend.load_outbox()
 	progress.path = ProgressStoreScript.SAVE_PATH
 	progress.load_data()
 
@@ -1132,6 +1140,155 @@ func _solve(quiz) -> void:
 				_by_text(quiz, pair["right"]).hit()
 		_:
 			quiz.targets.filter(func(t): return t.is_correct)[0].hit()
+
+
+class FakeTransport:
+	extends RefCounted
+	var configured := true
+	var user := {}
+	var sign_in_result := {"uid": "u1", "name": "Тест Оқушы", "email": "student@example.test"}
+	var accept := true
+	var received: Array = []
+	var signed_out := false
+
+	func is_configured() -> bool:
+		return configured
+
+	func current_user() -> Dictionary:
+		return user
+
+	func sign_in() -> Dictionary:
+		await Engine.get_main_loop().process_frame
+		user = sign_in_result
+		return sign_in_result
+
+	func sign_out() -> void:
+		signed_out = true
+		user = {}
+
+	func submit_result(payload: Dictionary) -> bool:
+		await Engine.get_main_loop().process_frame
+		if accept:
+			received.append(payload)
+		return accept
+
+
+func test_backend() -> void:
+	print("== Sign-in and Game Hub upload")
+	var source := FileAccess.get_file_as_string("res://startup_screen.gd")
+	check(not source.contains("PASSWORD") and not source.contains("VALID_USERNAME"), "no hard-coded login or password in the game")
+
+	# Offline (no Hub bridge): guest play, results queued.
+	backend.transport = null
+	backend.user = {}
+	backend.outbox = []
+	backend.save_outbox()
+	check(not backend.hub_available(), "desktop/test build has no Hub bridge")
+	var error: String = await backend.sign_in_with_google()
+	check(error.contains("Game Hub") and not backend.is_signed_in(), "Google sign-in explains the Hub is not connected")
+	backend.continue_as_guest()
+	check(backend.is_guest() and backend.display_name() == "Қонақ (офлайн)", "guest mode")
+	var attempt := {"level": 2, "character": "mode", "score": 1100, "max_score": 1300, "correct": 11, "wrong": 2,
+		"playtime_sec": 190, "stars": 2, "passed": true, "completed": true, "revivals_used": 0, "finished_at": 5}
+	backend.submit_attempt(attempt)
+	check(backend.outbox.size() == 1 and backend.outbox[0]["game_id"] == "history-arena" and backend.outbox[0]["client_version"] != "", "result queued with game id and version")
+	backend.load_outbox()
+	check(backend.outbox.size() == 1 and backend.outbox[0]["score"] == 1100, "queued results survive a restart")
+
+	# A configured Hub: sign in, upload the queue in order.
+	var fake := FakeTransport.new()
+	backend.transport = fake
+	backend.user = {}
+	error = await backend.sign_in_with_google()
+	check(error.is_empty() and backend.user["uid"] == "u1" and backend.display_name() == "Тест Оқушы", "Google sign-in through the Hub")
+	for i in range(5):
+		await process_frame
+	check(fake.received.size() == 1 and backend.outbox.is_empty(), "queued result uploaded after sign-in")
+	var second := attempt.duplicate()
+	second["level"] = 3
+	var third := attempt.duplicate()
+	third["level"] = 4
+	fake.accept = false
+	backend.submit_attempt(second)
+	for i in range(5):
+		await process_frame
+	check(backend.outbox.size() == 1 and fake.received.size() == 1, "a failed upload stays queued")
+	fake.accept = true
+	backend.submit_attempt(third)
+	for i in range(8):
+		await process_frame
+	check(backend.outbox.is_empty() and fake.received.map(func(p): return int(p["level"])) == [2, 3, 4], "uploads keep their order after a failure")
+
+	backend.sign_out()
+	check(not backend.is_signed_in() and fake.signed_out, "sign out")
+	fake.user = {"uid": "u1", "name": "Тест Оқушы"}
+	check(backend.restore_session() and backend.user["uid"] == "u1", "an existing Hub session is restored")
+	fake.sign_in_result = {"error": "popup closed"}
+	backend.user = {}
+	error = await backend.sign_in_with_google()
+	check(error.contains("popup closed") and not backend.is_signed_in(), "failed sign-in reported, nobody signed in")
+
+	# Screens: offline login, guest -> menu shows the player, sign out returns to login.
+	backend.transport = null
+	backend.user = {}
+	var screen: Node = load("res://startup_screen.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	check(screen.google_button.disabled and screen.status_label.text.begins_with("Game Hub әлі қосылмаған"), "login screen explains offline mode")
+	screen.guest_button.pressed.emit()
+	await process_frame
+	await process_frame
+	check(current_scene.name == "MainMenu" and current_scene.user_label.text == "Ойыншы: Қонақ (офлайн)", "guest reaches the menu")
+	current_scene.sign_out_button.pressed.emit()
+	await process_frame
+	await process_frame
+	check(current_scene.name == "StartupScreen" and not backend.is_signed_in(), "sign out returns to the login screen")
+	current_scene.queue_free()
+	await process_frame
+
+	fake = FakeTransport.new()
+	backend.transport = fake
+	screen = load("res://startup_screen.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	check(not screen.google_button.disabled, "Google button active when the Hub is configured")
+	screen.google_button.pressed.emit()
+	for i in range(4):
+		await process_frame
+	check(current_scene.name == "MainMenu" and current_scene.user_label.text == "Ойыншы: Тест Оқушы", "Google sign-in reaches the menu with the player's name")
+	current_scene.queue_free()
+	await process_frame
+
+	fake.user = {"uid": "u1", "name": "Тест Оқушы"}
+	screen = load("res://startup_screen.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	await process_frame
+	check(current_scene.name == "MainMenu", "a signed-in Hub player skips the login screen")
+	current_scene.queue_free()
+	await process_frame
+
+	# Finishing a level sends the result.
+	var samples := {}
+	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(q)] = q
+	fake.received.clear()
+	var quiz = await _start_task(samples["single_choice"])
+	quiz.targets.filter(func(t): return t.is_correct)[0].hit()
+	await wait(1.8)
+	for i in range(4):
+		await process_frame
+	check(fake.received.size() == 1 and fake.received[0]["score"] == 100 and fake.received[0]["game_id"] == "history-arena", "finished level uploaded to the Hub")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	backend.transport = null
+	backend.user = {}
+	backend.outbox = []
+	backend.save_outbox()
 
 
 # Loads the arena and replaces its questions with a single task.

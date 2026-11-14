@@ -21,6 +21,7 @@ GameState="*uid://veee0l6itv77"
 LevelDatabase="*res://level_database.gd"
 CharacterDatabase="*res://character_database.gd"
 ProgressStore="*res://progress_store.gd"
+Backend="*res://backend.gd"
 
 [display]
 

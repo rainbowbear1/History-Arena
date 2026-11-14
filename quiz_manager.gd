@@ -380,6 +380,7 @@ func _record_defeat() -> void:
 	run_active = false
 	last_attempt = build_attempt(false)
 	ProgressStore.record_attempt(last_attempt)
+	Backend.submit_attempt(last_attempt)
 
 
 # Never the task being retried (its answer may have just been shown). Prefers a
@@ -444,6 +445,7 @@ func finish_level() -> void:
 
 	last_attempt = build_attempt(true)
 	var new_best := ProgressStore.record_attempt(last_attempt)
+	Backend.submit_attempt(last_attempt)
 
 	var fade_in := create_tween()
 	fade_in.tween_property(fade_rect, "modulate:a", 1.0, FADE_SECONDS)

@@ -1,95 +1,47 @@
 
 extends Control
 
-const VALID_USERNAME := "<removed>"
-const VALID_PASSWORD := "<removed>"
+# Sign-in screen: Google through the Game Hub, or play offline as a guest.
 
-@onready var username_input: LineEdit = $LoginCenter/LoginPanel/LoginVBox/UsernameInput
-@onready var password_input: LineEdit = $LoginCenter/LoginPanel/LoginVBox/PasswordInput
-@onready var enter_button: Button = $LoginCenter/LoginPanel/LoginVBox/EnterButton
+const OFFLINE_NOTE := "Game Hub әлі қосылмаған. Қонақ ретінде ойнаңыз: нәтижелер осы құрылғыда сақталып, кейін жіберіледі."
 
-
-
-var logged_in: bool = false
-
-
+@onready var google_button: Button = %GoogleButton
+@onready var guest_button: Button = %GuestButton
+@onready var status_label: Label = %StatusLabel
 
 
 func _ready() -> void:
-	enter_button.pressed.connect(_on_enter_pressed)
-	username_input.text_submitted.connect(_on_username_submitted)
-	password_input.text_submitted.connect(_on_password_submitted)
+	google_button.pressed.connect(_on_google_pressed)
+	guest_button.pressed.connect(_on_guest_pressed)
 
-
-
-
-
-
-func _on_enter_pressed() -> void:
-	var username := username_input.text.strip_edges()
-	var password := password_input.text
-
-	if username == VALID_USERNAME and password == VALID_PASSWORD:
-		logged_in = true
-		enter_button.text = "Кірдіңіз!"
-		enter_button.disabled = true
-		print("Login successful!")
-		try_enter_game()
-	
-	else:
-		enter_button.text = "Қате!"
-		enter_button.disabled = true
-
-		await get_tree().create_timer(1.0).timeout
-
-		password_input.clear()
-		password_input.grab_focus()
-
-		enter_button.text = "Кіру"
-		enter_button.disabled = false
-
-
-
-
-
-var transitioning: bool = false
-
-
-func try_enter_game() -> void:
-	if not logged_in or transitioning:
+	if Backend.restore_session():
+		_enter_game()
 		return
 
-	transitioning = true
-
-	await get_tree().create_timer(1.0).timeout
-
-	get_tree().change_scene_to_file("res://main_menu.tscn")
+	google_button.disabled = not Backend.hub_available()
+	status_label.text = "" if Backend.hub_available() else OFFLINE_NOTE
+	(google_button if Backend.hub_available() else guest_button).grab_focus.call_deferred()
 
 
+func _on_google_pressed() -> void:
+	google_button.disabled = true
+	guest_button.disabled = true
+	status_label.text = "Google арқылы кіру..."
 
-
-
-func _on_username_submitted(_text: String) -> void:
-	print("Username Enter detected!")
-
-	if enter_button.disabled:
+	var error := await Backend.sign_in_with_google()
+	if error.is_empty():
+		_enter_game()
 		return
 
-	if password_input.text.is_empty():
-		password_input.grab_focus.call_deferred()
-	else:
-		_on_enter_pressed()
+	status_label.text = error
+	google_button.disabled = not Backend.hub_available()
+	guest_button.disabled = false
 
 
+func _on_guest_pressed() -> void:
+	Backend.continue_as_guest()
+	_enter_game()
 
-func _on_password_submitted(_text: String) -> void:
-	if not enter_button.disabled:
-		_on_enter_pressed()
 
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		if event.pressed and not event.echo:
-			if event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
-				print("ENTER DETECTED")
-				print("Focused control: ", get_viewport().gui_get_focus_owner())
+func _enter_game() -> void:
+	get_tree().change_scene_to_file.call_deferred("res://main_menu.tscn")

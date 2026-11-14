@@ -10,6 +10,8 @@ extends Control
 @onready var close_button: Button = %CloseButton
 
 @onready var credits_button: Button = $MenuCenter/MenuVBox/CreditsButton
+@onready var user_label: Label = $MenuCenter/MenuVBox/UserLabel
+@onready var sign_out_button: Button = $MenuCenter/MenuVBox/SignOutButton
 @onready var credits_container: CenterContainer = $CreditsContainer
 @onready var credits_text: Label = %CreditsText
 
@@ -36,6 +38,8 @@ func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	credits_button.pressed.connect(_on_credits_pressed)
+	sign_out_button.pressed.connect(_on_sign_out_pressed)
+	user_label.text = "Ойыншы: " + Backend.display_name() if Backend.is_signed_in() else ""
 	%CreditsCloseButton.pressed.connect(_close_credits)
 
 	demo_check.toggled.connect(_on_demo_toggled)
@@ -57,6 +61,11 @@ func _on_settings_pressed() -> void:
 	$MenuCenter.hide()
 	settings_container.show()
 	demo_check.grab_focus()
+
+
+func _on_sign_out_pressed() -> void:
+	Backend.sign_out()
+	get_tree().change_scene_to_file("res://startup_screen.tscn")
 
 
 func _on_credits_pressed() -> void:
