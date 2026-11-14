@@ -42,19 +42,12 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
-	if Input.is_key_pressed(KEY_SPACE) and is_on_floor():
+	if Input.is_action_pressed("jump") and is_on_floor():
 		velocity.y = jump_velocity
 
-	var direction := Vector3.ZERO
-
-	if Input.is_key_pressed(KEY_W):
-		direction -= transform.basis.z
-	if Input.is_key_pressed(KEY_S):
-		direction += transform.basis.z
-	if Input.is_key_pressed(KEY_A):
-		direction -= transform.basis.x
-	if Input.is_key_pressed(KEY_D):
-		direction += transform.basis.x
+	# Actions are bound to physical key positions, so WASD works on any keyboard layout.
+	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var direction := transform.basis * Vector3(input.x, 0, input.y)
 
 	direction.y = 0
 	direction = direction.normalized()

@@ -50,7 +50,7 @@ shape = SubResource("CapsuleShape3D_o6pq0")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 
 [node name="ShootRay" type="RayCast3D" parent="Player/Camera3D" unique_id=1877846778]
-target_position = Vector3(0, -1, -100)
+target_position = Vector3(0, 0, -100)
 
 [node name="WeaponHolder" type="Node3D" parent="Player/Camera3D" unique_id=512388303]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.45, -0.35, -0.7)

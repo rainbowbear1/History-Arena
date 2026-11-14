@@ -17,7 +17,6 @@ func _ready() -> void:
 
 func hit() -> void:
 	play_hit_animation()
-	get_tree().current_scene.get_node("QuizManager").answer_selected(is_correct)
 	var quiz_manager = get_tree().current_scene.get_node("QuizManager")
 	quiz_manager.answer_selected(is_correct)
 

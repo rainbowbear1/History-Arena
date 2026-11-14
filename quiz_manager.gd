@@ -47,6 +47,8 @@ func _ready() -> void:
 
 	if questions.is_empty():
 		push_error("No questions loaded!")
+		accepting_answers = false
+		question_label.text = "Сұрақтар жүктелмеді"
 		return
 
 	load_question()
@@ -58,11 +60,7 @@ func load_question() -> void:
 	accepting_answers = true
 
 	if question_index >= questions.size():
-		accepting_answers = false
-		question_label.text = ""
-		results_label.text = "Тест аяқталды!\n\nЖалпы ұпай: " + str(score)
-		results_container.show()
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		show_results("Тест аяқталды!")
 		return
 
 	var question = questions[question_index]
@@ -104,12 +102,19 @@ func answer_selected(correct: bool) -> void:
 	feedback_label.hide()
 
 	if health <= 0:
-		question_label.text = "Ойын аяқталды!"
-		print("GAME OVER!")
+		show_results("Ойын аяқталды!")
 		return
 
 	question_index += 1
 	load_question()
+
+
+func show_results(title: String) -> void:
+	accepting_answers = false
+	question_label.text = ""
+	results_label.text = title + "\n\nЖалпы ұпай: " + str(score)
+	results_container.show()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 
@@ -149,5 +154,53 @@ func load_questions_from_file() -> void:
 		push_error("Question file must contain an array.")
 		return
 
-	questions = json.data
+	questions = []
+	for i in range(json.data.size()):
+		var question = json.data[i]
+		var problem := validate_question(question)
+		if problem.is_empty():
+			questions.append(question)
+		else:
+			push_warning("Skipping question %d in %s: %s" % [i, question_file, problem])
+
 	print("Loaded ", questions.size(), " questions from ", question_file)
+
+
+# Returns an empty string if the question is usable, otherwise the reason it is not.
+func validate_question(question) -> String:
+	if not question is Dictionary:
+		return "entry is not an object"
+
+	if not question.get("question") is String or question["question"].strip_edges().is_empty():
+		return "missing or empty \"question\" text"
+
+	if not question.get("answers") is Array:
+		return "missing \"answers\" array"
+
+	var answers: Array = question["answers"]
+	if answers.size() != targets.size():
+		return "expected %d answers, got %d" % [targets.size(), answers.size()]
+
+	for answer in answers:
+		if not answer is String or answer.strip_edges().is_empty():
+			return "every answer must be a non-empty string"
+
+	if has_duplicates(answers):
+		return "answers must be unique"
+
+	if not question.get("correct") is String:
+		return "missing \"correct\" answer"
+
+	if not answers.has(question["correct"]):
+		return "\"correct\" answer is not one of the answers"
+
+	return ""
+
+
+func has_duplicates(values: Array) -> bool:
+	var seen := {}
+	for value in values:
+		if seen.has(value):
+			return true
+		seen[value] = true
+	return false
