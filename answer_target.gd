@@ -16,6 +16,8 @@ const STATE_COLORS := {
 const WRONG_COLOR := Color(0.85, 0.3, 0.3)
 
 var state: State = State.NORMAL
+# Multiplies sway speed; lowered by the slow_time ability.
+var speed_scale: float = 1.0
 
 
 @onready var answer_label: Label3D = $TargetVisual/AnswerLabel
@@ -100,6 +102,6 @@ func play_hit_animation() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	movement_time += delta * move_speed
+	movement_time += delta * move_speed * speed_scale
 
 	position.x = starting_position.x + sin(movement_time) * move_distance

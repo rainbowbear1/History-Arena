@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "characters": [
+    {
+      "id": "tomyris",
+      "name": "Томирис",
+      "title": "Сақ-массагет патшайымы",
+      "description": "Парсы патшасы Кир II-ні жеңген атақты патшайым.",
+      "hp": 100, "speed": 6.5, "defense": 10,
+      "weapon": { "name": "Садақ", "cooldown": 0.45, "damage": 1 },
+      "ability": { "id": "slow_time", "uses": 2 }
+    },
+    {
+      "id": "mode",
+      "name": "Мөде",
+      "title": "Ғұн шаньюйі",
+      "description": "Ғұн мемлекетінің негізін қалаған билеуші.",
+      "hp": 110, "speed": 6.0, "defense": 15,
+      "weapon": { "name": "Ысқырма жебе", "cooldown": 0.4, "damage": 1 },
+      "ability": { "id": "shield", "uses": 2 }
+    },
+    {
+      "id": "kultegin",
+      "name": "Күлтегін",
+      "title": "Түркі қолбасшысы",
+      "description": "Орхон ескерткіштерінде есімі жазылған атақты қолбасшы.",
+      "hp": 105, "speed": 7.0, "defense": 10,
+      "weapon": { "name": "Құрама садақ", "cooldown": 0.6, "damage": 2 },
+      "ability": { "id": "double_score", "uses": 2 }
+    },
+    {
+      "id": "al_farabi",
+      "name": "Әл-Фараби",
+      "title": "Ұлы ғалым, Фараб (Отырар) перзенті",
+      "description": "«Екінші ұстаз» атанған ойшыл. Білімі жауапты табуға көмектеседі.",
+      "hp": 85, "speed": 6.0, "defense": 5,
+      "weapon": { "name": "Садақ", "cooldown": 0.45, "damage": 1 },
+      "ability": { "id": "fifty_fifty", "uses": 3 }
+    },
+    {
+      "id": "kerey",
+      "name": "Керей хан",
+      "title": "Қазақ хандығының негізін қалаушы",
+      "description": "Жәнібекпен бірге Қазақ хандығын құрған хан.",
+      "hp": 120, "speed": 5.5, "defense": 25,
+      "weapon": { "name": "Құрама садақ", "cooldown": 0.6, "damage": 2 },
+      "ability": { "id": "shield", "uses": 2 }
+    },
+    {
+      "id": "kasym",
+      "name": "Қасым хан",
+      "title": "Қазақ хандығының ханы",
+      "description": "«Қасым ханның қасқа жолы» заңдарымен танымал хан.",
+      "hp": 110, "speed": 6.2, "defense": 20,
+      "weapon": { "name": "Құрама садақ", "cooldown": 0.6, "damage": 2 },
+      "ability": { "id": "extra_time", "uses": 3 }
+    },
+    {
+      "id": "abylai",
+      "name": "Абылай хан",
+      "title": "Қазақ хандығының ханы",
+      "description": "Жоңғар шапқыншылығына қарсы күрестің басшысы.",
+      "hp": 115, "speed": 6.5, "defense": 20,
+      "weapon": { "name": "Мылтық", "cooldown": 1.1, "damage": 3 },
+      "ability": { "id": "slow_time", "uses": 2 }
+    },
+    {
+      "id": "kabanbay",
+      "name": "Қабанбай батыр",
+      "title": "Жоңғарларға қарсы соғыстың батыры",
+      "description": "Жоңғар шапқыншылығы кезіндегі атақты қолбасшы.",
+      "hp": 130, "speed": 5.5, "defense": 30,
+      "weapon": { "name": "Мылтық", "cooldown": 1.1, "damage": 3 },
+      "ability": { "id": "heal", "uses": 2 }
+    },
+    {
+      "id": "aliya",
+      "name": "Әлия Молдағұлова",
+      "title": "Мерген, Кеңес Одағының Батыры",
+      "description": "Ұлы Отан соғысындағы атақты мерген.",
+      "hp": 90, "speed": 6.8, "defense": 10,
+      "weapon": { "name": "Мергендік мылтық", "cooldown": 1.4, "damage": 4 },
+      "ability": { "id": "fifty_fifty", "uses": 2 }
+    },
+    {
+      "id": "manshuk",
+      "name": "Мәншүк Мәметова",
+      "title": "Пулеметші, Кеңес Одағының Батыры",
+      "description": "Ұлы Отан соғысындағы пулеметші, Кеңес Одағының Батыры атағын алған.",
+      "hp": 95, "speed": 6.2, "defense": 15,
+      "weapon": { "name": "Пулемет", "cooldown": 0.15, "damage": 1, "auto": true },
+      "ability": { "id": "heal", "uses": 2 }
+    }
+  ]
+}

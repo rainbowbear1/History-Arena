@@ -24,6 +24,10 @@ func _build() -> void:
 		target.is_correct = location["name"] == question["correct"]
 
 
+func remove_wrong(count: int) -> bool:
+	return _remove_wrong_targets(count)
+
+
 func on_target_hit(target) -> Outcome:
 	if target.is_correct:
 		target.set_state(Target.State.DONE)

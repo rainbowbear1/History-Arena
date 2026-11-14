@@ -43,3 +43,15 @@ func on_target_hit(_target) -> Outcome:
 
 func _build() -> void:
 	pass
+
+
+# For one-answer tasks: removes `count` wrong targets that are still in play.
+# Returns false (and removes nothing) if there are not enough.
+func _remove_wrong_targets(count: int) -> bool:
+	var wrong: Array = quiz.targets.filter(func(t): return not t.is_correct and t.state == Target.State.NORMAL)
+	if wrong.size() < count:
+		return false
+	wrong.shuffle()
+	for i in range(count):
+		quiz.remove_target(wrong[i])
+	return true

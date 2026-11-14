@@ -51,4 +51,4 @@ func _on_level_selected(level_number: int) -> void:
 
 
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file("res://main_menu.tscn")
+	get_tree().change_scene_to_file("res://character_select.tscn")

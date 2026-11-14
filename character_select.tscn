@@ -1,0 +1,117 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://character_select.gd" id="1_charsel"]
+
+[node name="CharacterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_charsel")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08235294, 0.13333334, 0.20784314, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 28
+text = "Кейіпкерді таңдаңыз"
+horizontal_alignment = 1
+
+[node name="Columns" type="HBoxContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="CharacterGrid" type="GridContainer" parent="CenterContainer/VBox/Columns"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="DetailsPanel" type="PanelContainer" parent="CenterContainer/VBox/Columns"]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+
+[node name="DetailsMargin" type="MarginContainer" parent="CenterContainer/VBox/Columns/DetailsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="Details" type="VBoxContainer" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 28
+
+[node name="CharacterTitleLabel" type="Label" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+
+[node name="DescriptionLabel" type="Label" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+autowrap_mode = 3
+
+[node name="Stats" type="GridContainer" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 12
+columns = 3
+
+[node name="WeaponLabel" type="Label" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="AbilityLabel" type="Label" parent="CenterContainer/VBox/Columns/DetailsPanel/DetailsMargin/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="Buttons" type="HBoxContainer" parent="CenterContainer/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="BackButton" type="Button" parent="CenterContainer/VBox/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 44)
+layout_mode = 2
+text = "Артқа"
+
+[node name="ChooseButton" type="Button" parent="CenterContainer/VBox/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 44)
+layout_mode = 2
+text = "Таңдау"

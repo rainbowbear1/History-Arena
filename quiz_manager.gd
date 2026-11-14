@@ -2,6 +2,7 @@ extends Node
 
 const QuestionValidator := preload("res://question_validator.gd")
 const QuizTask := preload("res://tasks/quiz_task.gd")
+const Abilities := preload("res://abilities.gd")
 const TARGET_SCENE := preload("res://answer_target.tscn")
 
 const TASK_SCRIPTS := {
@@ -23,13 +24,15 @@ const MAP_SIZE := Vector2(12.0, 6.0)
 # Drop a real map here and it replaces the placeholder board.
 const MAP_TEXTURE := "res://assets/maps/kazakhstan.png"
 
-const MAX_HEALTH := 100
 const DAMAGE := 10
+const POINTS := 100
+const ABILITY_COLOR := Color(0.91, 0.78, 0.5)
 # Question types that can be asked on the medical-help screen (plain four-button answers).
 const REVIVAL_TYPES := ["single_choice", "fill_blank"]
 
 var score: int = 0
-var health: int = MAX_HEALTH
+var max_health: int = 100
+var health: int = 100
 var revive_hp: int = 50
 var revivals_left: int = 1
 var question_index: int = 0
@@ -38,6 +41,14 @@ var accepting_answers: bool = true
 # Questions the player got wrong this run; asked first on the medical-help screen.
 var missed_questions: Array = []
 var used_revival_questions: Array = []
+
+# Chosen character and the state of its E ability.
+var character: Dictionary = {}
+var ability_uses: int = 0
+var shield_active: bool = false
+var double_score_active: bool = false
+var slow_active: bool = false
+var slow_token: int = 0
 
 
 @export_file("*.json") var question_file: String = "res://questions/saka.json"
@@ -58,6 +69,8 @@ var feedback_token: int = 0
 @onready var progress_label: Label = $"../HUD/ProgressLabel"
 @onready var score_label: Label = $"../HUD/ScoreLabel"
 @onready var health_label: Label = $"../HUD/HealthLabel"
+@onready var character_label: Label = $"../HUD/CharacterLabel"
+@onready var ability_label: Label = $"../HUD/AbilityLabel"
 @onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
 @onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
@@ -67,6 +80,12 @@ var feedback_token: int = 0
 
 func _ready() -> void:
 	_setup_map_board()
+
+	character = CharacterDatabase.get_character(GameState.selected_character)
+	if not character.is_empty():
+		max_health = character["hp"]
+		ability_uses = character["ability"]["uses"]
+	health = max_health
 
 	var level := LevelDatabase.get_level(GameState.selected_level)
 	if not level.is_empty():
@@ -125,24 +144,72 @@ func target_hit(target) -> void:
 		QuizTask.Outcome.PROGRESS:
 			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
-			take_damage()
+			var blocked := take_damage(DAMAGE)
 			if health <= 0:
 				finish_task("Қате!", Color.RED)
+			elif blocked:
+				show_feedback("Қалқан қорғады!", ABILITY_COLOR, 1.0)
 			else:
 				show_feedback(message if not message.is_empty() else "Қате!", Color.RED, 1.0)
 		QuizTask.Outcome.SOLVED:
-			score += 100
+			var doubled := double_score_active
+			double_score_active = false
+			score += POINTS * (2 if doubled else 1)
 			update_hud()
-			finish_task("Дұрыс!", Color.GREEN)
+			finish_task("Дұрыс! ×2" if doubled else "Дұрыс!", Color.GREEN)
 		QuizTask.Outcome.FAILED:
 			missed_questions.append(current_task.question)
-			take_damage()
-			finish_task("Қате!", Color.RED)
+			var blocked := take_damage(DAMAGE)
+			finish_task("Қате! Қалқан қорғады" if blocked else "Қате!", Color.RED)
 
 
-func take_damage() -> void:
-	health = maxi(health - DAMAGE, 0)
+# Applies damage unless the shield ability absorbs it. Returns true if the shield blocked it.
+func take_damage(amount: int) -> bool:
+	if shield_active:
+		shield_active = false
+		update_hud()
+		return true
+	health = maxi(health - amount, 0)
 	update_hud()
+	return false
+
+
+func use_ability() -> void:
+	if not accepting_answers or current_task == null or ability_uses <= 0:
+		return
+
+	var text := Abilities.apply(character["ability"]["id"], self)
+	if text.is_empty():
+		show_feedback("Қазір қолдануға болмайды", Color.WHITE, 1.0)
+		return
+
+	ability_uses -= 1
+	update_hud()
+	show_feedback(text, ABILITY_COLOR, 1.2)
+
+
+# Slows answer targets (and later enemies) for a few seconds.
+func set_slow(enabled: bool) -> void:
+	slow_active = enabled
+	for target in targets:
+		target.speed_scale = Abilities.SLOW_FACTOR if enabled else 1.0
+
+	if enabled:
+		slow_token += 1
+		var token := slow_token
+		await get_tree().create_timer(Abilities.SLOW_SECONDS, false).timeout
+		if token == slow_token:
+			set_slow(false)
+
+
+# True while a task's countdown is running (the timer arrives with level difficulty).
+func timer_running() -> bool:
+	return false
+
+
+func remove_target(target) -> void:
+	targets.erase(target)
+	target.queue_free()
 
 
 # Shows the final feedback for a task, then moves on (or to the defeat screen at 0 HP).
@@ -196,7 +263,7 @@ func pick_revival_question() -> Dictionary:
 # Medical help succeeded: restore the level's revive_hp and retry the task the
 # player was on (answers reshuffled). Score and completed tasks are kept.
 func _on_revived() -> void:
-	health = mini(revive_hp, MAX_HEALTH)
+	health = mini(revive_hp, max_health)
 	update_hud()
 
 	if OS.has_feature("web"):
@@ -245,7 +312,12 @@ func update_progress() -> void:
 
 func update_hud() -> void:
 	score_label.text = "Ұпай саны: " + str(score)
-	health_label.text = "HP: " + str(health)
+	health_label.text = "HP: %d/%d" % [health, max_health]
+	if character.is_empty():
+		return
+	character_label.text = "%s · %s" % [character["name"], character["weapon"]["name"]]
+	var ability_name: String = Abilities.INFO[character["ability"]["id"]]["name"]
+	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, "  · Қалқан белсенді" if shield_active else ""]
 
 
 func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1.0):
@@ -256,6 +328,7 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 	if not sways:
 		target.move_distance = 0.0
 
+	target.speed_scale = Abilities.SLOW_FACTOR if slow_active else 1.0
 	targets_root.add_child(target)
 	if size != 1.0:
 		target.set_size(size)

@@ -8,6 +8,8 @@ extends SceneTree
 const QuestionValidator := preload("res://question_validator.gd")
 const LevelDatabaseScript := preload("res://level_database.gd")
 const Target := preload("res://answer_target.gd")
+const CharacterDatabaseScript := preload("res://character_database.gd")
+const Abilities := preload("res://abilities.gd")
 
 var failures := 0
 var checks := 0
@@ -15,6 +17,7 @@ var checks := 0
 # Autoloads are not compile-time globals in a --script run, so fetch them from the tree.
 var level_db: Node
 var game_state: Node
+var char_db: Node
 
 
 func _initialize() -> void:
@@ -37,6 +40,7 @@ func wait(seconds: float) -> void:
 func run() -> void:
 	level_db = root.get_node("LevelDatabase")
 	game_state = root.get_node("GameState")
+	char_db = root.get_node("CharacterDatabase")
 
 	print("== Level data")
 	test_level_data()
@@ -239,6 +243,7 @@ func test_arena() -> void:
 	await test_matching(samples["matching"])
 	await test_map(samples["map"])
 	await test_hp_and_medical_help()
+	await test_characters()
 
 
 func test_choice_types(samples: Dictionary) -> void:
@@ -371,7 +376,7 @@ func test_hp_and_medical_help() -> void:
 	game_state.selected_level = 1
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
-	check(quiz.health == 100 and quiz.health_label.text == "HP: 100", "run starts with 100 HP")
+	check(quiz.health == 100 and quiz.health_label.text == "HP: 100/100", "run starts with 100 HP")
 	check(not arena.has_node("HUD/LivesLabel"), "no lives counter in the HUD")
 	_wrong_target(quiz).hit()
 	check(quiz.health == 90, "a wrong answer costs 10 HP")
@@ -410,7 +415,7 @@ func test_hp_and_medical_help() -> void:
 	check(panel.answer_buttons.all(func(b): return b.disabled), "answers locked after choosing")
 	await wait(1.7)
 	check(not panel.visible, "defeat screen closes after a correct answer")
-	check(quiz.health == 50 and quiz.health_label.text == "HP: 50", "medical help restores the level's 50 HP")
+	check(quiz.health == 50 and quiz.health_label.text == "HP: 50/100", "medical help restores the level's 50 HP")
 	check(quiz.score == 300, "score kept after medical help (score=%d)" % quiz.score)
 	check(quiz.question_index == retry_index, "the failed task is retried, not skipped")
 	check(quiz.question_label.text == retry_question["question"], "retried task is shown again")
@@ -505,6 +510,175 @@ func _press_wrong(panel) -> void:
 		if button.text != panel.question["correct"]:
 			button.pressed.emit()
 			return
+
+
+func test_characters() -> void:
+	print("== Characters")
+	var characters: Array = char_db.characters
+	check(characters.size() == 10, "10 characters loaded (got %d)" % characters.size())
+	var ids := {}
+	var abilities := {}
+	for c in characters:
+		ids[c["id"]] = true
+		abilities[c["ability"]["id"]] = true
+		check(CharacterDatabaseScript.validate_character(c) == "", "%s is valid" % c["name"])
+	check(ids.size() == 10, "character ids are unique")
+	check(abilities.size() == Abilities.INFO.size(), "every ability is used by some character")
+	check(char_db.get_character("nope") == characters[0], "unknown id falls back to the first character")
+
+	var good: Dictionary = characters[0].duplicate(true)
+	for broken in [["hp", 40], ["hp", 250], ["hp", 100.5], ["speed", 2], ["defense", 70], ["name", ""]]:
+		var c := good.duplicate(true)
+		c[broken[0]] = broken[1]
+		check(CharacterDatabaseScript.validate_character(c) != "", "character with %s = %s rejected" % [broken[0], str(broken[1])])
+	for broken in [["cooldown", 0], ["damage", 0], ["auto", "yes"]]:
+		var c := good.duplicate(true)
+		c["weapon"][broken[0]] = broken[1]
+		check(CharacterDatabaseScript.validate_character(c) != "", "weapon with %s = %s rejected" % [broken[0], str(broken[1])])
+	for broken in [["id", "fly"], ["uses", 0]]:
+		var c := good.duplicate(true)
+		c["ability"][broken[0]] = broken[1]
+		check(CharacterDatabaseScript.validate_character(c) != "", "ability with %s = %s rejected" % [broken[0], str(broken[1])])
+
+	# Character select screen
+	game_state.selected_character = ""
+	var screen: Node = load("res://character_select.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	var grid: GridContainer = screen.get_node("%CharacterGrid")
+	check(grid.get_child_count() == 10, "10 character buttons")
+	check(screen.selected_id == characters[0]["id"] and grid.get_child(0).button_pressed, "first character preselected")
+	grid.get_child(7).pressed.emit()
+	check(screen.selected_id == "kabanbay", "pressing a button selects that character")
+	check(screen.get_node("%NameLabel").text == "Қабанбай батыр", "details show the selected character")
+	check(screen.stat_bars["hp"].value == 130 and screen.stat_values["defense"].text == "30", "stat bars show HP and defense")
+	check(screen.get_node("%WeaponLabel").text.contains("Мылтық"), "weapon shown")
+	check(screen.get_node("%AbilityLabel").text.contains("Емдеу"), "ability shown")
+	screen.get_node("%ChooseButton").pressed.emit()
+	check(game_state.selected_character == "kabanbay", "choosing stores the character")
+	await process_frame
+	await process_frame
+	check(current_scene != null and current_scene.name == "LevelSelect", "choosing opens level select")
+	current_scene.queue_free()
+	await process_frame
+
+	# Stats in the arena
+	game_state.selected_level = 1
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	var player = arena.get_node("Player")
+	check(quiz.max_health == 130 and quiz.health == 130, "character HP sets the HP pool")
+	check(quiz.health_label.text == "HP: 130/130", "HUD shows HP out of the character's maximum")
+	check(quiz.character_label.text == "Қабанбай батыр · Мылтық", "HUD shows character and weapon")
+	check(quiz.ability_label.text == "[E] Емдеу ×2", "HUD shows the ability and its uses")
+	check(player.speed == 5.5, "character speed applied")
+	check(player.weapon["damage"] == 3, "character weapon applied")
+
+	player.cooldown_left = 0.0
+	player.shoot()
+	player.shoot()
+	check(player.shots_fired == 1, "weapon cooldown blocks an immediate second shot")
+	player.cooldown_left = 0.0
+	player.shoot()
+	check(player.shots_fired == 2, "weapon fires again once ready")
+	arena.queue_free()
+	await process_frame
+
+	# Abilities
+	var samples := {}
+	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(q)] = q
+
+	game_state.selected_character = "kabanbay"
+	quiz = await _start_task(samples["single_choice"])
+	quiz.use_ability()
+	check(quiz.ability_uses == 2 and quiz.feedback_label.text == "Қазір қолдануға болмайды", "heal at full HP is refused without using it")
+	quiz.health = 50
+	quiz.use_ability()
+	check(quiz.health == 75 and quiz.ability_uses == 1, "heal restores 25 HP and uses one charge")
+	quiz.health = 120
+	quiz.use_ability()
+	check(quiz.health == 130 and quiz.ability_uses == 0, "heal never exceeds maximum HP")
+	quiz.health = 50
+	quiz.use_ability()
+	check(quiz.health == 50, "no charges left: nothing happens")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "al_farabi"
+	quiz = await _start_task(samples["single_choice"])
+	quiz.use_ability()
+	await process_frame
+	check(quiz.targets.size() == 2 and quiz.targets.any(func(t): return t.is_correct), "50/50 removes two wrong answers")
+	check(quiz.ability_uses == 2, "50/50 uses one charge")
+	quiz.use_ability()
+	check(quiz.targets.size() == 2 and quiz.ability_uses == 2, "50/50 refused when only one wrong answer is left")
+	quiz.get_parent().queue_free()
+	await process_frame
+	quiz = await _start_task(samples["map"])
+	quiz.use_ability()
+	await process_frame
+	check(quiz.targets.size() == 2, "50/50 works on map pins")
+	quiz.get_parent().queue_free()
+	await process_frame
+	quiz = await _start_task(samples["matching"])
+	quiz.use_ability()
+	check(quiz.ability_uses == 3 and quiz.targets.size() == 6, "50/50 refused on matching tasks")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "mode"
+	quiz = await _start_task(samples["single_choice"])
+	quiz.use_ability()
+	check(quiz.shield_active and quiz.ability_label.text.contains("Қалқан белсенді"), "shield activates and shows in the HUD")
+	quiz.use_ability()
+	check(quiz.ability_uses == 1, "shield cannot stack")
+	_wrong_target(quiz).hit()
+	check(quiz.health == quiz.max_health and not quiz.shield_active, "shield absorbs the next mistake")
+	check(quiz.feedback_label.text == "Қате! Қалқан қорғады", "shield block announced")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "kultegin"
+	quiz = await _start_task(samples["single_choice"])
+	quiz.use_ability()
+	_correct_target(quiz).hit()
+	check(quiz.score == 200 and quiz.feedback_label.text == "Дұрыс! ×2", "double score doubles the next solved task")
+	check(not quiz.double_score_active, "double score is spent")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "kasym"
+	quiz = await _start_task(samples["single_choice"])
+	quiz.use_ability()
+	check(quiz.ability_uses == 3, "extra time refused while no timer runs")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "tomyris"
+	quiz = await _start_task(samples["single_choice"])
+	var e_key := InputEventKey.new()
+	e_key.physical_keycode = KEY_E
+	e_key.pressed = true
+	quiz.get_viewport().push_input(e_key)
+	check(quiz.slow_active and quiz.ability_uses == 1, "E key uses the ability")
+	check(quiz.targets.all(func(t): return t.speed_scale == Abilities.SLOW_FACTOR), "slow time slows the targets")
+	_correct_target(quiz).hit()
+	await wait(1.2)
+	check(quiz.results_container.visible, "task finishes while slowed")
+	quiz.question_index = 0
+	quiz.results_container.hide()
+	quiz.load_question()
+	check(quiz.targets.all(func(t): return t.speed_scale == Abilities.SLOW_FACTOR), "targets spawned during slow time are slow too")
+	await wait(Abilities.SLOW_SECONDS)
+	check(not quiz.slow_active and quiz.targets.all(func(t): return t.speed_scale == 1.0), "slow time wears off")
+	quiz.accepting_answers = false
+	quiz.use_ability()
+	check(quiz.ability_uses == 1, "ability ignored between tasks")
+	quiz.get_parent().queue_free()
+	await process_frame
+	game_state.selected_character = ""
 
 
 # Loads the arena and replaces its questions with a single task.

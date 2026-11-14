@@ -36,6 +36,32 @@ HP and the player retries the task they failed (answers reshuffled; matching/chr
 keeping their score and completed tasks. A wrong answer means no medical help, leaving Restart and
 Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
 
+## Characters — `data/characters.json`
+
+```json
+{ "version": 1, "characters": [ { "id": "tomyris", "name": "Томирис", ... }, ... ] }
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | text | Unique id, stored as the player's choice. |
+| `name`, `title`, `description` | text | Shown on the character select screen. |
+| `hp` | 50–200 | Size of the HP pool (wrong answers still cost 10 HP). |
+| `speed` | 3–10 | Movement speed in m/s (the old default was 6). |
+| `defense` | 0–60 | Percent of **enemy** damage blocked. Answer mistakes always cost 10 HP. |
+| `weapon.name` | text | Shown in the HUD. |
+| `weapon.cooldown` | seconds > 0 | Time between shots. |
+| `weapon.damage` | whole number ≥ 1 | Damage to enemies per hit. |
+| `weapon.auto` | true/false | Optional. Hold the mouse button to keep firing. |
+| `ability.id` | see below | Special ability on the E key. |
+| `ability.uses` | whole number ≥ 1 | Uses per level. |
+
+Abilities (`abilities.gd`): `fifty_fifty` (removes two wrong answers; single-answer and map tasks),
+`slow_time` (targets and enemies slowed for 8 s), `extra_time` (+10 s on the task timer),
+`shield` (blocks the next damage), `heal` (+25 HP, up to the maximum), `double_score`
+(next solved task gives double points). An ability that cannot help right now is refused
+without spending a use.
+
 ## Questions — `questions/*.json`
 
 A question file is a JSON array. Every entry has:

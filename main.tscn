@@ -142,6 +142,33 @@ offset_bottom = 78.0
 theme_override_font_sizes/font_size = 22
 text = "HP: 100"
 
+[node name="CharacterLabel" type="Label" parent="HUD"]
+anchors_preset = -1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -76.0
+offset_right = 620.0
+offset_bottom = -48.0
+grow_vertical = 0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+
+[node name="AbilityLabel" type="Label" parent="HUD"]
+anchors_preset = -1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -44.0
+offset_right = 620.0
+offset_bottom = -16.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.91, 0.78, 0.5, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+
 [node name="ResultsContainer" type="CenterContainer" parent="HUD" unique_id=456787760]
 visible = false
 anchors_preset = 15
