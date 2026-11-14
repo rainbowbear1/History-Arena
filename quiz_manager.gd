@@ -32,11 +32,21 @@ const MULTI_STEP_TIME := 2.0
 const DECOY_TYPES := ["single_choice", "fill_blank"]
 const POINTS := 100
 const ABILITY_COLOR := Color(0.91, 0.78, 0.5)
+const FADE_SECONDS := 0.6
+const ProgressStoreScript := preload("res://progress_store.gd")
 # Question types that can be asked on the medical-help screen (plain four-button answers).
 const REVIVAL_TYPES := ["single_choice", "fill_blank"]
 
 var score: int = 0
 var level: Dictionary = {}
+
+# Run statistics saved with the result (and later sent to the Game Hub).
+var correct_count: int = 0
+var wrong_count: int = 0
+var playtime: float = 0.0
+var revivals_used: int = 0
+var run_active: bool = true
+var last_attempt: Dictionary = {}
 var time_limit: float = 0.0
 var time_left: float = 0.0
 var max_health: int = 100
@@ -84,6 +94,10 @@ var feedback_token: int = 0
 @onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
 @onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
+@onready var results_title: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsTitle"
+@onready var results_stars: Control = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsStars"
+@onready var next_button: Button = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/NextButton"
+@onready var fade_rect: ColorRect = $"../HUD/FadeRect"
 @onready var feedback_label: Label = $"../HUD/FeedbackLabel"
 
 
@@ -105,6 +119,7 @@ func _ready() -> void:
 	health = max_health
 
 	revival_panel.revived.connect(_on_revived)
+	revival_panel.help_failed.connect(_record_defeat)
 	enemy_spawner.configure(self, $"../Player", level)
 
 	load_questions_from_file()
@@ -125,7 +140,7 @@ func load_question() -> void:
 	accepting_answers = true
 
 	if question_index >= questions.size():
-		show_results("Тест аяқталды!")
+		finish_level()
 		return
 
 	var question: Dictionary = questions[question_index]
@@ -148,6 +163,8 @@ func load_question() -> void:
 
 
 func _process(delta: float) -> void:
+	if run_active:
+		playtime += delta
 	if not timer_running():
 		return
 	time_left = maxf(time_left - delta, 0.0)
@@ -161,6 +178,7 @@ func _on_time_up() -> void:
 	if current_task.has_method("reveal_correct"):
 		missed_questions.append(current_task.question)
 		current_task.reveal_correct()
+	wrong_count += 1
 	var blocked := take_damage(DAMAGE)
 	finish_task("Уақыт бітті! Қалқан қорғады" if blocked else "Уақыт бітті!", Color.RED)
 
@@ -187,6 +205,7 @@ func target_hit(target) -> void:
 		QuizTask.Outcome.PROGRESS:
 			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
+			wrong_count += 1
 			var blocked := take_damage(DAMAGE)
 			if health <= 0:
 				finish_task("Қате!", Color.RED)
@@ -195,6 +214,7 @@ func target_hit(target) -> void:
 			else:
 				show_feedback(message if not message.is_empty() else "Қате!", Color.RED, 1.0)
 		QuizTask.Outcome.SOLVED:
+			correct_count += 1
 			var doubled := double_score_active
 			double_score_active = false
 			score += POINTS * (2 if doubled else 1)
@@ -202,6 +222,7 @@ func target_hit(target) -> void:
 			finish_task("Дұрыс! ×2" if doubled else "Дұрыс!", Color.GREEN)
 		QuizTask.Outcome.FAILED:
 			missed_questions.append(current_task.question)
+			wrong_count += 1
 			var blocked := take_damage(DAMAGE)
 			finish_task("Қате! Қалқан қорғады" if blocked else "Қате!", Color.RED)
 
@@ -349,7 +370,16 @@ func show_defeat() -> void:
 			revivals_left -= 1
 			used_revival_questions.append(help_question)
 
+	if help_question.is_empty():
+		_record_defeat()
 	revival_panel.open(score, help_question, revive_hp)
+
+
+# The run ends in defeat (no medical help left, or a wrong medical-help answer).
+func _record_defeat() -> void:
+	run_active = false
+	last_attempt = build_attempt(false)
+	ProgressStore.record_attempt(last_attempt)
 
 
 # Never the task being retried (its answer may have just been shown). Prefers a
@@ -373,6 +403,7 @@ func pick_revival_question() -> Dictionary:
 # Medical help succeeded: restore the level's revive_hp and retry the task the
 # player was on (answers reshuffled). Score and completed tasks are kept.
 func _on_revived() -> void:
+	revivals_used += 1
 	health = mini(revive_hp, max_health)
 	update_hud()
 
@@ -403,14 +434,69 @@ func show_feedback(text: String, color: Color, duration: float) -> void:
 		feedback_label.hide()
 
 
-func show_results(title: String) -> void:
+# All tasks done: save the result, fade to white, then show the results screen.
+func finish_level() -> void:
 	accepting_answers = false
+	run_active = false
 	clear_arena()
 	enemy_spawner.stop()
 	question_label.text = ""
-	results_label.text = title + "\n\nЖалпы ұпай: " + str(score)
+
+	last_attempt = build_attempt(true)
+	var new_best := ProgressStore.record_attempt(last_attempt)
+
+	var fade_in := create_tween()
+	fade_in.tween_property(fade_rect, "modulate:a", 1.0, FADE_SECONDS)
+	await fade_in.finished
+
+	show_results(last_attempt, new_best)
+
+	var fade_out := create_tween()
+	fade_out.tween_property(fade_rect, "modulate:a", 0.0, FADE_SECONDS)
+
+
+func build_attempt(completed: bool) -> Dictionary:
+	var max_score := questions.size() * POINTS
+	var pass_percent: float = level.get("pass_percent", 60)
+	var stars := ProgressStoreScript.stars_for(score, max_score, pass_percent, revivals_used) if completed else 0
+	return {
+		"level": GameState.selected_level,
+		"character": character.get("id", ""),
+		"score": score,
+		"max_score": max_score,
+		"correct": correct_count,
+		"wrong": wrong_count,
+		"playtime_sec": roundi(playtime),
+		"stars": stars,
+		"passed": stars > 0,
+		"completed": completed,
+		"revivals_used": revivals_used,
+		"finished_at": int(Time.get_unix_time_from_system()),
+	}
+
+
+func show_results(attempt: Dictionary, new_best: bool) -> void:
+	var best: Dictionary = ProgressStore.level_result(attempt["level"])
+	results_title.text = "Деңгей өтілді!" if attempt["passed"] else "Деңгей өтілмеді"
+	results_stars.stars = attempt["stars"]
+
+	var seconds: int = attempt["playtime_sec"]
+	var lines := [
+		"Ұпай: %d / %d" % [attempt["score"], attempt["max_score"]],
+		"Дұрыс: %d    Қате: %d" % [attempt["correct"], attempt["wrong"]],
+		"Уақыт: %02d:%02d" % [seconds / 60, seconds % 60],
+		"Жаңа рекорд!" if new_best else "Үздік нәтиже: %d" % best["best_score"],
+	]
+	if not attempt["passed"]:
+		lines.append("Өту үшін кемінде %d%% ұпай керек" % level.get("pass_percent", 60))
+	results_label.text = "\n".join(lines)
+
+	var next_id: int = attempt["level"] + 1
+	next_button.visible = attempt["passed"] and LevelDatabase.is_playable(next_id) and ProgressStore.is_unlocked(next_id)
+
 	results_container.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	(next_button if next_button.visible else results_container.get_node("ResultsPanel/ResultsVBox/RestartButton")).grab_focus()
 
 
 
@@ -497,6 +583,11 @@ func _setup_map_board() -> void:
 
 
 func _on_restart_button_pressed() -> void:
+	get_tree().reload_current_scene()
+
+
+func _on_next_button_pressed() -> void:
+	GameState.selected_level += 1
 	get_tree().reload_current_scene()
 
 

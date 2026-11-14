@@ -10,6 +10,7 @@ const LevelDatabaseScript := preload("res://level_database.gd")
 const Target := preload("res://answer_target.gd")
 const CharacterDatabaseScript := preload("res://character_database.gd")
 const Abilities := preload("res://abilities.gd")
+const ProgressStoreScript := preload("res://progress_store.gd")
 
 var failures := 0
 var checks := 0
@@ -18,6 +19,7 @@ var checks := 0
 var level_db: Node
 var game_state: Node
 var char_db: Node
+var progress: Node
 
 
 func _initialize() -> void:
@@ -41,6 +43,11 @@ func run() -> void:
 	level_db = root.get_node("LevelDatabase")
 	game_state = root.get_node("GameState")
 	char_db = root.get_node("CharacterDatabase")
+	# Use a separate save file so tests never touch real progress; demo mode opens levels 1-3.
+	progress = root.get_node("ProgressStore")
+	progress.path = "user://test_progress.json"
+	progress.reset()
+	progress.set_demo_unlock(true)
 
 	print("== Level data")
 	test_level_data()
@@ -176,7 +183,7 @@ func test_level_select() -> void:
 	var info: Label = scene.get_node("CenterContainer/VBoxContainer/LevelInfoLabel")
 	check(info.text.begins_with("1. Сақтар дәуірі"), "info label shows level 1")
 	scene._show_level_info(10)
-	check(info.text.contains("BOSS") and info.text.contains("жабық"), "level 10 shows BOSS and locked")
+	check(info.text.contains("BOSS") and info.text.contains("дайындалуда"), "level 10 shows BOSS and not ready yet")
 	scene.queue_free()
 	await process_frame
 
@@ -245,6 +252,9 @@ func test_arena() -> void:
 	await test_hp_and_medical_help()
 	await test_characters()
 	await test_difficulty()
+	await test_progress()
+	progress.path = ProgressStoreScript.SAVE_PATH
+	progress.load_data()
 
 
 func test_choice_types(samples: Dictionary) -> void:
@@ -261,7 +271,7 @@ func test_choice_types(samples: Dictionary) -> void:
 		check(quiz.health == 90 and quiz.score == 0, "%s wrong answer costs 10 HP" % type)
 		var correct = quiz.targets.filter(func(t): return t.is_correct)[0]
 		check(correct.state == Target.State.DONE, "%s reveals the correct answer after a miss" % type)
-		await wait(1.2)
+		await wait(1.8)
 		check(quiz.results_container.visible, "%s ends after one answer" % type)
 		quiz.get_parent().queue_free()
 		await process_frame
@@ -290,7 +300,7 @@ func test_chronology(question: Dictionary) -> void:
 	for item in items:
 		_by_text(quiz, item).hit()
 	check(quiz.score == 100, "completing the order scores 100")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.results_container.visible, "chronology moves on when solved")
 	quiz.get_parent().queue_free()
 	await process_frame
@@ -328,7 +338,7 @@ func test_matching(question: Dictionary) -> void:
 		_by_text(quiz, pairs[i]["right"]).hit()
 	check(_by_text(quiz, pairs[0]["right"]).state == Target.State.DONE, "matched pair locks")
 	check(quiz.score == 100, "all pairs matched scores 100")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.results_container.visible, "matching moves on when solved")
 	quiz.get_parent().queue_free()
 	await process_frame
@@ -351,7 +361,7 @@ func test_map(question: Dictionary) -> void:
 	camera.look_at(pin.global_position)
 	quiz.get_parent().get_node("Player").shoot()
 	check(quiz.score == 100, "shooting the correct pin through the crosshair scores 100")
-	await wait(1.2)
+	await wait(1.8)
 	check(not quiz.map_board.visible, "map board hidden after the task")
 	quiz.get_parent().queue_free()
 	await process_frame
@@ -381,7 +391,7 @@ func test_hp_and_medical_help() -> void:
 	check(not arena.has_node("HUD/LivesLabel"), "no lives counter in the HUD")
 	_wrong_target(quiz).hit()
 	check(quiz.health == 90, "a wrong answer costs 10 HP")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.question_index == 1 and not quiz.revival_panel.visible, "play continues above 0 HP")
 
 	# Reaching 0 HP opens the defeat screen with a medical-help question.
@@ -394,7 +404,7 @@ func test_hp_and_medical_help() -> void:
 	_wrong_target(quiz).hit()
 	check(quiz.health == 0, "HP reaches 0")
 	check(not quiz.revival_panel.visible, "defeat waits for the feedback")
-	await wait(1.2)
+	await wait(1.8)
 	var panel = quiz.revival_panel
 	check(panel.visible, "defeat screen shown at 0 HP")
 	check(quiz.overlay_open(), "defeat screen counts as an open overlay")
@@ -423,14 +433,14 @@ func test_hp_and_medical_help() -> void:
 	check(quiz.accepting_answers and quiz.targets.size() == 4, "arena is live again with fresh targets")
 	_correct_target(quiz).hit()
 	check(quiz.score == 400, "solving the retried task scores normally")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.question_index == retry_index + 1, "after the retry the run moves on")
 
 	# Second defeat: a wrong medical-help answer gives no help.
 	quiz.health = 10
 	var second_retry: Dictionary = quiz.questions[quiz.question_index]
 	_wrong_target(quiz).hit()
-	await wait(1.2)
+	await wait(1.8)
 	check(panel.visible and quiz.revivals_left == 0, "second defeat uses the last medical-help attempt")
 	check(panel.question != earlier_miss and panel.question != second_retry, "a fresh help question is asked")
 	_press_wrong(panel)
@@ -454,7 +464,7 @@ func test_hp_and_medical_help() -> void:
 	quiz.revivals_left = 0
 	quiz.health = 10
 	_wrong_target(quiz).hit()
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.revival_panel.visible and not quiz.revival_panel.question_label.visible, "no help question when attempts are used up")
 	check(quiz.revival_panel.message_label.text.begins_with("Медициналық көмек мүмкіндігі қалмады"), "says medical help is used up")
 	arena.queue_free()
@@ -474,7 +484,7 @@ func test_hp_and_medical_help() -> void:
 	_by_text(quiz, chronology["items"][0]).hit()
 	_by_text(quiz, chronology["items"][3]).hit()
 	check(quiz.health == 0 and not quiz.accepting_answers, "chronology mistake at 0 HP ends the task")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.revival_panel.visible and quiz.revival_panel.question == samples["single_choice"], "help question comes from another task")
 	_press_correct(quiz.revival_panel)
 	await wait(1.7)
@@ -667,7 +677,7 @@ func test_characters() -> void:
 	check(quiz.slow_active and quiz.ability_uses == 1, "E key uses the ability")
 	check(quiz.targets.all(func(t): return t.speed_scale == Abilities.SLOW_FACTOR), "slow time slows the targets")
 	_correct_target(quiz).hit()
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.results_container.visible, "task finishes while slowed")
 	quiz.question_index = 0
 	quiz.results_container.hide()
@@ -822,7 +832,7 @@ func test_difficulty() -> void:
 	var retry_index: int = quiz.question_index
 	quiz.enemy_attack(8)
 	check(quiz.health == 0 and not quiz.accepting_answers, "enemy can finish the player")
-	await wait(1.2)
+	await wait(1.8)
 	check(quiz.revival_panel.visible and spawner.enemies.is_empty(), "defeat screen, enemies removed")
 	_press_correct(quiz.revival_panel)
 	await wait(1.7)
@@ -862,6 +872,166 @@ func test_difficulty() -> void:
 	await process_frame
 	game_state.selected_character = ""
 	game_state.selected_level = 1
+
+
+func test_progress() -> void:
+	print("== Progress, stars and results")
+	var S = ProgressStoreScript
+	check(S.stars_for(1300, 1300, 60, 0) == 3, "95%+ without medical help: 3 stars")
+	check(S.stars_for(1300, 1300, 60, 1) == 2, "medical help caps a perfect run at 2 stars")
+	check(S.stars_for(1100, 1300, 60, 0) == 2, "80%+: 2 stars")
+	check(S.stars_for(800, 1300, 60, 0) == 1, "pass mark reached: 1 star")
+	check(S.stars_for(700, 1300, 60, 0) == 0, "below the pass mark: 0 stars")
+	check(S.stars_for(900, 1300, 75, 0) == 0 and S.stars_for(1000, 1300, 75, 0) == 1, "level pass mark respected")
+	check(S.stars_for(2600, 1300, 60, 0) == 3, "double-score bonuses cannot exceed 100%")
+
+	progress.reset()
+	check(progress.is_unlocked(1) and not progress.is_unlocked(2), "fresh save: only level 1 open")
+	var attempt := {"level": 1, "character": "tomyris", "score": 900, "max_score": 1300, "correct": 9, "wrong": 4,
+		"playtime_sec": 200, "stars": 1, "passed": true, "completed": true, "revivals_used": 0, "finished_at": 1}
+	check(progress.record_attempt(attempt), "first result is a new best")
+	check(progress.is_unlocked(2) and not progress.is_unlocked(3), "passing level 1 opens level 2 only")
+	var worse := attempt.duplicate()
+	worse["score"] = 500
+	worse["stars"] = 0
+	worse["passed"] = false
+	check(not progress.record_attempt(worse), "a lower score is not a new best")
+	var best: Dictionary = progress.level_result(1)
+	check(best["best_score"] == 900 and best["stars"] == 1 and best["passed"] and best["attempts"] == 2, "best score, stars, passed and attempts kept")
+
+	var reloaded = S.new()
+	reloaded.path = progress.path
+	reloaded.load_data()
+	check(reloaded.level_result(1)["best_score"] == 900 and reloaded.history.size() == 2, "progress survives a reload")
+	check(reloaded.history[0]["correct"] == 9 and reloaded.history[0]["playtime_sec"] == 200, "attempt keeps correct/wrong/playtime for the Hub")
+	var better := attempt.duplicate()
+	better["score"] = 1000
+	check(reloaded.record_attempt(better) and reloaded.level_result(1)["best_score"] == 1000, "recording after a reload still works")
+	check(reloaded.level_result(1)["best_score"] is int, "saved counters stay whole numbers")
+	progress.load_data()
+	reloaded.free()
+
+	for i in range(60):
+		progress.record_attempt(worse)
+	check(progress.history.size() == progress.MAX_HISTORY, "history is capped at %d attempts" % progress.MAX_HISTORY)
+
+	progress.set_demo_unlock(true)
+	check(progress.is_unlocked(10), "demo mode opens every level")
+	progress.reset()
+	check(not progress.is_unlocked(2) and not progress.demo_unlock_all, "reset clears results and demo mode")
+
+	_write(progress.path, "{ not json")
+	progress.load_data()
+	check(progress.levels.is_empty() and progress.is_unlocked(1), "unreadable save starts fresh")
+	progress.reset()
+
+	# A finished level: fade, results, saved result, next level.
+	var samples := {}
+	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(q)] = q
+	var quiz = await _start_task(samples["chronology"])
+	quiz.questions = [samples["chronology"]]
+	var items: Array = samples["chronology"]["items"]
+	_by_text(quiz, items[1]).hit()
+	for item in items:
+		_by_text(quiz, item).hit()
+	check(quiz.correct_count == 1 and quiz.wrong_count == 1, "correct and wrong answers counted")
+	paused = true
+	var frozen: float = quiz.playtime
+	await create_timer(0.3, true).timeout
+	check(quiz.playtime == frozen, "playtime stops while paused")
+	paused = false
+	await wait(1.3)
+	check(quiz.fade_rect.modulate.a > 0.3 and not quiz.results_container.visible, "level ends with a fade to white")
+	await wait(0.6)
+	check(quiz.results_container.visible, "results appear after the fade")
+	check(quiz.results_title.text == "Деңгей өтілді!", "results title for a pass")
+	check(quiz.results_stars.stars == 3, "3 stars shown")
+	check(quiz.results_label.text.contains("Ұпай: 100 / 100") and quiz.results_label.text.contains("Дұрыс: 1    Қате: 1"), "results show score, correct and wrong")
+	check(quiz.results_label.text.contains("Уақыт: 00:0"), "results show playtime")
+	check(quiz.results_label.text.contains("Жаңа рекорд!"), "new best announced")
+	check(progress.level_result(1)["passed"] and progress.history[-1]["completed"], "result saved")
+	check(progress.history[-1]["playtime_sec"] >= 1, "playtime saved in whole seconds")
+	check(quiz.next_button.visible, "next level offered once level 2 is open")
+	await wait(0.7)
+	check(quiz.fade_rect.modulate.a < 0.05, "fade clears to show the results")
+	quiz.next_button.pressed.emit()
+	await process_frame
+	await process_frame
+	check(game_state.selected_level == 2 and current_scene.get_node("QuizManager").question_file.ends_with("huns.json"), "next level loads level 2")
+	current_scene.queue_free()
+	await process_frame
+
+	progress.reset()
+	quiz = await _start_task(samples["single_choice"])
+	_wrong_target(quiz).hit()
+	await wait(1.8)
+	check(quiz.results_title.text == "Деңгей өтілмеді" and quiz.results_stars.stars == 0, "failing the pass mark: no stars")
+	check(quiz.results_label.text.contains("кемінде 60%"), "results explain the pass mark")
+	check(not quiz.next_button.visible and not progress.is_unlocked(2), "next level stays locked")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	# Defeats are saved as unfinished attempts.
+	progress.reset()
+	quiz = await _start_task(samples["single_choice"])
+	quiz.questions = [samples["single_choice"], samples["fill_blank"]]
+	quiz.revivals_left = 0
+	quiz.health = 10
+	_wrong_target(quiz).hit()
+	await wait(1.8)
+	check(progress.history.size() == 1 and not progress.history[0]["completed"] and not progress.history[0]["passed"], "defeat without medical help is saved")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	progress.reset()
+	quiz = await _start_task(samples["single_choice"])
+	quiz.questions = [samples["single_choice"], samples["fill_blank"]]
+	quiz.health = 10
+	_wrong_target(quiz).hit()
+	await wait(1.8)
+	check(progress.history.is_empty(), "nothing saved while medical help is still possible")
+	_press_wrong(quiz.revival_panel)
+	check(progress.history.size() == 1 and not progress.history[0]["completed"], "a wrong medical-help answer saves the defeat")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	# Level select shows unlocks and earned stars.
+	progress.reset()
+	progress.record_attempt(attempt.merged({"stars": 2}, true))
+	var screen: Node = load("res://level_select.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	var grid: GridContainer = screen.get_node("CenterContainer/VBoxContainer/LevelGrid")
+	var enabled: Array = grid.get_children().filter(func(b): return not b.disabled)
+	check(enabled.size() == 2, "levels 1-2 open after passing level 1 (got %d)" % enabled.size())
+	check(grid.get_child(0).get_child(0).stars == 2, "level 1 button shows 2 earned stars")
+	screen._show_level_info(1)
+	check(screen.level_info_label.text.contains("Үздік ұпай: 900"), "best score shown")
+	screen._show_level_info(3)
+	check(screen.level_info_label.text.contains("алдыңғы деңгейді өтіңіз"), "locked level says to pass the previous one")
+	screen.queue_free()
+	await process_frame
+
+	# Settings: demo mode and two-step reset.
+	var menu: Node = load("res://main_menu.tscn").instantiate()
+	root.add_child(menu)
+	current_scene = menu
+	await process_frame
+	menu.settings_button.pressed.emit()
+	check(menu.settings_container.visible, "Settings opens")
+	menu.demo_check.button_pressed = true
+	check(progress.demo_unlock_all, "demo toggle opens all levels")
+	menu.reset_button.pressed.emit()
+	check(progress.level_result(1)["attempts"] == 1, "first reset press only asks for confirmation")
+	menu.reset_button.pressed.emit()
+	check(progress.levels.is_empty() and not progress.demo_unlock_all and not menu.demo_check.button_pressed, "second press clears progress")
+	menu.close_button.pressed.emit()
+	check(not menu.settings_container.visible, "Settings closes")
+	menu.queue_free()
+	await process_frame
+	progress.reset()
 
 
 # Loads the arena and replaces its questions with a single task.

@@ -5,6 +5,7 @@
 [ext_resource type="Script" uid="uid://v0ik8lrjeaw" path="res://quiz_manager.gd" id="3_h2yge"]
 [ext_resource type="Script" path="res://revival_panel.gd" id="4_revival"]
 [ext_resource type="Script" path="res://enemy_spawner.gd" id="5_spawner"]
+[ext_resource type="Script" path="res://star_row.gd" id="6_stars"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
 
@@ -199,25 +200,42 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="ResultsPanel" type="PanelContainer" parent="HUD/ResultsContainer" unique_id=1677257675]
-custom_minimum_size = Vector2(400, 280)
+custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 
 [node name="ResultsVBox" type="VBoxContainer" parent="HUD/ResultsContainer/ResultsPanel" unique_id=1317422448]
 layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ResultsTitle" type="Label" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+
+[node name="ResultsStars" type="Control" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox"]
+custom_minimum_size = Vector2(150, 44)
+layout_mode = 2
+script = ExtResource("6_stars")
+star_size = 44.0
 
 [node name="ResultsLabel" type="Label" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=121929219]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = "QUIZ COMPLETE!
-
-Final Score: 0"
+theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
 
-[node name="RestartButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=1131899783]
+[node name="NextButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox"]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
-text = "Play again"
+text = "Келесі деңгей"
+
+[node name="RestartButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=1131899783]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Қайта ойнау"
 
 [node name="LevelsButton" type="Button" parent="HUD/ResultsContainer/ResultsPanel/ResultsVBox" unique_id=474327765]
+custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 text = "Деңгейлер"
 
@@ -419,5 +437,15 @@ font_size = 32
 script = ExtResource("3_h2yge")
 question_file = null
 
+[node name="FadeRect" type="ColorRect" parent="HUD"]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/NextButton" to="QuizManager" method="_on_next_button_pressed"]
 [connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/RestartButton" to="QuizManager" method="_on_restart_button_pressed"]
 [connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/LevelsButton" to="QuizManager" method="_on_levels_button_pressed"]

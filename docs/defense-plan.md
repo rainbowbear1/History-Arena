@@ -13,7 +13,7 @@ pages 3 and 7–10), not the full vision in `docs/vision.md`.
 | Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Done (timer, speed, decoys, enemies, boss, fewer ability uses) |
 | HP −10 per mistake, +100 per correct answer | Done |
 | "Жан біткенде" medical help | Done (single HP pool, help restores 50/40/30 HP, retry the task) |
-| Results saved (score, level, correct, wrong, playtime), progress | **Not started** → Milestone 6 |
+| Results saved (score, level, correct, wrong, playtime), progress | Done on the device (M6): stars, unlocks, results screen, demo mode; upload waits for M9 |
 | Google login, profile, shared leaderboard (Game Hub) | **Not started**; depends on the Hub team's backend choice |
 | Security items (OAuth, no secrets in frontend, validation, rate limiting, leaderboard anti-cheat) | Mostly server-side (Hub); the game must not ship secrets and must send plausible, server-checkable results |
 | GitHub repository, deployed build | Local Git only; **no remote yet**; no public hosting yet |

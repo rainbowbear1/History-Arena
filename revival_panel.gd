@@ -5,6 +5,7 @@ extends CenterContainer
 # one leaves only Restart and Levels.
 
 signal revived
+signal help_failed
 
 const CORRECT_COLOR := Color(0.3, 0.75, 0.35)
 const WRONG_COLOR := Color(0.85, 0.3, 0.3)
@@ -73,6 +74,7 @@ func _on_answer_pressed(button: Button) -> void:
 		result_label.add_theme_color_override("font_color", WRONG_COLOR)
 		result_label.text = "Медициналық көмек көрсетілмеді."
 		restart_button.grab_focus()
+		help_failed.emit()
 		return
 
 	result_label.add_theme_color_override("font_color", CORRECT_COLOR)

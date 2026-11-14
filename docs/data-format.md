@@ -24,7 +24,7 @@ Run the tests (below) after every content change; they report the exact file, en
 | `revivals` | whole number | How many times medical help can be offered in one run. |
 | `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass and unlock the next level. |
 
-All fields except `pass_percent` (used once progress is saved) drive the gameplay:
+All fields drive the gameplay (`pass_percent` decides passing and stars, see Saved progress):
 
 - **Timer:** `time_per_question` seconds per task, doubled for matching and chronology. Running out
   counts as a wrong answer (−10 HP, correct answer revealed). The timer stops between tasks and
@@ -51,6 +51,28 @@ preferring a question missed earlier, then one not asked yet. A correct answer r
 HP and the player retries the task they failed (answers reshuffled; matching/chronology start over),
 keeping their score and completed tasks. A wrong answer means no medical help, leaving Restart and
 Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
+
+## Saved progress — `user://progress.json`
+
+Written by `progress_store.gd` (in the browser, `user://` is stored in IndexedDB). It holds, per
+level, the best score, best stars, whether it was passed and the number of attempts, plus the last
+50 attempts. Each attempt record is what the Game Hub will receive:
+
+```json
+{ "level": 1, "character": "tomyris", "score": 1100, "max_score": 1300, "correct": 11, "wrong": 2,
+  "playtime_sec": 187, "stars": 2, "passed": true, "completed": true, "revivals_used": 0,
+  "finished_at": 1794700000 }
+```
+
+- `max_score` = number of tasks × 100. `wrong` counts every mistake (wrong shots, wrong pairs or
+  order, time-outs). `playtime_sec` excludes time spent paused.
+- **Stars:** below `pass_percent` → 0 (not passed); passed → 1; 80 % → 2; 95 % without medical
+  help → 3.
+- **Unlocks:** level 1 is open; each level opens when the previous one is passed. Settings →
+  "Демо режимі" opens every level that has questions (for presentations); "Прогресті тазалау"
+  (pressed twice) clears everything.
+- A run that ends in defeat (no medical help left, or a wrong medical-help answer) is saved with
+  `completed: false` and 0 stars.
 
 ## Characters — `data/characters.json`
 
