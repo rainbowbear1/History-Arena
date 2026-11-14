@@ -19,10 +19,10 @@ const TARGET_Z := -8.0
 const ROW_SPACING := 3.0
 const CHOICE_ROW_Y := 1.5
 const TOP_ROW_Y := 4.0
-const IMAGE_HEIGHT := 2.6
+const IMAGE_HEIGHT := 3.0
 const MAP_SIZE := Vector2(12.0, 6.0)
 # Drop a real map here and it replaces the placeholder board.
-const MAP_TEXTURE := "res://assets/maps/kazakhstan.png"
+const MAP_TEXTURE := "res://assets/maps/kazakhstan.svg"
 
 const DAMAGE := 10
 # Matching and chronology take several shots, so they get more time.
@@ -588,7 +588,7 @@ func _on_restart_button_pressed() -> void:
 
 func _on_next_button_pressed() -> void:
 	GameState.selected_level += 1
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file("res://character_select.tscn")
 
 
 func _on_levels_button_pressed() -> void:

@@ -77,6 +77,9 @@ static func validate_level(level) -> String:
 	if level.has("boss") and not level["boss"] is bool:
 		return "\"boss\" must be true or false"
 
+	if level.has("protagonist") and not level["protagonist"] is String:
+		return "\"protagonist\" must be a character id or \"\""
+
 	if level["stars"] < 1 or level["stars"] > 5:
 		return "\"stars\" must be 1 to 5"
 

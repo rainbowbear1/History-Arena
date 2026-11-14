@@ -50,6 +50,10 @@ text = "Ойнау"
 layout_mode = 2
 text = "Баптаулар"
 
+[node name="CreditsButton" type="Button" parent="MenuCenter/MenuVBox"]
+layout_mode = 2
+text = "Авторлар"
+
 [node name="SettingsContainer" type="CenterContainer" parent="."]
 visible = false
 layout_mode = 1
@@ -98,6 +102,49 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="CloseButton" type="Button" parent="SettingsContainer/SettingsPanel/SettingsMargin/SettingsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Жабу"
+
+[node name="CreditsContainer" type="CenterContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CreditsPanel" type="PanelContainer" parent="CreditsContainer"]
+custom_minimum_size = Vector2(900, 0)
+layout_mode = 2
+
+[node name="CreditsMargin" type="MarginContainer" parent="CreditsContainer/CreditsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="CreditsVBox" type="VBoxContainer" parent="CreditsContainer/CreditsPanel/CreditsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CreditsTitle" type="Label" parent="CreditsContainer/CreditsPanel/CreditsMargin/CreditsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 28
+text = "Авторлар / Credits"
+horizontal_alignment = 1
+
+[node name="CreditsText" type="Label" parent="CreditsContainer/CreditsPanel/CreditsMargin/CreditsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 3
+
+[node name="CreditsCloseButton" type="Button" parent="CreditsContainer/CreditsPanel/CreditsMargin/CreditsVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2

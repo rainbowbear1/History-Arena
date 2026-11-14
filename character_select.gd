@@ -22,6 +22,7 @@ var stat_values := {}
 @onready var ability_label: Label = %AbilityLabel
 @onready var back_button: Button = %BackButton
 @onready var choose_button: Button = %ChooseButton
+@onready var level_label: Label = %LevelLabel
 
 
 func _ready() -> void:
@@ -40,10 +41,18 @@ func _ready() -> void:
 		button.mouse_exited.connect(func(): _show(selected_id))
 		character_grid.add_child(button)
 
-	back_button.pressed.connect(func(): get_tree().change_scene_to_file("res://main_menu.tscn"))
+	back_button.pressed.connect(func(): get_tree().change_scene_to_file("res://level_select.tscn"))
 	choose_button.pressed.connect(_on_choose_pressed)
 
-	var current := CharacterDatabase.get_character(GameState.selected_character)
+	# Each level suggests its historical protagonist; any character can still be chosen.
+	var level := LevelDatabase.get_level(GameState.selected_level)
+	var protagonist: String = level.get("protagonist", "")
+	var start_id := protagonist if not protagonist.is_empty() else GameState.selected_character
+	level_label.text = "%d. %s" % [level.get("id", 0), level.get("title", "")]
+	if not protagonist.is_empty():
+		level_label.text += " · Деңгей кейіпкері: " + CharacterDatabase.get_character(protagonist)["name"]
+
+	var current := CharacterDatabase.get_character(start_id)
 	if not current.is_empty():
 		var index := CharacterDatabase.characters.find(current)
 		var button: Button = character_grid.get_child(index)
@@ -79,7 +88,7 @@ func _show(id: String) -> void:
 
 func _on_choose_pressed() -> void:
 	GameState.selected_character = selected_id
-	get_tree().change_scene_to_file("res://level_select.tscn")
+	get_tree().change_scene_to_file("res://main.tscn")
 
 
 func _build_stat_rows() -> void:

@@ -39,6 +39,13 @@ theme_override_font_sizes/font_size = 28
 text = "Кейіпкерді таңдаңыз"
 horizontal_alignment = 1
 
+[node name="LevelLabel" type="Label" parent="CenterContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
 [node name="Columns" type="HBoxContainer" parent="CenterContainer/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 24
@@ -114,4 +121,4 @@ text = "Артқа"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 44)
 layout_mode = 2
-text = "Таңдау"
+text = "Ойынды бастау"

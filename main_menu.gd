@@ -9,6 +9,24 @@ extends Control
 @onready var settings_status: Label = %SettingsStatus
 @onready var close_button: Button = %CloseButton
 
+@onready var credits_button: Button = $MenuCenter/MenuVBox/CreditsButton
+@onready var credits_container: CenterContainer = $CreditsContainer
+@onready var credits_text: Label = %CreditsText
+
+# Required attribution for third-party assets (full list: assets/CREDITS.md).
+const CREDITS := """Ойын: Тарих Аренасы — Godot Engine 4.7 (MIT).
+Карта: Natural Earth (public domain).
+Суреттер (Wikimedia Commons):
+«Алтын адам» — eggry, CC BY-SA 2.0
+Күлтегін ескерткіші — Vezirtonyukuk, CC BY-SA 4.0
+Отырар қалашығы — Coopypasted, CC BY-SA 4.0
+Қожа Ахмет Ясауи кесенесі — Petar Milošević, CC BY-SA 4.0
+Жошы хан кесенесі — Aeon32, public domain
+Абай Құнанбайұлы — public domain
+Байқоңыр, «Союз» ұшырылуы — NASA, public domain
+«Бәйтерек» — Quarot, CC0
+Лицензиялар: creativecommons.org/licenses"""
+
 var reset_armed: bool = false
 
 func _ready() -> void:
@@ -17,6 +35,8 @@ func _ready() -> void:
 
 	play_button.pressed.connect(_on_play_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
+	credits_button.pressed.connect(_on_credits_pressed)
+	%CreditsCloseButton.pressed.connect(_close_credits)
 
 	demo_check.toggled.connect(_on_demo_toggled)
 	reset_button.pressed.connect(_on_reset_pressed)
@@ -26,7 +46,7 @@ func _ready() -> void:
 
 
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file("res://character_select.tscn")
+	get_tree().change_scene_to_file("res://level_select.tscn")
 
 
 func _on_settings_pressed() -> void:
@@ -37,6 +57,19 @@ func _on_settings_pressed() -> void:
 	$MenuCenter.hide()
 	settings_container.show()
 	demo_check.grab_focus()
+
+
+func _on_credits_pressed() -> void:
+	credits_text.text = CREDITS
+	$MenuCenter.hide()
+	credits_container.show()
+	%CreditsCloseButton.grab_focus()
+
+
+func _close_credits() -> void:
+	credits_container.hide()
+	$MenuCenter.show()
+	credits_button.grab_focus()
 
 
 func _close_settings() -> void:

@@ -73,10 +73,11 @@ func test_level_data() -> void:
 	check(level_db.get_level(10).get("boss") == true, "level 10 is the boss level")
 	check(level_db.get_level(0).is_empty() and level_db.get_level(11).is_empty(), "out-of-range ids return {}")
 
-	for id in [1, 2, 3]:
-		check(level_db.is_playable(id), "level %d is playable" % id)
-	for id in range(4, 11):
-		check(not level_db.is_playable(id), "level %d is locked until its question file exists" % id)
+	for id in range(1, 11):
+		check(level_db.is_playable(id), "level %d is playable (question file exists)" % id)
+		var protagonist: String = level_db.get_level(id).get("protagonist", "")
+		check(protagonist.is_empty() or char_db.get_character(protagonist)["id"] == protagonist,
+			"level %d protagonist \"%s\" is a real character" % [id, protagonist])
 
 	var good := {"id": 1, "title": "T", "stars": 1, "question_file": "res://q.json", "time_per_question": 30,
 		"target_speed": 1.0, "extra_decoys": 0, "enemies": 0, "revive_hp": 50, "revivals": 2, "pass_percent": 60}
@@ -160,12 +161,33 @@ func test_question_types() -> void:
 
 
 func test_question_files() -> void:
+	var type_counts := {}
+	var ids := {}
 	for level in level_db.levels:
-		if not FileAccess.file_exists(level["question_file"]):
-			continue
 		var result := QuestionValidator.load_file(level["question_file"])
 		check(result.errors.is_empty(), "%s has no errors %s" % [level["question_file"], str(result.errors)])
-		check(result.questions.size() >= 10, "%s has at least 10 questions" % level["question_file"])
+		check(result.questions.size() >= 12, "%s has at least 12 tasks (got %d)" % [level["question_file"], result.questions.size()])
+		var level_types := {}
+		for question in result.questions:
+			var type := QuestionValidator.get_type(question)
+			level_types[type] = true
+			type_counts[type] = type_counts.get(type, 0) + 1
+			check(not ids.has(question.get("id")), "task id %s is unique across levels" % question.get("id"))
+			ids[question.get("id")] = true
+			if type == "image":
+				check(load(question["image"]) is Texture2D, "%s image loads" % question["id"])
+			if type == "map":
+				for location in question["locations"]:
+					# Same projection as tools/build_map.py: the cos(48°) factor cancels out for x.
+					var x: float = (location["lon"] - 40.75) / (93.05 - 40.75)
+					var y: float = (56.5 - location["lat"]) / (56.5 - 39.0)
+					check(absf(x - location["x"]) < 0.002 and absf(y - location["y"]) < 0.002,
+						"%s: %s pin matches its latitude/longitude" % [question["id"], location["name"]])
+		for type in ["single_choice", "fill_blank", "matching", "chronology"]:
+			check(level_types.has(type), "level %d has a %s task" % [level["id"], type])
+	for type in QuestionValidator.TYPES:
+		check(type_counts.get(type, 0) >= (5 if type in ["map", "image"] else 10), "%s tasks across the game: %d" % [type, type_counts.get(type, 0)])
+	check(ResourceLoader.exists("res://assets/maps/kazakhstan.svg") and load("res://assets/maps/kazakhstan.svg") is Texture2D, "Kazakhstan map loads")
 
 
 func test_level_select() -> void:
@@ -179,11 +201,11 @@ func test_level_select() -> void:
 	for button in grid.get_children():
 		if not button.disabled:
 			enabled += 1
-	check(enabled == 3, "3 level buttons enabled (got %d)" % enabled)
+	check(enabled == 10, "demo mode: all 10 level buttons enabled (got %d)" % enabled)
 	var info: Label = scene.get_node("CenterContainer/VBoxContainer/LevelInfoLabel")
 	check(info.text.begins_with("1. Сақтар дәуірі"), "info label shows level 1")
 	scene._show_level_info(10)
-	check(info.text.contains("BOSS") and info.text.contains("дайындалуда"), "level 10 shows BOSS and not ready yet")
+	check(info.text.contains("BOSS") and not info.text.contains("дайындалуда"), "level 10 shows BOSS and is ready")
 	scene.queue_free()
 	await process_frame
 
@@ -194,7 +216,7 @@ func test_arena() -> void:
 		var arena := await _load_arena()
 		var quiz = arena.get_node("QuizManager")
 		check(quiz.question_file == level_db.get_level(level)["question_file"], "level %d uses its question file" % level)
-		check(quiz.questions.size() == 13, "level %d loads 13 tasks" % level)
+		check(quiz.questions.size() == QuestionValidator.load_file(quiz.question_file).questions.size(), "level %d loads all its tasks" % level)
 		var types := {}
 		for question in quiz.questions:
 			types[QuestionValidator.get_type(question)] = true
@@ -253,6 +275,7 @@ func test_arena() -> void:
 	await test_characters()
 	await test_difficulty()
 	await test_progress()
+	await test_full_playthrough()
 	progress.path = ProgressStoreScript.SAVE_PATH
 	progress.load_data()
 
@@ -570,9 +593,33 @@ func test_characters() -> void:
 	check(game_state.selected_character == "kabanbay", "choosing stores the character")
 	await process_frame
 	await process_frame
-	check(current_scene != null and current_scene.name == "LevelSelect", "choosing opens level select")
+	check(current_scene != null and current_scene.name == "Main", "choosing starts the level")
 	current_scene.queue_free()
 	await process_frame
+
+	# Each level preselects its historical protagonist; levels without one keep the last choice.
+	game_state.selected_level = 7
+	screen = load("res://character_select.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	check(screen.selected_id == "kabanbay", "level 7 preselects Қабанбай батыр")
+	check(screen.level_label.text.contains("Деңгей кейіпкері: Қабанбай батыр"), "screen names the level's protagonist")
+	screen.get_node("%CharacterGrid").get_child(9).pressed.emit()
+	check(screen.selected_id == "manshuk", "any character can still be chosen")
+	screen.queue_free()
+	await process_frame
+	game_state.selected_level = 5
+	game_state.selected_character = "kasym"
+	screen = load("res://character_select.tscn").instantiate()
+	root.add_child(screen)
+	current_scene = screen
+	await process_frame
+	check(screen.selected_id == "kasym", "level without a protagonist keeps the last choice")
+	screen.queue_free()
+	await process_frame
+	game_state.selected_level = 1
+	game_state.selected_character = "kabanbay"
 
 	# Stats in the arena
 	game_state.selected_level = 1
@@ -958,7 +1005,7 @@ func test_progress() -> void:
 	quiz.next_button.pressed.emit()
 	await process_frame
 	await process_frame
-	check(game_state.selected_level == 2 and current_scene.get_node("QuizManager").question_file.ends_with("huns.json"), "next level loads level 2")
+	check(game_state.selected_level == 2 and current_scene.name == "CharacterSelect" and current_scene.selected_id == "mode", "next level goes to level 2's character screen with Мөде preselected")
 	current_scene.queue_free()
 	await process_frame
 
@@ -1032,6 +1079,59 @@ func test_progress() -> void:
 	menu.queue_free()
 	await process_frame
 	progress.reset()
+
+
+func test_full_playthrough() -> void:
+	print("== Play-through: every level answered correctly")
+	progress.reset()
+	progress.set_demo_unlock(true)
+	Engine.time_scale = 5.0
+	for level in level_db.levels:
+		game_state.selected_level = level["id"]
+		game_state.selected_character = level.get("protagonist", "")
+		var arena := await _load_arena()
+		var quiz = arena.get_node("QuizManager")
+		var total: int = quiz.questions.size()
+		for i in range(total):
+			var guard := 0
+			while not quiz.accepting_answers and guard < 200:
+				await process_frame
+				guard += 1
+			if quiz.results_container.visible or quiz.revival_panel.visible:
+				break
+			_solve(quiz)
+			await wait(1.1)
+		var guard := 0
+		while not quiz.results_container.visible and guard < 300:
+			await process_frame
+			guard += 1
+		check(quiz.results_container.visible and quiz.results_title.text == "Деңгей өтілді!",
+			"level %d (%s) can be completed" % [level["id"], level["title"]])
+		check(quiz.score == total * 100 and quiz.results_stars.stars == 3,
+			"level %d: perfect run scores %d with 3 stars (got %d, %d stars)" % [level["id"], total * 100, quiz.score, quiz.results_stars.stars])
+		check(progress.level_result(level["id"])["passed"], "level %d result saved" % level["id"])
+		arena.queue_free()
+		await process_frame
+	Engine.time_scale = 1.0
+	progress.reset()
+	progress.set_demo_unlock(true)
+	game_state.selected_level = 1
+	game_state.selected_character = ""
+
+
+# Answers the current task correctly by hitting the right targets in the right order.
+func _solve(quiz) -> void:
+	var question: Dictionary = quiz.current_task.question
+	match QuestionValidator.get_type(question):
+		"chronology":
+			for item in question["items"]:
+				_by_text(quiz, item).hit()
+		"matching":
+			for pair in question["pairs"]:
+				_by_text(quiz, pair["left"]).hit()
+				_by_text(quiz, pair["right"]).hit()
+		_:
+			quiz.targets.filter(func(t): return t.is_correct)[0].hit()
 
 
 # Loads the arena and replaces its questions with a single task.

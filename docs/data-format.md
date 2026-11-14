@@ -15,6 +15,7 @@ Run the tests (below) after every content change; they report the exact file, en
 | `title` | text | Arena name shown in level select. |
 | `stars` | 1–5 | Difficulty shown to the player. |
 | `boss` | true/false | Boss level (shown as "BOSS"). Optional, default false. |
+| `protagonist` | character id or `""` | Historical protagonist preselected on the character screen (free choice stays available). Optional. |
 | `question_file` | `res://` path | Question file for this arena. The level stays locked until this file exists. |
 | `time_per_question` | seconds | Time limit per task. |
 | `target_speed` | number | Multiplier for target movement speed. |
@@ -125,11 +126,13 @@ Examples of every type: `tests/fixtures/all_types.json`.
 ### 4. `map` — find a place on the map of Kazakhstan
 `locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, at least 0.08 apart, where x/y are positions
 on the map image (0,0 = top-left, 1,1 = bottom-right). `correct`: one of the names.
-Pins show numbers 1–4, not names. Put the map image at `assets/maps/kazakhstan.png` (2:1 aspect,
-e.g. 2048×1024); until then a plain placeholder board is shown.
+Pins show numbers 1–4, not names. The board shows `assets/maps/kazakhstan.svg` (Natural Earth).
+Get x/y with `python tools/build_map.py --point <lat> <lon>` and keep `lat`/`lon` in the entry
+for review (the tests check that x/y match them).
 
 ### 5. `image` — identify the period of an image or artifact
-`image`: `res://` path to an image in the project. `answers` and `correct` as in `single_choice`.
+`image`: `res://` path to an image in the project. Use only images with a licence that allows reuse, and add
+them to `assets/CREDITS.md` and the in-game credits (`main_menu.gd`). `answers` and `correct` as in `single_choice`.
 
 ### 6. `fill_blank` — fill in the missing word
 `question` must contain `___` where the blank is. `answers` and `correct` as in `single_choice`.

@@ -7,9 +7,9 @@ pages 3 and 7–10), not the full vision in `docs/vision.md`.
 | Assignment requirement | Status |
 |---|---|
 | FPS quiz-shooter core (shoot the target with the right answer) | Done |
-| 10 arenas with rising difficulty (★–★★★★★, level 10 BOSS) | Data and difficulty systems done; **only levels 1–3 have questions** |
+| 10 arenas with rising difficulty (★–★★★★★, level 10 BOSS) | Done (M7): all 10 levels have 12–15 tasks; awaiting your accuracy review |
 | 10 characters with HP, speed, weapon, ability, defense | Done (select screen, stats applied, 6 abilities) |
-| 6 task types (single choice, matching, chronology, map, image, fill-in) | All six play; **map and image have no real assets/content yet** |
+| 6 task types (single choice, matching, chronology, map, image, fill-in) | Done (M7): Natural Earth map, 8 licensed images, every type used across the game |
 | Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Done (timer, speed, decoys, enemies, boss, fewer ability uses) |
 | HP −10 per mistake, +100 per correct answer | Done |
 | "Жан біткенде" medical help | Done (single HP pool, help restores 50/40/30 HP, retry the task) |
