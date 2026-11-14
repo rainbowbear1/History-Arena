@@ -25,12 +25,20 @@ const MAP_SIZE := Vector2(12.0, 6.0)
 const MAP_TEXTURE := "res://assets/maps/kazakhstan.png"
 
 const DAMAGE := 10
+# Matching and chronology take several shots, so they get more time.
+const MULTI_STEP_TYPES := ["matching", "chronology"]
+const MULTI_STEP_TIME := 2.0
+# Image tasks keep the top row free for the picture, so they get no decoys.
+const DECOY_TYPES := ["single_choice", "fill_blank"]
 const POINTS := 100
 const ABILITY_COLOR := Color(0.91, 0.78, 0.5)
 # Question types that can be asked on the medical-help screen (plain four-button answers).
 const REVIVAL_TYPES := ["single_choice", "fill_blank"]
 
 var score: int = 0
+var level: Dictionary = {}
+var time_limit: float = 0.0
+var time_left: float = 0.0
 var max_health: int = 100
 var health: int = 100
 var revive_hp: int = 50
@@ -62,6 +70,7 @@ var feedback_token: int = 0
 @onready var targets_root: Node3D = $"../Targets"
 @onready var image_board: Sprite3D = $"../ImageBoard"
 @onready var map_board: MeshInstance3D = $"../MapBoard"
+@onready var enemy_spawner: Node3D = $"../Enemies"
 
 
 @onready var question_label: Label = $"../HUD/QuestionLabel"
@@ -69,6 +78,7 @@ var feedback_token: int = 0
 @onready var progress_label: Label = $"../HUD/ProgressLabel"
 @onready var score_label: Label = $"../HUD/ScoreLabel"
 @onready var health_label: Label = $"../HUD/HealthLabel"
+@onready var timer_label: Label = $"../HUD/TimerLabel"
 @onready var character_label: Label = $"../HUD/CharacterLabel"
 @onready var ability_label: Label = $"../HUD/AbilityLabel"
 @onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
@@ -81,19 +91,21 @@ var feedback_token: int = 0
 func _ready() -> void:
 	_setup_map_board()
 
-	character = CharacterDatabase.get_character(GameState.selected_character)
-	if not character.is_empty():
-		max_health = character["hp"]
-		ability_uses = character["ability"]["uses"]
-	health = max_health
-
-	var level := LevelDatabase.get_level(GameState.selected_level)
+	level = LevelDatabase.get_level(GameState.selected_level)
 	if not level.is_empty():
 		question_file = level["question_file"]
 		revive_hp = level["revive_hp"]
 		revivals_left = level["revivals"]
 
+	character = CharacterDatabase.get_character(GameState.selected_character)
+	if not character.is_empty():
+		max_health = character["hp"]
+		# Resources shrink on harder levels: one use fewer every two stars.
+		ability_uses = maxi(1, character["ability"]["uses"] - (level.get("stars", 1) - 1) / 2)
+	health = max_health
+
 	revival_panel.revived.connect(_on_revived)
+	enemy_spawner.configure(self, $"../Player", level)
 
 	load_questions_from_file()
 
@@ -125,6 +137,37 @@ func load_question() -> void:
 	current_task.start(question, self)
 	hint_label.text = current_task.hint()
 	update_progress()
+
+	time_limit = 0.0
+	if not level.is_empty():
+		var multi_step := MULTI_STEP_TYPES.has(QuestionValidator.get_type(question))
+		time_limit = level["time_per_question"] * (MULTI_STEP_TIME if multi_step else 1.0)
+	time_left = time_limit
+	update_timer()
+	enemy_spawner.start()
+
+
+func _process(delta: float) -> void:
+	if not timer_running():
+		return
+	time_left = maxf(time_left - delta, 0.0)
+	update_timer()
+	if time_left <= 0.0:
+		_on_time_up()
+
+
+# Running out of time counts as a wrong answer.
+func _on_time_up() -> void:
+	if current_task.has_method("reveal_correct"):
+		missed_questions.append(current_task.question)
+		current_task.reveal_correct()
+	var blocked := take_damage(DAMAGE)
+	finish_task("Уақыт бітті! Қалқан қорғады" if blocked else "Уақыт бітті!", Color.RED)
+
+
+func update_timer() -> void:
+	timer_label.text = "Уақыт: %d" % ceili(time_left) if time_limit > 0.0 else ""
+	timer_label.add_theme_color_override("font_color", Color.RED if time_left <= 5.0 else Color.WHITE)
 
 
 
@@ -174,6 +217,21 @@ func take_damage(amount: int) -> bool:
 	return false
 
 
+# An enemy strike: the character's defense blocks part of it (at least 1 HP gets through).
+func enemy_attack(amount: int) -> void:
+	if not accepting_answers:
+		return
+	var defense: int = character.get("defense", 0)
+	var reduced := maxi(1, roundi(amount * (100 - defense) / 100.0))
+	var blocked := take_damage(reduced)
+	if health <= 0:
+		finish_task("Жау жеңді!", Color.RED)
+	elif blocked:
+		show_feedback("Қалқан қорғады!", ABILITY_COLOR, 0.8)
+	else:
+		show_feedback("Жау шабуылы! −%d HP" % reduced, Color.RED, 0.8)
+
+
 func use_ability() -> void:
 	if not accepting_answers or current_task == null or ability_uses <= 0:
 		return
@@ -193,6 +251,7 @@ func set_slow(enabled: bool) -> void:
 	slow_active = enabled
 	for target in targets:
 		target.speed_scale = Abilities.SLOW_FACTOR if enabled else 1.0
+	enemy_spawner.set_speed_scale(Abilities.SLOW_FACTOR if enabled else 1.0)
 
 	if enabled:
 		slow_token += 1
@@ -202,9 +261,59 @@ func set_slow(enabled: bool) -> void:
 			set_slow(false)
 
 
-# True while a task's countdown is running (the timer arrives with level difficulty).
+# True while a task's countdown is running.
 func timer_running() -> bool:
+	return accepting_answers and current_task != null and time_limit > 0.0
+
+
+func extra_decoys() -> int:
+	return level.get("extra_decoys", 0)
+
+
+# Wrong answers borrowed from other questions in this level, to use as decoy targets.
+# Prefers answers of the same kind (dates with dates, names with names).
+func decoy_answers(question: Dictionary, count: int) -> Array:
+	var wants_digits := _has_digit(question["correct"])
+	# Compare by meaning, so "552" is never a decoy beside "552 ж.".
+	var taken := {}
+	for answer in question["answers"]:
+		taken[_answer_key(answer)] = true
+
+	var same_kind := []
+	var other_kind := []
+	for other in questions:
+		if other == question or not DECOY_TYPES.has(QuestionValidator.get_type(other)):
+			continue
+		for answer in other["answers"]:
+			var key := _answer_key(answer)
+			if taken.has(key):
+				continue
+			taken[key] = true
+			if _has_digit(answer) == wants_digits:
+				same_kind.append(answer)
+			else:
+				other_kind.append(answer)
+
+	same_kind.shuffle()
+	other_kind.shuffle()
+	return (same_kind + other_kind).slice(0, count)
+
+
+static func _has_digit(text: String) -> bool:
+	for c in text:
+		if c >= "0" and c <= "9":
+			return true
 	return false
+
+
+# Answers with numbers compare by their digits ("552 ж." == "552"); others by lowercase letters.
+static func _answer_key(text: String) -> String:
+	var key := ""
+	var digits_only := _has_digit(text)
+	for c in text.to_lower():
+		if (c >= "0" and c <= "9") or (not digits_only and c.to_upper() != c.to_lower()):
+			key += c
+	return key
 
 
 func remove_target(target) -> void:
@@ -230,6 +339,7 @@ func finish_task(text: String, color: Color) -> void:
 func show_defeat() -> void:
 	accepting_answers = false
 	clear_arena()
+	enemy_spawner.stop()
 	question_label.text = ""
 
 	var help_question := {}
@@ -296,6 +406,7 @@ func show_feedback(text: String, color: Color, duration: float) -> void:
 func show_results(title: String) -> void:
 	accepting_answers = false
 	clear_arena()
+	enemy_spawner.stop()
 	question_label.text = ""
 	results_label.text = title + "\n\nЖалпы ұпай: " + str(score)
 	results_container.show()
@@ -327,6 +438,7 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 	target.position = at
 	if not sways:
 		target.move_distance = 0.0
+	target.move_speed *= level.get("target_speed", 1.0)
 
 	target.speed_scale = Abilities.SLOW_FACTOR if slow_active else 1.0
 	targets_root.add_child(target)
@@ -368,6 +480,8 @@ func clear_arena() -> void:
 	current_task = null
 	hint_label.text = ""
 	progress_label.text = ""
+	time_limit = 0.0
+	timer_label.text = ""
 	image_board.hide()
 	map_board.hide()
 

@@ -34,7 +34,11 @@ func on_target_hit(target) -> Outcome:
 		return Outcome.SOLVED
 
 	target.flash_wrong()
+	reveal_correct()
+	return Outcome.FAILED
+
+
+func reveal_correct() -> void:
 	for pin in quiz.targets:
 		if pin.is_correct:
 			pin.set_state(Target.State.DONE)
-	return Outcome.FAILED

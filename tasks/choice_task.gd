@@ -24,6 +24,13 @@ func _build() -> void:
 		var target = quiz.spawn_target(answers[i], positions[i])
 		target.is_correct = answers[i] == question["correct"]
 
+	# Harder levels add fake answers on the top row.
+	if quiz.DECOY_TYPES.has(question.get("type", "single_choice")) and quiz.extra_decoys() > 0:
+		var decoys: Array = quiz.decoy_answers(question, quiz.extra_decoys())
+		var decoy_positions: Array = quiz.row_positions(decoys.size(), quiz.TOP_ROW_Y)
+		for i in range(decoys.size()):
+			quiz.spawn_target(decoys[i], decoy_positions[i])
+
 
 func remove_wrong(count: int) -> bool:
 	return _remove_wrong_targets(count)
@@ -35,11 +42,11 @@ func on_target_hit(target) -> Outcome:
 		return Outcome.SOLVED
 
 	target.flash_wrong()
-	_reveal_correct()
+	reveal_correct()
 	return Outcome.FAILED
 
 
-func _reveal_correct() -> void:
+func reveal_correct() -> void:
 	for target in quiz.targets:
 		if target.is_correct:
 			target.set_state(Target.State.DONE)

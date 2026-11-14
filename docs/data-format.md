@@ -24,8 +24,24 @@ Run the tests (below) after every content change; they report the exact file, en
 | `revivals` | whole number | How many times medical help can be offered in one run. |
 | `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass and unlock the next level. |
 
-`revive_hp` and `revivals` are used now. The timer, speed, decoys, enemies and pass mark are validated
-and will be used by the gameplay as later milestones land.
+All fields except `pass_percent` (used once progress is saved) drive the gameplay:
+
+- **Timer:** `time_per_question` seconds per task, doubled for matching and chronology. Running out
+  counts as a wrong answer (−10 HP, correct answer revealed). The timer stops between tasks and
+  while paused.
+- **Targets:** sway speed is multiplied by `target_speed`.
+- **Decoys:** `extra_decoys` wrong answers, taken from other questions in the same level, are added
+  on the top row for `single_choice` and `fill_blank` tasks (image tasks need the top row for the
+  picture). Dates get date decoys, and a decoy never restates an option in another form ("552" next
+  to "552 ж.").
+- **Enemies:** `enemies` simple enemies enter from the sides and back, walk to the player and strike
+  in melee range. With `stars` = s: HP 1 + s/2, speed 2 + 0.3·s m/s, damage 4 + 2·s, reduced by the
+  character's `defense` (at least 1). They only move and attack while a task is being answered,
+  return 3 s after being killed, and give no points (so the score cannot be farmed).
+- **Boss:** a `boss` level adds one large boss enemy (12 HP, 20 damage) that does not come back once
+  defeated.
+- **Fewer resources:** ability uses drop by one for every two stars above 1 (never below 1), on top
+  of the smaller `revive_hp` and `revivals` on later levels.
 
 ### HP and medical help
 The player has one pool of 100 HP; every mistake costs 10 HP. At 0 HP the "СІЗ ЖЕҢІЛДІҢІЗ!" screen

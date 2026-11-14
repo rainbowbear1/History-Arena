@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://ci0d1yv5rwtbw" path="res://pause_menu.gd" id="2_1bvp3"]
 [ext_resource type="Script" uid="uid://v0ik8lrjeaw" path="res://quiz_manager.gd" id="3_h2yge"]
 [ext_resource type="Script" path="res://revival_panel.gd" id="4_revival"]
+[ext_resource type="Script" path="res://enemy_spawner.gd" id="5_spawner"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
 
@@ -26,6 +27,12 @@ sky_material = SubResource("ProceduralSkyMaterial_nd5yf")
 [sub_resource type="Environment" id="Environment_o6pq0"]
 background_mode = 2
 sky = SubResource("Sky_xpti3")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_x"]
+size = Vector3(32, 6, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_z"]
+size = Vector3(1, 6, 32)
 
 [sub_resource type="QuadMesh" id="QuadMesh_map"]
 size = Vector2(12, 6)
@@ -141,6 +148,20 @@ offset_right = 78.0
 offset_bottom = 78.0
 theme_override_font_sizes/font_size = 22
 text = "HP: 100"
+
+[node name="TimerLabel" type="Label" parent="HUD"]
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -220.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 52.0
+grow_horizontal = 0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 2
 
 [node name="CharacterLabel" type="Label" parent="HUD"]
 anchors_preset = -1
@@ -344,6 +365,35 @@ text = "Қайта бастау"
 [node name="LevelsButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1078300344]
 layout_mode = 2
 text = "Деңгейлер"
+
+[node name="Enemies" type="Node3D" parent="."]
+script = ExtResource("5_spawner")
+
+[node name="ArenaWalls" type="Node3D" parent="."]
+
+[node name="WallNorth" type="StaticBody3D" parent="ArenaWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -15.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ArenaWalls/WallNorth"]
+shape = SubResource("BoxShape3D_wall_x")
+
+[node name="WallSouth" type="StaticBody3D" parent="ArenaWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 15.5)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ArenaWalls/WallSouth"]
+shape = SubResource("BoxShape3D_wall_x")
+
+[node name="WallWest" type="StaticBody3D" parent="ArenaWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15.5, 3, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ArenaWalls/WallWest"]
+shape = SubResource("BoxShape3D_wall_z")
+
+[node name="WallEast" type="StaticBody3D" parent="ArenaWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 3, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ArenaWalls/WallEast"]
+shape = SubResource("BoxShape3D_wall_z")
 
 [node name="Targets" type="Node3D" parent="."]
 

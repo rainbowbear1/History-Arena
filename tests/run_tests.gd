@@ -244,6 +244,7 @@ func test_arena() -> void:
 	await test_map(samples["map"])
 	await test_hp_and_medical_help()
 	await test_characters()
+	await test_difficulty()
 
 
 func test_choice_types(samples: Dictionary) -> void:
@@ -651,6 +652,7 @@ func test_characters() -> void:
 
 	game_state.selected_character = "kasym"
 	quiz = await _start_task(samples["single_choice"])
+	quiz.time_limit = 0.0
 	quiz.use_ability()
 	check(quiz.ability_uses == 3, "extra time refused while no timer runs")
 	quiz.get_parent().queue_free()
@@ -679,6 +681,187 @@ func test_characters() -> void:
 	quiz.get_parent().queue_free()
 	await process_frame
 	game_state.selected_character = ""
+
+
+func test_difficulty() -> void:
+	print("== Difficulty: timer, speed, decoys")
+	var samples := {}
+	for q in QuestionValidator.load_file("res://tests/fixtures/all_types.json").questions:
+		samples[QuestionValidator.get_type(q)] = q
+	game_state.selected_character = ""
+
+	# Timer
+	var quiz = await _start_task(samples["single_choice"])
+	check(quiz.time_limit == 30.0 and quiz.timer_label.text == "Уақыт: 30", "level 1 gives 30 s per task")
+	await wait(1.1)
+	check(quiz.time_left < 29.5 and quiz.time_left > 27.0, "timer counts down (%.1f s left)" % quiz.time_left)
+	paused = true
+	var frozen: float = quiz.time_left
+	await create_timer(0.5, true).timeout
+	check(quiz.time_left == frozen, "timer stops while the game is paused")
+	paused = false
+	quiz.time_left = 4.0
+	await wait(0.1)
+	check(quiz.timer_label.get_theme_color("font_color") == Color.RED, "timer turns red in the last 5 s")
+	quiz.time_left = 0.1
+	await wait(0.3)
+	check(quiz.health == 90 and quiz.feedback_label.text == "Уақыт бітті!", "running out of time costs 10 HP")
+	check(quiz.targets.filter(func(t): return t.is_correct)[0].state == Target.State.DONE, "time-out reveals the correct answer")
+	check(quiz.missed_questions.has(samples["single_choice"]), "time-out counts as a missed question")
+	var after_timeout: float = quiz.time_left
+	await wait(0.5)
+	check(quiz.time_left == after_timeout and not quiz.timer_running(), "timer stops during feedback")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	quiz = await _start_task(samples["chronology"])
+	check(quiz.time_limit == 60.0, "multi-step tasks get double time")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	game_state.selected_character = "kasym"
+	quiz = await _start_task(samples["single_choice"])
+	var before: float = quiz.time_left
+	quiz.use_ability()
+	check(quiz.time_left > before + 9.0 and quiz.ability_uses == 2, "extra time adds 10 s")
+	quiz.get_parent().queue_free()
+	await process_frame
+
+	# Fewer ability uses on harder levels (level 5 has no questions yet; its error is expected).
+	game_state.selected_character = "al_farabi"
+	for case in [[1, 3], [3, 3], [5, 2]]:
+		game_state.selected_level = case[0]
+		var probe := await _load_arena()
+		check(probe.get_node("QuizManager").ability_uses == case[1], "level %d: 50/50 has %d uses" % case)
+		probe.queue_free()
+		await process_frame
+	game_state.selected_character = ""
+
+	# Level 3: faster targets, one decoy, one enemy.
+	game_state.selected_level = 3
+	var arena := await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	check(quiz.targets.all(func(t): return t.move_speed >= 1.25 * 0.8 - 0.001 and t.move_speed <= 1.25 * 1.2 + 0.001), "targets sway 1.25x faster on level 3")
+	var question: Dictionary = quiz.questions[0]
+	check(quiz.targets.size() == 5, "level 3 adds one decoy target (got %d)" % quiz.targets.size())
+	var decoys: Array = quiz.targets.filter(func(t): return not question["answers"].has(t.answer_text))
+	check(decoys.size() == 1 and not decoys[0].is_correct, "decoy is a wrong answer from another question")
+	check(decoys[0].starting_position.y == quiz.TOP_ROW_Y, "decoy sits on the top row")
+	check(quiz.targets.filter(func(t): return t.is_correct).size() == 1, "still exactly one correct target")
+	var year_question: Dictionary = quiz.questions.filter(func(q): return q.get("correct") == "751")[0]
+	var year_decoys: Array = quiz.decoy_answers(year_question, 2)
+	check(year_decoys.size() == 2 and year_decoys.all(func(a): return quiz._has_digit(a)), "date questions get date decoys %s" % str(year_decoys))
+	check(not year_decoys.any(func(a): return year_question["answers"].has(a)), "decoys never repeat the real options")
+	var founding: Dictionary = quiz.questions[0]
+	for attempt in range(20):
+		var picked: Array = quiz.decoy_answers(founding, 4)
+		if picked.any(func(a): return quiz._answer_key(a) in ["552", "603", "704", "751"]):
+			check(false, "decoys never restate an option in another form %s" % str(picked))
+			break
+	check(quiz._answer_key("552 ж.") == quiz._answer_key("552") and quiz._answer_key("Мөде") == quiz._answer_key("мөде"), "answer keys ignore formatting")
+	quiz.questions = [samples["image"]]
+	quiz.question_index = 0
+	quiz.load_question()
+	check(quiz.targets.size() == 4, "image tasks get no decoys")
+	arena.queue_free()
+	await process_frame
+
+	print("== Enemies")
+	game_state.selected_level = 3
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	var player = arena.get_node("Player")
+	var spawner = quiz.enemy_spawner
+	check(spawner.enemies.size() == 1, "level 3 has one enemy")
+	var enemy = spawner.enemies[0]
+	check(enemy.max_hp == 2 and enemy.damage == 8 and is_equal_approx(enemy.move_speed, 2.6), "enemy stats scale with stars")
+	check(absf(absf(enemy.position.x) - 13.0) < 0.5 or absf(enemy.position.z - 13.0) < 0.5, "enemy enters from the side or back")
+	await physics_frame
+	var start_distance: float = enemy.global_position.distance_to(player.global_position)
+	await wait(1.0)
+	check(enemy.global_position.distance_to(player.global_position) < start_distance - 1.0, "enemy walks toward the player")
+
+	quiz.accepting_answers = false
+	var frozen_at: Vector3 = enemy.global_position
+	await wait(0.5)
+	check(Vector2(enemy.global_position.x, enemy.global_position.z).distance_to(Vector2(frozen_at.x, frozen_at.z)) < 0.01, "enemies freeze between tasks")
+	quiz.accepting_answers = true
+
+	enemy.global_position = player.global_position + Vector3(1.2, 0, 0)
+	enemy.attack_cooldown = 0.0
+	var hp_before: int = quiz.health
+	await wait(0.3)
+	check(quiz.health == hp_before - 7, "enemy hit deals 8 minus Томирис' 10%% defense = 7 (HP %d -> %d)" % [hp_before, quiz.health])
+	check(quiz.feedback_label.text == "Жау шабуылы! −7 HP", "enemy hit announced")
+	await wait(0.6)
+	check(quiz.health == hp_before - 7, "attacks have a cooldown")
+
+	enemy.global_position = player.global_position + Vector3(0, 0, 6)
+	# physics_frame fires before the physics step, so wait two for the move to reach the physics space.
+	await physics_frame
+	await physics_frame
+	var score_before: int = quiz.score
+	player.get_node("Camera3D").look_at(enemy.global_position + Vector3(0, 0.9, 0))
+	player.cooldown_left = 0.0
+	player.shoot()
+	check(enemy.hp == 1, "shooting an enemy deals weapon damage")
+	player.cooldown_left = 0.0
+	player.shoot()
+	await process_frame
+	check(spawner.enemies.is_empty(), "enemy dies at 0 HP")
+	check(quiz.score == score_before, "killing enemies gives no points (no score farming)")
+	await wait(spawner.RESPAWN_DELAY + 0.3)
+	check(spawner.enemies.size() == 1, "a new enemy arrives after a delay")
+
+	quiz.set_slow(true)
+	check(spawner.enemies[0].speed_scale == Abilities.SLOW_FACTOR, "slow time slows enemies")
+	quiz.set_slow(false)
+
+	# Death by enemy: defeat, enemies cleared; after medical help the task is retried and enemies return.
+	quiz.health = 5
+	var retry_index: int = quiz.question_index
+	quiz.enemy_attack(8)
+	check(quiz.health == 0 and not quiz.accepting_answers, "enemy can finish the player")
+	await wait(1.2)
+	check(quiz.revival_panel.visible and spawner.enemies.is_empty(), "defeat screen, enemies removed")
+	_press_correct(quiz.revival_panel)
+	await wait(1.7)
+	check(quiz.question_index == retry_index and spawner.enemies.size() == 1, "after medical help the task is retried and enemies return")
+	arena.queue_free()
+	await process_frame
+
+	game_state.selected_character = "kabanbay"
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	quiz.enemy_attack(8)
+	check(quiz.health == 130 - 6, "Қабанбай's 30% defense: 8 -> 6 damage")
+	quiz.enemy_attack(1)
+	check(quiz.health == 130 - 7, "defense never blocks the last 1 HP of a hit")
+	quiz.accepting_answers = false
+	quiz.enemy_attack(8)
+	check(quiz.health == 130 - 7, "no enemy damage between tasks")
+	quiz.accepting_answers = true
+
+	var wall_hit: Dictionary = arena.get_world_3d().direct_space_state.intersect_ray(
+		PhysicsRayQueryParameters3D.create(Vector3(0, 1, 0), Vector3(40, 1, 0)))
+	check(not wall_hit.is_empty() and wall_hit["position"].x < 15.5, "arena walls stop players and enemies at the edge")
+
+	# Boss level
+	spawner = quiz.enemy_spawner
+	spawner.stop()
+	spawner.configure(quiz, arena.get_node("Player"), {"enemies": 0, "stars": 5, "boss": true})
+	spawner.start()
+	check(spawner.enemies.size() == 1 and spawner.enemies[0].get_meta("boss"), "boss level spawns a boss")
+	var boss = spawner.enemies[0]
+	check(boss.max_hp == spawner.BOSS_HP and boss.damage == spawner.BOSS_DAMAGE and boss.scale.x > 1.5, "boss is bigger and tougher")
+	boss.take_hit(spawner.BOSS_HP)
+	await wait(spawner.RESPAWN_DELAY + 0.3)
+	spawner.start()
+	check(spawner.enemies.is_empty() and spawner.boss_defeated, "a defeated boss stays defeated")
+	arena.queue_free()
+	await process_frame
+	game_state.selected_character = ""
+	game_state.selected_level = 1
 
 
 # Loads the arena and replaces its questions with a single task.
