@@ -189,12 +189,18 @@ question: rulers beside rulers, rivers beside rivers. Leave it out when no sensi
 ### 4. `map` — find a place on the map of Kazakhstan
 `locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, at least 0.05 apart, where x/y are positions
 on the map image (0,0 = top-left, 1,1 = bottom-right). `correct`: one of the names.
-Pins show numbers 1–4, not names. The board shows `assets/maps/kazakhstan.svg` (Natural Earth).
+Markers show numbers 1–4, not names. The map (`assets/maps/kazakhstan.svg`, Natural Earth) opens as a
+HUD overlay under the question (`map_overlay.gd`); while it is open the mouse moves a reticle over
+the map instead of turning the camera, a shot hits the marker under the reticle, and enemies hold
+their fire. Wrong pins should be **nearby** plausible places (a neighbouring city or region), not the
+other end of the country.
 Get x/y with `python tools/build_map.py --point <lat> <lon>` and keep `lat`/`lon` in the entry
 for review (the tests check that x/y match them).
 
 ### 5. `image` — identify the period of an image or artifact
-`image`: `res://` path to an image in the project. Use only images with a licence that allows reuse, and add
+`image`: `res://` path to an image in the project. The photo is shown in a HUD panel under the
+question (`image_panel.gd`, aspect ratio kept, at most 42 % × 30 % of the screen) with its author and
+licence; the answer soldiers stay in the arena with their labels below their feet. Use only images with a licence that allows reuse, and add
 them to `assets/CREDITS.md` and the in-game credits (`main_menu.gd`). `answers` and `correct` as in `single_choice`.
 
 ### 6. `fill_blank` — fill in the missing word

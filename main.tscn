@@ -37,12 +37,6 @@ size = Vector3(32, 6, 1)
 [sub_resource type="BoxShape3D" id="BoxShape3D_wall_z"]
 size = Vector3(1, 6, 32)
 
-[sub_resource type="QuadMesh" id="QuadMesh_map"]
-size = Vector2(12, 6)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_map"]
-albedo_color = Color(0.83, 0.74, 0.55, 1)
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
 bg_color = Color(0.08, 0.08, 0.1, 0.85)
 border_width_left = 2
@@ -450,24 +444,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15.5, 3, 0)
 shape = SubResource("BoxShape3D_wall_z")
 
 [node name="Targets" type="Node3D" parent="."]
-
-[node name="ImageBoard" type="Sprite3D" parent="."]
-visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.9, -8.5)
-
-[node name="MapBoard" type="MeshInstance3D" parent="."]
-visible = false
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -8.6)
-mesh = SubResource("QuadMesh_map")
-surface_material_override/0 = SubResource("StandardMaterial3D_map")
-
-[node name="PlaceholderLabel" type="Label3D" parent="MapBoard"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0.01)
-pixel_size = 0.01
-modulate = Color(0.2, 0.15, 0.1, 1)
-outline_size = 0
-text = "Қазақстан картасы (уақытша)"
-font_size = 32
 
 [node name="QuizManager" type="Node" parent="." unique_id=2032224658]
 script = ExtResource("3_h2yge")

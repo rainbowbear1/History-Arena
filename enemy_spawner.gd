@@ -99,7 +99,8 @@ func set_speed_scale(value: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if not running or quiz == null or not quiz.accepting_answers:
+	# No volleys while the map is open: the player aims on the map and cannot dodge.
+	if not running or quiz == null or not quiz.accepting_answers or quiz.map_aiming():
 		return
 	var shooters := enemies.filter(func(e): return is_instance_valid(e) and e.ready_to_aim())
 	if shooters.is_empty():

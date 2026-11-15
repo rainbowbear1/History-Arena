@@ -22,7 +22,7 @@ func _build() -> void:
 	if quiz.DECOY_TYPES.has(question.get("type", "single_choice")) and quiz.extra_decoys() > 0:
 		answers += quiz.decoy_answers(question, quiz.extra_decoys())
 	answers.shuffle()
-	var spots: Array = quiz.answer_layout(answers.size())
+	var spots: Array = quiz.answer_layout(answers.size(), question.get("type") == "image")
 
 	for i in range(answers.size()):
 		var target = quiz.spawn_target(answers[i], spots[i]["at"], true, 1.0, spots[i]["placement"])

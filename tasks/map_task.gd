@@ -1,8 +1,11 @@
 extends "res://tasks/quiz_task.gd"
 
-# map: numbered pins on the map board; shoot the pin at the asked location.
+# map: numbered markers on the HUD map (map_overlay.gd); shoot the marker at the asked location.
+# Each marker stands for an answer target kept out of sight under the arena, so scoring, 50/50
+# and the reveal work as for any other one-answer task.
 
 const PIN_SIZE := 0.25
+const HIDDEN_AT := Vector3(0, -50, 0)
 
 
 func hint() -> String:
@@ -17,11 +20,12 @@ func _build() -> void:
 
 	for i in range(locations.size()):
 		var location: Dictionary = locations[i]
-		var target = quiz.spawn_target(
-			location["name"], quiz.map_point(location["x"], location["y"]), false, PIN_SIZE)
+		var target = quiz.spawn_target(location["name"], HIDDEN_AT, false, PIN_SIZE)
+		target.hide()
+		target.get_node("CollisionShape3D").disabled = true
 		target.set_label(str(i + 1))
-		target.answer_label.font_size *= 2  # Single digits; make them readable from the player's spot.
 		target.is_correct = location["name"] == question["correct"]
+		quiz.map_overlay.add_marker(target, location["x"], location["y"], i + 1)
 
 
 func remove_wrong(count: int) -> bool:

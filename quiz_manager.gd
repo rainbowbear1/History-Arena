@@ -34,10 +34,9 @@ const RANGE_BACK_ROW := Vector2(4.4, -12.0)
 const TOP_ROW_Z := -10.0
 const GROUND_Y := 0.1
 const LEDGE_TOP := 3.1
-const IMAGE_HEIGHT := 3.0
-const MAP_SIZE := Vector2(12.0, 6.0)
 # Drop a real map here and it replaces the placeholder board.
-const MAP_TEXTURE := "res://assets/maps/kazakhstan.svg"
+const ImagePanelScript := preload("res://image_panel.gd")
+const MapOverlayScript := preload("res://map_overlay.gd")
 
 const DAMAGE := 10
 # Matching and chronology take several shots, so they get more time.
@@ -97,8 +96,9 @@ var feedback_token: int = 0
 
 
 @onready var targets_root: Node3D = $"../Targets"
-@onready var image_board: Sprite3D = $"../ImageBoard"
-@onready var map_board: MeshInstance3D = $"../MapBoard"
+# Photo and map of image and map tasks live in the HUD (image_panel.gd, map_overlay.gd).
+var image_panel: PanelContainer
+var map_overlay: Control
 @onready var enemy_spawner: Node3D = $"../Enemies"
 @onready var environment: Node3D = $"../Environment"
 @onready var damage_flash: ColorRect = $"../HUD/DamageFlash"
@@ -127,7 +127,7 @@ var feedback_token: int = 0
 
 
 func _ready() -> void:
-	_setup_map_board()
+	_build_overlays()
 	# Own copy of the bar's fill, recoloured as HP changes.
 	health_bar.add_theme_stylebox_override("fill", health_bar.get_theme_stylebox("fill").duplicate())
 
@@ -570,11 +570,13 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 # the ground row (three, labels hanging below the feet) and the rampart behind it (the rest,
 # labels above the heads, standing in the gaps of the front row), so the two rows' labels never
 # meet and no soldier hides another.
-func answer_layout(count: int) -> Array:
+# `labels_below` hangs a single row's labels under the feet (image tasks keep the space above free
+# for the photo).
+func answer_layout(count: int, labels_below: bool = false) -> Array:
 	if is_range():
-		return row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "above"})
+		return row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "below" if labels_below else "above"})
 	if count <= MAX_FRONT_ROW:
-		return _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "above")
+		return _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below" if labels_below else "above")
 	var front := ceili(count / 2.0)
 	return _row(front, WIDE_FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below") \
 		+ _row(count - front, BACK_SPACING, TOP_ROW_Y, TOP_ROW_Z, "above")
@@ -621,19 +623,23 @@ func is_range() -> bool:
 
 
 func show_image(path: String) -> void:
-	var texture: Texture2D = load(path)
-	image_board.texture = texture
-	image_board.pixel_size = IMAGE_HEIGHT / texture.get_height()
-	image_board.show()
+	image_panel.show_image(path)
 
 
 func show_map() -> void:
-	map_board.show()
+	map_overlay.open()
 
 
-# Converts a 0–1 map coordinate (0,0 = top-left) to a point just in front of the map board.
-func map_point(x: float, y: float) -> Vector3:
-	return map_board.position + Vector3((x - 0.5) * MAP_SIZE.x, (0.5 - y) * MAP_SIZE.y, 0.2)
+# True while the map overlay is open: the mouse aims on the map and shots hit its markers.
+func map_aiming() -> bool:
+	return map_overlay != null and map_overlay.visible
+
+
+# A shot fired while the map is open: hits the marker under the reticle, if any.
+func shoot_map() -> void:
+	var target = map_overlay.target_under_reticle()
+	if target:
+		target.hit()
 
 
 func clear_arena() -> void:
@@ -648,18 +654,19 @@ func clear_arena() -> void:
 	progress_label.hide()
 	time_limit = 0.0
 	timer_label.text = ""
-	image_board.hide()
-	map_board.hide()
+	image_panel.hide()
+	map_overlay.close()
 
 
-func _setup_map_board() -> void:
-	if not ResourceLoader.exists(MAP_TEXTURE):
-		return
-	var material: StandardMaterial3D = map_board.get_surface_override_material(0).duplicate()
-	material.albedo_color = Color.WHITE
-	material.albedo_texture = load(MAP_TEXTURE)
-	map_board.set_surface_override_material(0, material)
-	map_board.get_node("PlaceholderLabel").hide()
+# The photo panel and the map overlay sit in the HUD above the answer labels and below the
+# defeat, results and pause screens.
+func _build_overlays() -> void:
+	var hud := answer_labels.get_parent()
+	image_panel = ImagePanelScript.new()
+	map_overlay = MapOverlayScript.new()
+	for overlay in [image_panel, map_overlay]:
+		hud.add_child(overlay)
+		hud.move_child(overlay, answer_labels.get_index() + 1)
 
 
 func _on_restart_button_pressed() -> void:

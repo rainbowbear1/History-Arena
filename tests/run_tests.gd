@@ -374,9 +374,28 @@ func test_choice_types(samples: Dictionary) -> void:
 		check(quiz.targets.size() == 4, "%s spawns 4 targets" % type)
 		check(quiz.progress_label.text.is_empty(), "%s shows no progress counter" % type)
 		check(not quiz.hint_label.text.is_empty(), "%s shows a hint" % type)
-		check(quiz.image_board.visible == (type == "image"), "%s image board visibility" % type)
+		check(quiz.image_panel.visible == (type == "image"), "%s photo panel visibility" % type)
 		if type == "image":
-			check(quiz.image_board.texture != null, "image task loads its picture")
+			await process_frame
+			await process_frame
+			var photo: Rect2 = quiz.image_panel.get_global_rect()
+			var screen: Rect2 = quiz.get_viewport().get_visible_rect()
+			var texture: Texture2D = quiz.image_panel.picture.texture
+			var shown: Vector2 = quiz.image_panel.picture.size
+			check(texture != null, "image task shows its photo in the HUD")
+			var uncredited := []
+			for level in level_db.levels:
+				for q in QuestionValidator.load_file(level["question_file"]).questions:
+					if q.has("image") and not quiz.image_panel.CREDITS.has(q["image"].get_file()):
+						uncredited.append(q["image"])
+			check(uncredited.is_empty(), "every game photo has an author and licence line %s" % str(uncredited))
+			check(screen.encloses(photo) and photo.position.y >= quiz.question_panel.get_global_rect().end.y
+				and absf(photo.get_center().x - screen.get_center().x) < 2.0, "photo is centred under the question")
+			check(absf(shown.x / shown.y - float(texture.get_width()) / texture.get_height()) < 0.03, "photo keeps its aspect ratio")
+			check(photo.size.y <= screen.size.y * 0.36 and photo.size.x <= screen.size.x * 0.46, "photo stays a modest size")
+			var label_rects: Array = quiz.targets.map(func(t): return quiz.answer_labels.label_for(t).get_global_rect())
+			check(label_rects.all(func(r): return not r.intersects(photo)), "answer labels never cover the photo")
+			check(quiz.get_parent().find_children("*", "Sprite3D", true, false).is_empty(), "no picture stands in the 3D arena")
 		var wrong = quiz.targets.filter(func(t): return not t.is_correct)[0]
 		wrong.hit()
 		check(quiz.health == 90 and quiz.score == 0, "%s wrong answer costs 10 HP" % type)
@@ -457,7 +476,8 @@ func test_matching(question: Dictionary) -> void:
 
 func test_map(question: Dictionary) -> void:
 	var quiz = await _start_task(question)
-	check(quiz.map_board.visible, "map board shown")
+	check(quiz.map_overlay.visible and quiz.map_aiming(), "map overlay shown in the HUD")
+	check(quiz.map_overlay.markers.size() == 4, "map shows 4 numbered markers")
 	check(quiz.targets.size() == 4, "map spawns 4 pins")
 	var labels: Array = quiz.targets.map(func(t): return t.answer_label.text)
 	labels.sort()
@@ -465,15 +485,29 @@ func test_map(question: Dictionary) -> void:
 	check(quiz.targets.all(func(t): return t.move_distance == 0.0), "pins do not sway")
 	var location: Dictionary = question["locations"].filter(func(l): return l["name"] == question["correct"])[0]
 	var pin = quiz.targets.filter(func(t): return t.is_correct)[0]
-	check(pin.position.is_equal_approx(quiz.map_point(location["x"], location["y"])), "correct pin sits at its map coordinate")
-	# Fire the player's real raycast at the small pin rather than calling hit() directly.
-	await physics_frame
-	var camera: Camera3D = quiz.get_parent().get_node("Player/Camera3D")
-	camera.look_at(pin.global_position)
-	quiz.get_parent().get_node("Player").shoot()
-	check(quiz.score == 100, "shooting the correct pin through the crosshair scores 100")
+	var marker: Dictionary = quiz.map_overlay.markers.filter(func(m): return m["target"] == pin)[0]
+	check(marker["uv"] == Vector2(location["x"], location["y"]), "correct marker sits at its map coordinate")
+	var overlay_rect: Rect2 = quiz.map_overlay.map_rect
+	var screen: Rect2 = quiz.get_viewport().get_visible_rect()
+	check(screen.encloses(overlay_rect) and overlay_rect.position.y > quiz.question_panel.get_global_rect().end.y
+		and is_equal_approx(overlay_rect.size.x / overlay_rect.size.y, 2.0), "map fills the screen under the question at 2:1")
+	var gaps := []
+	for a in quiz.map_overlay.markers:
+		for b in quiz.map_overlay.markers:
+			if a != b:
+				gaps.append(quiz.map_overlay.marker_position(a).distance_to(quiz.map_overlay.marker_position(b)))
+	check(gaps.min() > quiz.map_overlay.marker_radius() * 2.0, "markers never overlap")
+	# Mouse movement drives the reticle, not the camera; a shot hits the marker under it.
+	var player: Node3D = quiz.get_parent().get_node("Player")
+	var turn: float = player.rotation.y
+	var aim_at: Vector2 = quiz.map_overlay.marker_position(marker)
+	quiz.map_overlay.move_reticle(aim_at - quiz.map_overlay.reticle_position())
+	check(quiz.map_overlay.reticle_position().distance_to(aim_at) < 1.0 and player.rotation.y == turn, "mouse movement moves the map reticle by the same distance")
+	player.cooldown_left = 0.0
+	player.shoot()
+	check(quiz.score == 100, "shooting the correct marker scores 100")
 	await wait(1.8)
-	check(not quiz.map_board.visible, "map board hidden after the task")
+	check(not quiz.map_overlay.visible and not quiz.map_aiming(), "map overlay closes after the task")
 	quiz.get_parent().queue_free()
 	await process_frame
 

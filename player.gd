@@ -26,7 +26,10 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and quiz_manager.map_aiming():
+		# The map overlay is open: the mouse moves its reticle, the camera stays still.
+		quiz_manager.map_overlay.move_reticle(event.relative)
+	elif event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		camera.rotate_x(-event.relative.y * mouse_sensitivity)
 		camera.rotation.x = clamp(camera.rotation.x, -1.5, 1.5)
@@ -84,6 +87,9 @@ func shoot() -> void:
 	shots_fired += 1
 
 	play_recoil()
+	if quiz_manager.map_aiming():
+		quiz_manager.shoot_map()
+		return
 	shoot_ray.force_raycast_update()
 	var target = shoot_ray.get_collider() if shoot_ray.is_colliding() else null
 

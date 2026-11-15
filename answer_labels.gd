@@ -20,8 +20,6 @@ const BOTTOM_MARGIN := 64.0
 const PANEL_PADDING := 24.0
 
 var entries: Array = []  # [{target, panel, label, style, placement, anchor, foot, visible}]
-# Extra screen area the labels must keep clear of (the photo panel of image tasks).
-var blocked_top: float = 0.0
 var _font: Font
 
 
@@ -166,10 +164,15 @@ func _place_row(row: Array, placement: String, placed: Array[Rect2], screen: Vec
 	placed.append_array(rects)
 
 
-# Lowest point of the HUD's top bar (question, score, timer) or of the photo panel; labels stay below.
+# Lowest point of the HUD's top bar (question, score, timer) or of an image task's photo; labels
+# stay below it.
 func top_limit() -> float:
-	var bar := get_node_or_null("../TopBar") as Control
-	return maxf(bar.get_global_rect().end.y if bar else 0.0, blocked_top) + SCREEN_MARGIN
+	var limit := 0.0
+	for name in ["../TopBar", "../ImagePanel"]:
+		var panel := get_node_or_null(name) as Control
+		if panel and panel.visible:
+			limit = maxf(limit, panel.get_global_rect().end.y)
+	return limit + SCREEN_MARGIN
 
 
 func _draw() -> void:
