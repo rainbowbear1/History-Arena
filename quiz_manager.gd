@@ -483,6 +483,9 @@ func show_results(attempt: Dictionary, new_best: bool) -> void:
 	]
 	if not attempt["passed"]:
 		lines.append("Өту үшін кемінде %d%% ұпай керек" % level.get("pass_percent", 60))
+	lines.append("Жалпы ұпай: %d" % ProgressStore.total_score())
+	for id in ProgressStore.just_opened:
+		lines.append("Жаңа деңгей ашылды: %d. %s" % [id, LevelDatabase.get_level(id)["title"]])
 	if Backend.is_online_player():
 		lines.append("Нәтиже онлайн рейтингке жіберілді")
 	elif Backend.is_guest():
@@ -490,7 +493,7 @@ func show_results(attempt: Dictionary, new_best: bool) -> void:
 	results_label.text = "\n".join(lines)
 
 	var next_id: int = attempt["level"] + 1
-	next_button.visible = attempt["passed"] and LevelDatabase.is_playable(next_id) and ProgressStore.is_unlocked(next_id)
+	next_button.visible = LevelDatabase.is_playable(next_id) and ProgressStore.is_unlocked(next_id)
 
 	results_container.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

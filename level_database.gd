@@ -39,6 +39,7 @@ func load_levels(path: String = LEVELS_FILE) -> void:
 		for field in INT_FIELDS:
 			level[field] = int(level[field])
 		level["boss"] = level.get("boss", false)
+		level["unlock_score"] = int(level.get("unlock_score", 0))
 		levels.append(level)
 
 
@@ -97,5 +98,10 @@ static func validate_level(level) -> String:
 
 	if level["pass_percent"] < 0 or level["pass_percent"] > 100:
 		return "\"pass_percent\" must be 0 to 100"
+
+	if level.has("unlock_score"):
+		var value = level["unlock_score"]
+		if not (value is float or value is int) or value != floor(value) or value < 0:
+			return "\"unlock_score\" must be a whole number, 0 or more"
 
 	return ""

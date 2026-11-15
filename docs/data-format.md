@@ -24,7 +24,8 @@ Run the tests (below) after every content change; they report the exact file, en
 | `enemies` | whole number | Enemies active in the arena. |
 | `revive_hp` | 1–100 | HP restored by a correct medical-help answer (50 / 40 / 30 by difficulty). |
 | `revivals` | whole number | How many times medical help can be offered in one run. |
-| `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass and unlock the next level. |
+| `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass the level (stars). |
+| `unlock_score` | whole number | Total score (sum of every level's best) that opens this level; 0 for level 1. |
 
 All fields drive the gameplay (`pass_percent` decides passing and stars, see Saved progress):
 
@@ -85,7 +86,15 @@ level, the best score, best stars, whether it was passed and the number of attem
   order, time-outs). `playtime_sec` excludes time spent paused.
 - **Stars:** below `pass_percent` → 0 (not passed); passed → 1; 80 % → 2; 95 % without medical
   help → 3.
-- **Unlocks:** level 1 is open; each level opens when the previous one is passed. Settings →
+- **Unlocks (total score):** the total is the sum of each level's **best** score, so a replay only
+  counts when it beats that level's best and farming one level cannot inflate it (online, the same
+  sum is the leaderboard total). A level opens when the total reaches its `unlock_score` and then
+  stays open (saved in `unlocked`; levels opened under the old pass-the-previous-level rule stay
+  open). Proposed thresholds, levels 1–10: 0, 900, 1600, 2500, 3300, 4100, 4900, 5800, 6700, 7700 —
+  each is at or below the sum of the pass marks of all earlier levels (so passing every level at its
+  pass mark is enough), and from level 3 on above what any single level gives (max 1500). They are
+  computed without the "double score" ability (+100–200 per level), which only gets there sooner.
+  Settings →
   "Демо режимі" opens every level that has questions (for presentations); "Прогресті тазалау"
   (pressed twice) clears everything.
 - A run that ends in defeat (no medical help left, or a wrong medical-help answer) is saved with

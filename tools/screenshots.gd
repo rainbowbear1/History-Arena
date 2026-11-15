@@ -2,7 +2,8 @@ extends SceneTree
 
 # Renders each level's first task and saves a PNG, for checking the look without playing.
 #   godot --path . --script res://tools/screenshots.gd -- [levels=1,2,...] [size=1280x720] [out=build/shots] [frames=40] [long]
-# Needs a real window (not --headless). "long" swaps in a very long question to check wrapping.
+# Needs a real window (not --headless). "long" swaps in a very long question to check wrapping;
+# "select" renders the level-select screen with sample progress instead.
 
 var levels := range(1, 11)
 var size := Vector2i(1280, 720)
@@ -35,6 +36,21 @@ func run() -> void:
 	progress.path = progress.base_path
 	progress.set_demo_unlock(true)
 	root.get_node("GameState").shuffle_questions = false
+	if "select" in OS.get_cmdline_user_args():
+		# Level select with sample progress: total 1800, demo mode off.
+		progress.reset()
+		progress.record_attempt({"level": 1, "score": 1500, "stars": 3, "passed": true})
+		progress.record_attempt({"level": 2, "score": 300, "stars": 0, "passed": false})
+		var screen: Node = load("res://level_select.tscn").instantiate()
+		root.add_child(screen)
+		current_scene = screen
+		screen._show_level_info(4)
+		for i in range(10):
+			await process_frame
+		root.get_texture().get_image().save_png(ProjectSettings.globalize_path("res://%s/level_select_%dx%d.png" % [out, size.x, size.y]))
+		print("saved level select")
+		quit()
+		return
 	for level in levels:
 		root.get_node("GameState").selected_level = level
 		var arena: Node = load("res://main.tscn").instantiate()

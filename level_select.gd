@@ -7,7 +7,18 @@ const StarRow := preload("res://star_row.gd")
 @onready var level_info_label: Label = $CenterContainer/VBoxContainer/LevelInfoLabel
 @onready var back_button: Button = $CenterContainer/VBoxContainer/BackButton
 
+var total_label: Label
+
+
 func _ready() -> void:
+	# Current total (sum of each level's best score), which is what opens later levels.
+	total_label = Label.new()
+	total_label.text = "Жалпы ұпай: %d" % ProgressStore.total_score()
+	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	total_label.add_theme_font_size_override("font_size", 22)
+	level_grid.get_parent().add_child(total_label)
+	level_grid.get_parent().move_child(total_label, level_grid.get_index())
+
 	for level in LevelDatabase.levels:
 		var level_number: int = level["id"]
 		var button := Button.new()
@@ -29,6 +40,11 @@ func _ready() -> void:
 		else:
 			button.disabled = true
 			button.focus_mode = Control.FOCUS_NONE
+			if LevelDatabase.is_playable(level_number):
+				# Locked: show the total score that opens it.
+				button.text = "%d\n%d" % [level_number, ProgressStore.unlock_score(level_number)]
+				button.add_theme_font_size_override("font_size", 15)
+				button.tooltip_text = "Ашу үшін жалпы ұпай: %d" % ProgressStore.unlock_score(level_number)
 
 		button.mouse_entered.connect(_show_level_info.bind(level_number))
 
@@ -49,12 +65,12 @@ func _show_level_info(level_number: int) -> void:
 	if not LevelDatabase.is_playable(level_number):
 		text += " · дайындалуда"
 	elif not ProgressStore.is_unlocked(level_number):
-		text += " · жабық: алдыңғы деңгейді өтіңіз"
+		var needed := ProgressStore.unlock_score(level_number)
+		text += "\nЖабық: жалпы ұпай %d керек (қазір %d, тағы %d)" % [needed, ProgressStore.total_score(), needed - ProgressStore.total_score()]
 	else:
 		var result := ProgressStore.level_result(level_number)
 		if result["attempts"] > 0:
-			text += "
-Үздік ұпай: %d" % result["best_score"]
+			text += "\nҮздік ұпай: %d" % result["best_score"]
 
 	level_info_label.text = text
 

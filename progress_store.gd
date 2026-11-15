@@ -3,6 +3,9 @@ extends Node
 # Saves level results on this device (user:// is IndexedDB in the web build): best score and
 # stars per level, which levels are unlocked, and a short history of attempts. Each Google
 # account has its own file; best results saved online are merged in after sign-in (Backend).
+# Levels unlock by TOTAL score: the sum of each level's best score (so replaying a level only
+# counts when it beats that level's best). A level opens once the total reaches its
+# "unlock_score" in data/levels.json, and stays open from then on.
 
 const SAVE_PATH := "user://progress.json"
 const VERSION := 1
@@ -13,6 +16,8 @@ var path: String = SAVE_PATH
 var levels := {}  # "3" -> {"best_score", "stars", "passed", "attempts"}
 var history: Array = []
 var demo_unlock_all: bool = false
+var unlocked: Array = []  # Level ids opened so far (kept even if thresholds change later).
+var just_opened: Array = []  # Levels the last recorded attempt opened (for the results screen).
 
 
 func _ready() -> void:
@@ -23,6 +28,7 @@ func load_data() -> void:
 	levels = {}
 	history = []
 	demo_unlock_all = false
+	unlocked = []
 	if not FileAccess.file_exists(path):
 		return
 
@@ -46,6 +52,13 @@ func load_data() -> void:
 	if data.get("history") is Array:
 		history = data["history"]
 	demo_unlock_all = data.get("demo_unlock_all", false) == true
+	if data.get("unlocked") is Array:
+		unlocked = data["unlocked"].map(func(id): return int(id))
+	# Saves from before total-score unlocking: a passed level had opened the next one.
+	for key in levels:
+		if levels[key]["passed"] and not unlocked.has(int(key) + 1):
+			unlocked.append(int(key) + 1)
+	refresh_unlocks()
 
 
 func save_data() -> void:
@@ -58,6 +71,7 @@ func save_data() -> void:
 		"levels": levels,
 		"history": history,
 		"demo_unlock_all": demo_unlock_all,
+		"unlocked": unlocked,
 	}, "  "))
 
 
@@ -77,6 +91,7 @@ func record_attempt(attempt: Dictionary) -> bool:
 	if history.size() > MAX_HISTORY:
 		history = history.slice(history.size() - MAX_HISTORY)
 
+	just_opened = refresh_unlocks()
 	save_data()
 	return new_best
 
@@ -108,6 +123,7 @@ func merge_remote(remote: Dictionary) -> void:
 			levels[str(int(key))] = best
 			changed = true
 	if changed:
+		refresh_unlocks()
 		save_data()
 
 
@@ -115,9 +131,38 @@ func level_result(id: int) -> Dictionary:
 	return levels.get(str(id), {"best_score": 0, "stars": 0, "passed": false, "attempts": 0})
 
 
-# Level 1 is always open; each later level opens when the one before it is passed.
+# Sum of the best score of every level: what unlocks levels (and what the online leaderboard ranks).
+func total_score() -> int:
+	var total := 0
+	for key in levels:
+		total += int(levels[key]["best_score"])
+	return total
+
+
+# Total score needed to open a level (0 for level 1).
+func unlock_score(id: int) -> int:
+	return int(_levels().get_level(id).get("unlock_score", 0)) if id > 1 else 0
+
+
 func is_unlocked(id: int) -> bool:
-	return demo_unlock_all or id <= 1 or level_result(id - 1)["passed"]
+	return demo_unlock_all or id <= 1 or unlocked.has(id) or total_score() >= unlock_score(id)
+
+
+# The LevelDatabase autoload (looked up at run time, so this script also compiles on its own).
+func _levels() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node("LevelDatabase")
+
+
+# Records levels the total has reached, so they stay open. Returns the ids opened just now.
+func refresh_unlocks() -> Array:
+	var opened := []
+	var total := total_score()
+	for level in _levels().levels:
+		var id: int = level["id"]
+		if id > 1 and not unlocked.has(id) and total >= unlock_score(id):
+			unlocked.append(id)
+			opened.append(id)
+	return opened
 
 
 func set_demo_unlock(enabled: bool) -> void:
@@ -129,6 +174,7 @@ func reset() -> void:
 	levels = {}
 	history = []
 	demo_unlock_all = false
+	unlocked = []
 	save_data()
 
 

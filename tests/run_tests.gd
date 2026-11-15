@@ -303,6 +303,7 @@ func test_arena() -> void:
 	await test_difficulty()
 	await test_quiz_integrity()
 	await test_hud_and_labels()
+	test_total_score_unlocks()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -1197,6 +1198,52 @@ func test_difficulty() -> void:
 	game_state.selected_level = 1
 
 
+func test_total_score_unlocks() -> void:
+	print("== Total-score unlocking")
+	var was_demo: bool = progress.demo_unlock_all
+	progress.reset()
+	# Thresholds: rising, reachable by passing every earlier level at its pass mark, and from level 3
+	# on more than any single level can give (so one easy level cannot be farmed to skip ahead).
+	var passing := 0
+	var best_single := 0
+	var sane := true
+	for level in level_db.levels:
+		var id: int = level["id"]
+		var max_score: int = QuestionValidator.load_file(level["question_file"]).questions.size() * 100
+		var needed: int = progress.unlock_score(id)
+		if id == 1:
+			sane = sane and needed == 0
+		else:
+			sane = sane and needed <= passing and needed > progress.unlock_score(id - 1) and (id < 3 or needed > best_single)
+		passing += ceili(max_score * level["pass_percent"] / 100.0)
+		best_single = maxi(best_single, max_score)
+	check(sane, "thresholds rise, are reachable at the pass marks, and need more than one level")
+
+	var run := func(id: int, score: int): return {"level": id, "score": score, "stars": 1, "passed": true, "completed": true}
+	check(progress.is_unlocked(1) and not progress.is_unlocked(2), "only level 1 open at the start")
+	progress.record_attempt(run.call(1, 800))
+	check(progress.total_score() == 800 and not progress.is_unlocked(2), "800 is not enough for level 2 (900)")
+	progress.record_attempt(run.call(1, 600))
+	check(progress.total_score() == 800, "a worse replay does not change the total")
+	progress.record_attempt(run.call(1, 1500))
+	check(progress.total_score() == 1500 and progress.is_unlocked(2) and progress.just_opened == [2], "beating the best raises the total and opens level 2")
+	for i in range(5):
+		progress.record_attempt(run.call(1, 1500))
+	check(progress.total_score() == 1500 and not progress.is_unlocked(3), "farming level 1 again adds nothing")
+	progress.record_attempt(run.call(2, 300))
+	check(progress.total_score() == 1800 and progress.is_unlocked(3), "level 3 opens at 1600 from two levels")
+	level_db.get_level(3)["unlock_score"] = 99999
+	check(progress.is_unlocked(3), "an opened level stays open")
+	level_db.get_level(3)["unlock_score"] = 1600
+	progress.reset()
+	progress.levels = {"1": {"best_score": 900, "stars": 1, "passed": true, "attempts": 1}, "2": {"best_score": 100, "stars": 1, "passed": true, "attempts": 1}}
+	progress.save_data()
+	progress.load_data()
+	check(progress.is_unlocked(3), "levels opened under the old pass-to-unlock rule stay open")
+	progress.reset()
+	progress.set_demo_unlock(was_demo)
+
+
 func test_progress() -> void:
 	print("== Progress, stars and results")
 	var S = ProgressStoreScript
@@ -1275,7 +1322,7 @@ func test_progress() -> void:
 	check(quiz.results_label.text.contains("Жаңа рекорд!"), "new best announced")
 	check(progress.level_result(1)["passed"] and progress.history[-1]["completed"], "result saved")
 	check(progress.history[-1]["playtime_sec"] >= 1, "playtime saved in whole seconds")
-	check(quiz.next_button.visible, "next level offered once level 2 is open")
+	check(not quiz.next_button.visible and quiz.results_label.text.contains("Жалпы ұпай: 100"), "results show the total; level 2 stays closed below 900")
 	await wait(0.7)
 	check(quiz.fade_rect.modulate.a < 0.05, "fade clears to show the results")
 	quiz.next_button.pressed.emit()
@@ -1333,7 +1380,8 @@ func test_progress() -> void:
 	screen._show_level_info(1)
 	check(screen.level_info_label.text.contains("Үздік ұпай: 900"), "best score shown")
 	screen._show_level_info(3)
-	check(screen.level_info_label.text.contains("алдыңғы деңгейді өтіңіз"), "locked level says to pass the previous one")
+	check(screen.level_info_label.text.contains("жалпы ұпай 1600 керек (қазір 900, тағы 700)"), "locked level shows the total it needs")
+	check(grid.get_child(2).text == "3\n1600" and screen.total_label.text == "Жалпы ұпай: 900", "locked buttons show their threshold; the total is shown")
 	screen.queue_free()
 	await process_frame
 
@@ -1484,7 +1532,7 @@ func test_backend() -> void:
 	error = await backend.sign_in_with_google()
 	check(error.is_empty() and backend.user["uid"] == "u1" and backend.display_name() == "Тест Оқушы", "Google sign-in shows the player's name")
 	check(progress.path != progress.base_path and progress.level_result(1)["attempts"] == 0, "each account has its own progress")
-	check(progress.level_result(3)["best_score"] == 1200 and progress.level_result(3)["passed"] and progress.is_unlocked(4), "best results saved online are merged after sign-in")
+	check(progress.level_result(3)["best_score"] == 1200 and progress.level_result(3)["passed"] and progress.is_unlocked(2) and not progress.is_unlocked(4), "best results saved online are merged after sign-in and count toward unlocking")
 
 	backend.submit_attempt(attempt)
 	await wait(0.1)
