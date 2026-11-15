@@ -3,7 +3,7 @@ extends CharacterBody3D
 # An enemy soldier. It marches in from the edge of the arena to its post on the flank and holds it;
 # it does not chase the player. When the spawner orders a volley it aims for a moment (a red "!"
 # appears) and fires an arrow or bullet at where the player stood: step aside to dodge, or shoot it
-# first. The marks over its head are the hits it can still take.
+# first. A health bar over its head shows what it has left; when killed it collapses and sinks away.
 
 signal died(enemy)
 
@@ -13,6 +13,11 @@ const HIT_RADIUS := 1.1
 const MARCH_SPEED := 3.0
 const Soldier := preload("res://soldier.gd")
 const Projectile := preload("res://projectile.gd")
+const HEALTH_BAR_SHADER := preload("res://health_bar.gdshader")
+const BAR_SIZE := Vector2(0.9, 0.11)
+const BAR_HEIGHT := 2.4
+const FALL_TIME := 0.55
+const SINK_TIME := 0.7
 
 var quiz
 var player: Node3D
@@ -26,24 +31,10 @@ var shot_kind: String = "arrow"
 var aim_left: float = -1.0
 var post: Vector3 = Vector3.INF  # Where it stands guard; it marches there after spawning.
 var soldier: Node3D
-var _pips: Node3D
-
-static var PIP_MESH := _pip_mesh()
-static var PIP_FULL := _pip_material(Color(0.9, 0.15, 0.1))
-static var PIP_EMPTY := _pip_material(Color(0.15, 0.15, 0.15))
-
-
-static func _pip_mesh() -> BoxMesh:
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.18, 0.18, 0.18)
-	return mesh
-
-
-static func _pip_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	return material
+var dead := false
+var health_bar: MeshInstance3D
+var _bar_material: ShaderMaterial
+var _bar_tween: Tween
 
 @onready var hp_label: Label3D = $HPLabel
 @onready var aim_label: Label3D = $AimLabel
@@ -62,8 +53,9 @@ func setup(new_quiz, new_player: Node3D, new_hp: int, new_damage: int, look: Dic
 func _ready() -> void:
 	if post == Vector3.INF:
 		post = position
-	_update_label()
+	hp_label.hide()
 	aim_label.hide()
+	_build_health_bar()
 
 
 func build_look(look: Dictionary) -> void:
@@ -81,10 +73,12 @@ func at_post() -> bool:
 
 # Only an enemy standing at its post, not already aiming, can be ordered to shoot.
 func ready_to_aim() -> bool:
-	return aim_left < 0.0 and at_post()
+	return not dead and aim_left < 0.0 and at_post()
 
 
 func _physics_process(delta: float) -> void:
+	if dead:
+		return
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
 	var to_post := Vector3(post.x - position.x, 0.0, post.z - position.z)
@@ -145,11 +139,12 @@ func _on_shot_arrived(point: Vector3, damaging: bool) -> void:
 
 
 func take_hit(amount: int) -> void:
+	if dead:
+		return
 	hp -= amount
-	_update_label()
+	_update_bar()
 	if hp <= 0:
-		died.emit(self)
-		queue_free()
+		_die()
 		return
 	if soldier:
 		soldier.set_outline(Color(1, 1, 0.5))
@@ -159,24 +154,60 @@ func take_hit(amount: int) -> void:
 				part.material_overlay = null
 
 
-# One pip per hit over its head: red for hits it can still take, dark for hits already landed.
-func _update_label() -> void:
-	if not is_inside_tree():
+# The same small bar for every enemy, whatever its toughness: the fill shows the share of health
+# left, so a machine-gun enemy that takes seven hits looks no busier than a one-hit one.
+func _build_health_bar() -> void:
+	health_bar = MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = BAR_SIZE
+	health_bar.mesh = quad
+	health_bar.position.y = BAR_HEIGHT
+	health_bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_bar_material = ShaderMaterial.new()
+	_bar_material.shader = HEALTH_BAR_SHADER
+	_bar_material.set_shader_parameter("ratio", 1.0)
+	_bar_material.set_shader_parameter("trail", 1.0)
+	health_bar.material_override = _bar_material
+	add_child(health_bar)
+
+
+func health_ratio() -> float:
+	return clampf(float(hp) / max_hp, 0.0, 1.0)
+
+
+# The fill drops at once; the pale trail behind it drains a moment later.
+func _update_bar() -> void:
+	if _bar_material == null:
 		return
-	hp_label.hide()
-	var total := ceili(float(max_hp) / hit_value)
-	var left := ceili(float(maxi(hp, 0)) / hit_value)
-	if _pips == null:
-		_pips = Node3D.new()
-		_pips.position.y = 2.35
-		add_child(_pips)
-		for i in range(total):
-			var pip := MeshInstance3D.new()
-			pip.mesh = PIP_MESH
-			pip.position.x = (i - (total - 1) / 2.0) * 0.26
-			_pips.add_child(pip)
-	for i in range(_pips.get_child_count()):
-		_pips.get_child(i).material_override = PIP_FULL if i < left else PIP_EMPTY
+	_bar_material.set_shader_parameter("ratio", health_ratio())
+	if _bar_tween:
+		_bar_tween.kill()
+	_bar_tween = create_tween()
+	_bar_tween.tween_interval(0.15)
+	_bar_tween.tween_property(_bar_material, "shader_parameter/trail", health_ratio(), 0.35)
+
+
+# Killed: stops fighting at once (the spawner may send a replacement), drops its weapon arm,
+# topples backwards and sinks into the ground before it is removed.
+func _die() -> void:
+	dead = true
+	_stop_aiming()
+	died.emit(self)
+	$CollisionShape3D.set_deferred("disabled", true)
+	health_bar.hide()
+	var body: Node3D = soldier if soldier else self
+	if soldier:
+		soldier.motion = "idle"
+		for part in soldier.find_children("*", "MeshInstance3D", true, false):
+			part.material_overlay = null
+	var side := 1.0 if randf() < 0.5 else -1.0
+	var fall := create_tween()
+	fall.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	fall.tween_property(body, "rotation", Vector3(-PI / 2.0 * 0.95, body.rotation.y, side * 0.25), FALL_TIME)
+	fall.set_ease(Tween.EASE_IN_OUT)
+	fall.tween_interval(0.35)
+	fall.tween_property(body, "position:y", body.position.y - 0.6, SINK_TIME)
+	fall.tween_callback(queue_free)
 
 
 func hits_left() -> int:

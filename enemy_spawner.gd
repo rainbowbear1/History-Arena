@@ -7,8 +7,8 @@ extends Node3D
 #   never to the post they held in the previous wave.
 # - During a task a killed enemy is replaced at most REINFORCEMENTS_PER_TASK times, after
 #   REINFORCE_DELAY seconds, so the line can actually be cleared.
-# - Toughness is counted in hits of the player's own weapon, so a bow, a musket and a machine gun
-#   all need about the same time to bring an enemy down (see hits_to_kill).
+# - Toughness is counted in hits of the player's own weapon (see hits_to_kill): fast weapons need a
+#   short burst, slow precise ones fewer, heavier hits, so no weapon trivialises the line.
 # - One shared volley clock picks a single enemy to aim and fire.
 
 const ENEMY_SCENE := preload("res://enemy.tscn")
@@ -51,11 +51,13 @@ func configure(new_quiz, new_player: Node3D, level: Dictionary, theme: Dictionar
 	volley_left = volley_interval()
 
 
-# Hits of the player's weapon an enemy takes: one on easy levels, more on hard ones, scaled by the
-# weapon's cooldown so fast weapons need more hits and slow ones fewer.
+# Hits of the player's weapon an enemy takes: one on easy levels; on harder ones the first hit plus
+# as many more as the weapon can fire within TIME_TO_KILL. The machine gun (0.15 s) needs a burst
+# of 7 hits (about a second on target), bows 2–3, and the musket and rifle, whose long reload makes
+# every miss costly, drop an enemy with one well-aimed shot.
 func hits_to_kill() -> int:
 	var cooldown: float = player.weapon.get("cooldown", 0.3) if player and "weapon" in player else 0.3
-	return 1 + roundi(TIME_TO_KILL[clampi(stars, 0, 5)] / cooldown)
+	return 1 + floori(TIME_TO_KILL[clampi(stars, 0, 5)] / cooldown + 0.001)
 
 
 func weapon_damage() -> int:

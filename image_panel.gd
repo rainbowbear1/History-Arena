@@ -8,6 +8,9 @@ extends PanelContainer
 const MAX_WIDTH_SHARE := 0.42
 const MAX_HEIGHT_SHARE := 0.3
 const GAP := 8.0
+# Opacity while an answer soldier stands behind the photo (the player has turned), so the photo
+# never hides a target.
+const SEE_THROUGH := 0.3
 # Author and licence of each photo (full details in assets/CREDITS.md).
 const CREDITS := {
 	"golden_man.jpg": "eggry · CC BY-SA 2.0",
@@ -50,9 +53,18 @@ func _ready() -> void:
 	hide()
 
 
-# Follows the question bar (its height changes with the question) and the window size.
-func _process(_delta: float) -> void:
+# Follows the question bar (its height changes with the question) and the window size, and turns
+# see-through while an answer soldier is behind it.
+func _process(delta: float) -> void:
 	_layout()
+	var covering := false
+	var labels := get_node_or_null("../AnswerLabels")
+	if visible and labels:
+		var rect := get_global_rect()
+		for entry in labels.entries:
+			if entry["visible"] and (rect.has_point(entry["anchor"]) or rect.has_point(entry["foot"])):
+				covering = true
+	modulate.a = move_toward(modulate.a, SEE_THROUGH if covering else 1.0, delta * 4.0)
 
 
 func show_image(path: String) -> void:

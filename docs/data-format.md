@@ -50,9 +50,11 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   2, 3, 3, 3, 0). Each task starts with a wave: missing enemies march in from the arena edge to free
   posts on the flanks, never the posts of the previous wave. A killed enemy is replaced at most once
   per task, 8 s later and at another post, so the line can be cleared. Toughness is counted in hits
-  of the player's own weapon: 1 hit on 1–2 stars, then enough hits for about 0.5 s (3 stars) or 1 s
-  (4–5 stars) of fire, so bows, muskets, rifles and the machine gun keep their feel but clear an
-  enemy in similar time; red pips over the head show the hits left. One shared volley clock (every
+  of the player's own weapon: 1 hit on 1–2 stars; on harder levels the first hit plus as many more as
+  the weapon fires in 0.5 s (3 stars) or 1 s (4–5 stars). So the machine gun needs a burst of about
+  7 hits, bows 2–3, and the musket and rifle, whose long reload makes a miss costly, one aimed shot.
+  A slim health bar over the head shows the share of health left (a pale strip drains after each
+  hit); a killed enemy stops fighting at once, topples over and sinks away. One shared volley clock (every
   12 − 1.5·s seconds, at least 3.5 s) picks one enemy at its post, which aims for 0.9 s (a red "!")
   and fires at where the player stood: step aside to dodge, or shoot first. Damage 3 + s, reduced by
   the character's `defense` (at least 1). Enemies act only while a task is being answered and give

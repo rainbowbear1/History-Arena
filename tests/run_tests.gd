@@ -1311,7 +1311,12 @@ func test_difficulty() -> void:
 	await process_frame
 	check(spawner.enemies.is_empty(), "the shot brings the enemy down")
 	check(quiz.score == score_before, "killing enemies gives no points (no score farming)")
-	await wait(spawner.REINFORCE_DELAY - 1.0)
+	check(is_instance_valid(enemy) and enemy.dead and not enemy.health_bar.visible and not enemy.ready_to_aim(), "a killed enemy collapses instead of vanishing, and stops fighting")
+	await wait(0.7)
+	check(is_instance_valid(enemy) and absf(enemy.soldier.rotation.x) > 1.2, "it topples over")
+	await wait(1.0)
+	check(not is_instance_valid(enemy), "and is removed after sinking away")
+	await wait(spawner.REINFORCE_DELAY - 1.0 - 1.7)
 	check(spawner.enemies.is_empty(), "no instant respawn")
 	await wait(1.3)
 	check(spawner.enemies.size() == 1 and spawner.enemies[0].post != posted_post, "one reinforcement arrives later, at a different post")
@@ -1380,8 +1385,17 @@ func test_difficulty() -> void:
 		spawner = arena.get_node("QuizManager").enemy_spawner
 		var weapon: Dictionary = arena.get_node("Player").weapon
 		var seconds: float = (spawner.hits_to_kill() - 1) * weapon["cooldown"]
-		check(seconds >= 0.8 and seconds <= 1.5 and spawner.enemies[0].max_hp == spawner.hits_to_kill() * weapon["damage"],
-			"level 7, %s: an enemy takes %d hits (%.2f s of fire)" % [weapon["name"], spawner.hits_to_kill(), seconds])
+		var hits: int = spawner.hits_to_kill()
+		var fits: bool = seconds <= 1.0 and seconds > 1.0 - weapon["cooldown"] - 0.001
+		var by_kind: bool = hits >= 6 if weapon["cooldown"] < 0.3 else (hits == 1 if weapon["cooldown"] > 1.0 else hits >= 2)
+		check(fits and by_kind and spawner.enemies[0].max_hp == hits * weapon["damage"],
+			"level 7, %s: an enemy takes %d hits (%.2f s of fire after the first)" % [weapon["name"], hits, seconds])
+		if id == "manshuk":
+			var tough = spawner.enemies[0]
+			tough.take_hit(weapon["damage"])
+			check(is_equal_approx(tough.health_ratio(), (hits - 1.0) / hits) and is_equal_approx(tough._bar_material.get_shader_parameter("ratio"), tough.health_ratio()),
+				"the health bar drops by one %d-th per machine-gun hit" % hits)
+			check(tough.health_bar.mesh.size == tough.BAR_SIZE and tough.find_children("*", "MeshInstance3D", false, false).size() == 1, "one slim bar instead of a row of pips")
 		if id == "kabanbay":
 			var posts: Array = spawner.enemies.map(func(e): return e.post)
 			check(spawner.enemies.size() == 3 and posts.size() == 3 and posts[0] != posts[1] and posts[1] != posts[2] and posts[0] != posts[2], "level 7: three enemies at three different posts")
