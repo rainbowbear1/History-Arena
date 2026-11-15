@@ -449,6 +449,7 @@ func test_arena() -> void:
 	await test_shooting_range()
 	test_total_score_unlocks()
 	await test_character_unlocks()
+	await test_weapon_effects()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -1649,6 +1650,51 @@ func test_character_unlocks() -> void:
 	game_state.selected_character = ""
 
 
+# Weapon looks: round barrels with a muzzle, arrows that fly, flashes and tracers for guns, and a
+# short bow draw. Hits, damage and fire rate stay as they were (the ray decides at release).
+func test_weapon_effects() -> void:
+	print("== Weapon effects")
+	game_state.selected_level = 3
+	for id in ["tomyris", "kabanbay", "aliya", "manshuk"]:
+		game_state.selected_character = id
+		var arena := await _load_arena()
+		var player = arena.get_node("Player")
+		var model: String = player.weapon["model"]
+		var rods: Array = player._model.find_children("*", "MeshInstance3D", true, false).filter(func(m): return m.mesh is CylinderMesh)
+		check(player._muzzle != null and player._muzzle.position.z < -0.6 and (model == "bow" or rods.size() >= 3), "%s: round barrel parts and a muzzle at the far end" % model)
+		player.rotation = Vector3.ZERO
+		player.get_node("Camera3D").rotation = Vector3(0.3, 0, 0)  # Aim at the sky: no target hit.
+		var before: int = arena.get_children().size()
+		player.cooldown_left = 0.0
+		player.shoot()
+		var added: Array = arena.get_children().slice(before)
+		if model == "bow":
+			check(added.any(func(n): return n is Projectile), "bow: an arrow flies to where it was aimed")
+		else:
+			check(added.size() >= 1 and player._muzzle.get_child_count() >= 1, "%s: muzzle flash and tracer" % model)
+			await wait(0.2)
+			check(player._muzzle.get_child_count() == 0, "%s: the flash is gone a moment later" % model)
+		player.get_node("Camera3D").rotation = Vector3.ZERO
+		if model == "bow":
+			# A real draw: nothing is hit until the string is released; the cooldown starts at the click.
+			player.bow_draw_time = 0.12
+			player.cooldown_left = 0.0
+			var quiz = arena.get_node("QuizManager")
+			var correct = quiz.targets.filter(func(t): return t.is_correct)[0]
+			player.get_node("Camera3D").look_at(correct.label_anchor() - Vector3(0, 0.9, 0))
+			player.shoot()
+			check(quiz.score == 0 and player._nock.position.z > 0.0 or player._drawing, "bow: the string is drawn before the arrow leaves")
+			check(is_equal_approx(player.cooldown_left, player.weapon["cooldown"]), "bow: fire rate unchanged (cooldown from the click)")
+			await wait(0.25)
+			check(quiz.score == 100 and not player._nocked_arrow.visible, "bow: the arrow leaves on release and hits")
+			await wait(player.weapon["cooldown"])
+			check(player._nocked_arrow.visible, "bow: a new arrow is nocked when the bow is ready")
+		arena.queue_free()
+		await process_frame
+	game_state.selected_character = ""
+	game_state.selected_level = 1
+
+
 func test_progress() -> void:
 	print("== Progress, stars and results")
 	var S = ProgressStoreScript
@@ -2099,6 +2145,7 @@ func _load_arena() -> Node:
 	var arena: Node = load("res://main.tscn").instantiate()
 	root.add_child(arena)
 	current_scene = arena
+	arena.get_node("Player").bow_draw_time = 0.0  # Shots in tests land at once.
 	await process_frame
 	return arena
 

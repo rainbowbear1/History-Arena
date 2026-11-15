@@ -57,6 +57,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
+	if _nocked_arrow and cooldown_left == 0.0 and not _nocked_arrow.visible:
+		_nocked_arrow.show()
 	if weapon["auto"] and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		shoot()
 
@@ -80,18 +82,36 @@ func _physics_process(delta: float) -> void:
 
 
 # Fires once if the weapon is ready. Enemies take the weapon's damage; answer targets are hit.
+# The bow is drawn for a moment first (the shot leaves on release); the fire rate is unchanged,
+# because the cooldown starts with the click.
 func shoot() -> void:
-	if cooldown_left > 0.0:
+	if cooldown_left > 0.0 or _drawing:
 		return
 	cooldown_left = weapon["cooldown"]
 	shots_fired += 1
+	if _nock and bow_draw_time > 0.0:
+		_drawing = true
+		var draw := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		draw.tween_property(_nock, "position:z", BOW_DRAW_DISTANCE, bow_draw_time)
+		await draw.finished
+		_drawing = false
+		if not is_inside_tree():
+			return
+	_release()
 
+
+func _release() -> void:
 	play_recoil()
+	if _nock:
+		_nock.position.z = 0.0
+		_nocked_arrow.hide()  # Back on the string when the bow is ready again.
 	if quiz_manager.map_aiming():
 		quiz_manager.shoot_map()
 		return
 	shoot_ray.force_raycast_update()
 	var target = shoot_ray.get_collider() if shoot_ray.is_colliding() else null
+	var hit_point: Vector3 = shoot_ray.get_collision_point() if target else shoot_ray.to_global(shoot_ray.target_position)
+	_shot_effect(hit_point)
 
 	# Enemies first; otherwise an answer label under the crosshair counts as a hit on its target,
 	# so a player aiming at the text is never punished for missing the soldier.
@@ -108,16 +128,90 @@ func shoot() -> void:
 	elif target and target.has_method("hit"):
 		target.hit()
 
+
+# Only the look of a shot: a flying arrow, or a muzzle flash and a short tracer. Hits are decided
+# by the ray at once, as before.
+func _shot_effect(to: Vector3) -> void:
+	var from: Vector3 = _muzzle.global_position if _muzzle else camera.global_position
+	var scene := get_tree().current_scene
+	if scene == null:
+		return
+	if weapon.get("model", "") == "bow":
+		var arrow := Projectile.new()
+		scene.add_child(arrow)
+		arrow.launch(from, to, ARROW_SPEED, "arrow", func(_point): pass)
+		return
+	if _muzzle == null:
+		return
+	var flash := MeshInstance3D.new()
+	flash.mesh = _flash_mesh()
+	flash.material_override = _glow(Color(1.0, 0.75, 0.3))
+	flash.scale = Vector3.ONE * randf_range(0.8, 1.2)
+	_muzzle.add_child(flash)
+	get_tree().create_timer(FLASH_TIME, false).timeout.connect(flash.queue_free)
+	var length := from.distance_to(to)
+	if length < 0.5:
+		return
+	var tracer := MeshInstance3D.new()
+	var rod := CylinderMesh.new()
+	rod.top_radius = 0.012
+	rod.bottom_radius = 0.012
+	rod.height = 1.0
+	rod.radial_segments = 4
+	rod.rings = 1
+	tracer.mesh = rod
+	var glow := _glow(Color(1.0, 0.9, 0.55))
+	glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tracer.material_override = glow
+	scene.add_child(tracer)
+	var up := Vector3.UP if absf((to - from).normalized().y) < 0.99 else Vector3.RIGHT
+	tracer.look_at_from_position((from + to) / 2.0, to, up)
+	tracer.rotate_object_local(Vector3.RIGHT, PI / 2.0)
+	tracer.scale = Vector3(1, length, 1)
+	var fade := tracer.create_tween()
+	fade.tween_property(glow, "albedo_color:a", 0.0, TRACER_TIME)
+	fade.tween_callback(tracer.queue_free)
+
+
+static func _flash_mesh() -> SphereMesh:
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.07
+	mesh.height = 0.11
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	return mesh
+
+
+static func _glow(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return material
+
 @onready var weapon_holder: Node3D = $Camera3D/WeaponHolder
 
 var _model: Node3D
+var _muzzle: Node3D  # End of the barrel (or the arrow tip): where shots and flashes start.
+var _nock: Node3D  # Bowstring and nocked arrow, pulled back while the bow is drawn.
+var _nocked_arrow: Node3D
+var _drawing := false
+# Seconds the bow is drawn before the arrow leaves (tests set 0 to shoot at once).
+var bow_draw_time := 0.12
 
+const Projectile := preload("res://projectile.gd")
 const WOOD := Color(0.45, 0.28, 0.14)
 const BOW_SEGMENTS := 10
+const BOW_DRAW_DISTANCE := 0.22
 const METAL := Color(0.32, 0.33, 0.36)
+const BRASS := Color(0.72, 0.56, 0.25)
+const ARROW_SPEED := 70.0
+const FLASH_TIME := 0.05
+const TRACER_TIME := 0.09
+const ALONG := Vector3(PI / 2.0, 0, 0)  # Turns a rod to point along the weapon (-z).
 
 
-# First-person weapon from a few boxes: a bow for early eras, guns for later ones.
+# First-person weapon from a few primitives: a recurve bow for early eras, a flintlock musket,
+# a scoped bolt-action rifle and a pan-fed machine gun for later ones.
 func _build_weapon(model: String) -> void:
 	if model.is_empty():
 		return
@@ -129,10 +223,12 @@ func _build_weapon(model: String) -> void:
 	# The bow is turned a little so its curve shows, and tilted like a held bow.
 	_model.rotation_degrees = Vector3(0, 28, -14) if model == "bow" else Vector3.ZERO
 	weapon_holder.add_child(_model)
+	_muzzle = Node3D.new()
+	_model.add_child(_muzzle)
 	match model:
 		"bow":
 			# A recurve bow: one continuous curved limb from tip to tip (segments meet end to end),
-			# a leather grip, a straight string between the tips and a nocked arrow.
+			# a leather grip, and the string with a nocked arrow, which pull back when drawn.
 			var points := []
 			for i in range(BOW_SEGMENTS + 1):
 				var t := -1.0 + 2.0 * i / BOW_SEGMENTS
@@ -147,32 +243,74 @@ func _build_weapon(model: String) -> void:
 				_weapon_part(Vector3(thickness, a.distance_to(b) + 0.01, thickness * 1.3), (a + b) / 2.0, WOOD, Vector3(atan2(b.z - a.z, b.y - a.y), 0, 0))
 			_weapon_part(Vector3(0.065, 0.16, 0.075), points[BOW_SEGMENTS / 2], Color(0.3, 0.18, 0.1), Vector3.ZERO)
 			var tip: Vector3 = points[0]
-			_weapon_part(Vector3(0.008, 1.2, 0.008), Vector3(0, 0, tip.z), Color(0.92, 0.9, 0.82), Vector3.ZERO)
-			_weapon_part(Vector3(0.02, 0.02, 0.75), Vector3(0.03, 0.0, tip.z - 0.33), WOOD.lightened(0.3), Vector3.ZERO)
-			_weapon_part(Vector3(0.03, 0.03, 0.06), Vector3(0.03, 0.0, tip.z - 0.72), METAL, Vector3.ZERO)
-			_weapon_part(Vector3(0.005, 0.05, 0.1), Vector3(0.03, 0.0, tip.z - 0.02), Color(0.85, 0.2, 0.15), Vector3.ZERO)
-		"musket", "rifle":
-			_weapon_part(Vector3(0.07, 0.09, 0.9 if model == "musket" else 0.8), Vector3(0, 0, -0.05), WOOD, Vector3.ZERO)
-			_weapon_part(Vector3(0.045, 0.6, 0.045), Vector3(0, 0.06, -0.55), METAL, Vector3(PI / 2.0, 0, 0), true)
-			_weapon_part(Vector3(0.08, 0.16, 0.25), Vector3(0, -0.07, 0.38), WOOD.darkened(0.1), Vector3(0.3, 0, 0))
-			if model == "rifle":
-				_weapon_part(Vector3(0.05, 0.05, 0.22), Vector3(0, 0.12, -0.05), METAL, Vector3.ZERO)
+			_nock = Node3D.new()
+			_model.add_child(_nock)
+			_nocked_arrow = Node3D.new()
+			_nock.add_child(_nocked_arrow)
+			_weapon_part(Vector3(0.008, 1.2, 0.008), Vector3(0, 0, tip.z), Color(0.92, 0.9, 0.82), Vector3.ZERO, false, _nock)
+			_weapon_part(Vector3(0.02, 0.75, 0.0), Vector3(0.03, 0.0, tip.z - 0.33), WOOD.lightened(0.3), ALONG, true, _nocked_arrow)
+			_weapon_part(Vector3(0.045, 0.07, 0.001), Vector3(0.03, 0.0, tip.z - 0.73), METAL, ALONG, true, _nocked_arrow)
+			_weapon_part(Vector3(0.005, 0.05, 0.1), Vector3(0.03, 0.0, tip.z - 0.02), Color(0.85, 0.2, 0.15), Vector3.ZERO, false, _nocked_arrow)
+			_muzzle.position = Vector3(0.03, 0.0, tip.z - 0.75)
+		"musket":
+			# Flintlock: long round barrel with a muzzle ring, full wooden stock with a curved butt,
+			# lock plate and hammer, ramrod under the barrel, brass butt plate.
+			_weapon_part(Vector3(0.07, 0.075, 0.95), Vector3(0, 0.0, -0.27), WOOD, Vector3.ZERO)
+			_weapon_part(Vector3(0.06, 0.09, 0.2), Vector3(0, -0.03, 0.27), WOOD, Vector3(0.18, 0, 0))
+			_weapon_part(Vector3(0.075, 0.18, 0.3), Vector3(0, -0.1, 0.47), WOOD.darkened(0.08), Vector3(0.28, 0, 0))
+			_weapon_part(Vector3(0.078, 0.19, 0.025), Vector3(0, -0.12, 0.62), BRASS, Vector3(0.28, 0, 0))
+			_weapon_part(Vector3(0.044, 1.15, 0.0), Vector3(0, 0.055, -0.38), METAL, ALONG, true)
+			_weapon_part(Vector3(0.056, 0.04, 0.0), Vector3(0, 0.055, -0.94), METAL.darkened(0.3), ALONG, true)
+			_weapon_part(Vector3(0.012, 0.8, 0.0), Vector3(0, 0.012, -0.42), WOOD.darkened(0.3), ALONG, true)
+			_weapon_part(Vector3(0.018, 0.05, 0.13), Vector3(0.042, 0.03, 0.1), METAL, Vector3.ZERO)
+			_weapon_part(Vector3(0.014, 0.07, 0.022), Vector3(0.046, 0.08, 0.14), METAL.darkened(0.2), Vector3(-0.45, 0, 0))
+			_weapon_part(Vector3(0.012, 0.04, 0.09), Vector3(0, -0.06, 0.12), BRASS, Vector3.ZERO)
+			_muzzle.position = Vector3(0, 0.055, -0.97)
+		"rifle":
+			# Bolt-action sniper rifle: round barrel, receiver with a bolt handle, box magazine,
+			# telescopic sight on mounts, wooden stock.
+			_weapon_part(Vector3(0.068, 0.07, 0.8), Vector3(0, 0.0, -0.2), WOOD, Vector3.ZERO)
+			_weapon_part(Vector3(0.055, 0.09, 0.18), Vector3(0, -0.035, 0.27), WOOD, Vector3(0.2, 0, 0))
+			_weapon_part(Vector3(0.072, 0.17, 0.28), Vector3(0, -0.1, 0.46), WOOD.darkened(0.08), Vector3(0.25, 0, 0))
+			_weapon_part(Vector3(0.038, 0.95, 0.0), Vector3(0, 0.05, -0.45), METAL, ALONG, true)
+			_weapon_part(Vector3(0.05, 0.05, 0.0), Vector3(0, 0.05, -0.93), METAL.darkened(0.3), ALONG, true)
+			_weapon_part(Vector3(0.056, 0.24, 0.0), Vector3(0, 0.06, 0.05), METAL.darkened(0.1), ALONG, true)
+			_weapon_part(Vector3(0.014, 0.08, 0.0), Vector3(0.05, 0.05, 0.13), METAL, Vector3(0, 0, PI / 2.0), true)
+			_weapon_part(Vector3(0.03, 0.03, 0.03), Vector3(0.09, 0.05, 0.13), METAL.darkened(0.2), Vector3.ZERO)
+			_weapon_part(Vector3(0.05, 0.07, 0.1), Vector3(0, -0.06, 0.0), METAL.darkened(0.2), Vector3.ZERO)
+			_weapon_part(Vector3(0.044, 0.28, 0.0), Vector3(0, 0.14, 0.02), Color(0.12, 0.12, 0.13), ALONG, true)
+			_weapon_part(Vector3(0.058, 0.035, 0.0), Vector3(0, 0.14, -0.13), Color(0.12, 0.12, 0.13), ALONG, true)
+			_weapon_part(Vector3(0.054, 0.035, 0.0), Vector3(0, 0.14, 0.17), Color(0.12, 0.12, 0.13), ALONG, true)
+			for z in [-0.06, 0.1]:
+				_weapon_part(Vector3(0.02, 0.06, 0.03), Vector3(0, 0.1, z), METAL, Vector3.ZERO)
+			_muzzle.position = Vector3(0, 0.05, -0.96)
 		"mg":
-			_weapon_part(Vector3(0.12, 0.12, 0.6), Vector3(0, 0, 0), METAL, Vector3.ZERO)
-			_weapon_part(Vector3(0.055, 0.6, 0.055), Vector3(0, 0.02, -0.55), METAL.darkened(0.2), Vector3(PI / 2.0, 0, 0), true)
-			_weapon_part(Vector3(0.3, 0.05, 0.3), Vector3(0, 0.1, -0.05), METAL.lightened(0.1), Vector3.ZERO)
-			_weapon_part(Vector3(0.08, 0.14, 0.22), Vector3(0, -0.06, 0.35), WOOD, Vector3.ZERO)
+			# Pan-fed light machine gun: receiver, round finned barrel jacket, a conical flash hider
+			# with a round dark opening, flat drum magazine on top, pistol grip and stock.
+			_weapon_part(Vector3(0.09, 0.1, 0.36), Vector3(0, 0, 0.02), METAL, Vector3.ZERO)
+			_weapon_part(Vector3(0.08, 0.46, 0.0), Vector3(0, 0.0, -0.39), METAL.darkened(0.15), ALONG, true)
+			for z in [-0.24, -0.36, -0.48, -0.58]:
+				_weapon_part(Vector3(0.095, 0.02, 0.0), Vector3(0, 0.0, z), METAL.darkened(0.3), ALONG, true)
+			_weapon_part(Vector3(0.034, 0.16, 0.0), Vector3(0, 0.0, -0.69), METAL.darkened(0.25), ALONG, true)
+			_weapon_part(Vector3(0.042, 0.07, 0.06), Vector3(0, 0.0, -0.8), METAL.darkened(0.35), ALONG, true)
+			_weapon_part(Vector3(0.022, 0.012, 0.0), Vector3(0, 0.0, -0.836), Color(0.03, 0.03, 0.03), ALONG, true)
+			_weapon_part(Vector3(0.3, 0.035, 0.0), Vector3(0, 0.08, -0.02), METAL.lightened(0.1), Vector3.ZERO, true)
+			_weapon_part(Vector3(0.1, 0.02, 0.0), Vector3(0, 0.1, -0.02), METAL, Vector3.ZERO, true)
+			_weapon_part(Vector3(0.045, 0.11, 0.05), Vector3(0, -0.1, 0.12), WOOD, Vector3(0.35, 0, 0))
+			_weapon_part(Vector3(0.07, 0.13, 0.28), Vector3(0, -0.04, 0.33), WOOD, Vector3(0.12, 0, 0))
+			_muzzle.position = Vector3(0, 0.0, -0.86)
 
 
-# A box, or a round rod (`round`, for barrels) of the given size.
-func _weapon_part(size: Vector3, at: Vector3, color: Color, tilt: Vector3, round: bool = false) -> void:
+# A box, or a round rod (`round`: x is the diameter, y the length, and a z above 0 the diameter
+# at the far end, for cones) of the given size.
+func _weapon_part(size: Vector3, at: Vector3, color: Color, tilt: Vector3, round: bool = false, parent: Node3D = null) -> void:
 	var part := MeshInstance3D.new()
 	if round:
 		var rod := CylinderMesh.new()
-		rod.top_radius = size.x / 2.0
 		rod.bottom_radius = size.x / 2.0
+		rod.top_radius = size.z / 2.0 if size.z > 0.0 else size.x / 2.0
 		rod.height = size.y
-		rod.radial_segments = 10
+		rod.radial_segments = 12
 		rod.rings = 1
 		part.mesh = rod
 	else:
@@ -183,9 +321,10 @@ func _weapon_part(size: Vector3, at: Vector3, color: Color, tilt: Vector3, round
 	part.rotation = tilt
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
-	material.roughness = 1.0
+	material.roughness = 0.6 if color == METAL or color == BRASS else 1.0
 	part.material_override = material
-	_model.add_child(part)
+	(parent if parent else _model).add_child(part)
+
 
 var recoil_tween: Tween
 
