@@ -1,0 +1,77 @@
+# History Arena — question template (UTF-8 text).
+# One question per block, blank line between blocks. Lines starting with # are ignored.
+# Every question needs Kazakh (Q, A, ...) and English (Q_EN, A_EN, ...) lines in the same order.
+# Mark the correct option with * (A, A_EN, PLACE). Separate options with |.
+# TYPE: single_choice | fill_blank (needs ___) | matching (PAIR: left = right) |
+#       chronology (ITEM lines, earliest first) | map (PLACE: name | latitude | longitude) |
+#       image (IMAGE: file in assets/images, already credited)
+# Optional: ID (otherwise numbered automatically), DIFFICULTY 1-3, EXTRA / EXTRA_EN (decoys for
+# harder levels, same kind of answer), EXPLAIN.
+# The examples below are existing questions from the game, shown only to illustrate the format.
+
+ID: saka-01
+TYPE: single_choice
+DIFFICULTY: 1
+Q: Б.з.б. 530 жылы парсы патшасы Кир II-нің әскерін талқандаған массагеттер патшайымы кім?
+Q_EN: Which queen of the Massagetae defeated the army of the Persian king Cyrus II in 530 BC?
+A: *Томирис | Зарина | Спаретра | Роксана
+A_EN: *Tomyris | Zarina | Sparethra | Roxana
+
+ID: xviii_xix-04
+TYPE: fill_blank
+DIFFICULTY: 3
+Q: «Ереуіл атқа ер салмай» деп басталатын өлеңнің авторы — ақын ___.
+Q_EN: The poem that begins 'Ereuil atka er salmai' was written by the poet ___.
+A: *Махамбет | Шернияз | Дулат | Шортанбай
+A_EN: *Makhambet | Sherniyaz | Dulat | Shortanbai
+EXTRA: Мұрат | Бұқар
+EXTRA_EN: Murat | Bukhar
+
+ID: saka-12
+TYPE: matching
+DIFFICULTY: 2
+Q: Парсы деректеріндегі сақ топтарын сипаттамасымен сәйкестендіріңіз
+Q_EN: Match the Saka groups of Persian sources with their descriptions
+PAIR: Тиграхауда = Шошақ бөрікті сақтар
+PAIR: Хаумаварга = Хаома сусынын дайындайтын сақтар
+PAIR: Парадарайа = Теңіздің арғы жағындағы сақтар
+PAIR_EN: Tigraxauda = Saka with pointed caps
+PAIR_EN: Haumavarga = Saka who prepare haoma
+PAIR_EN: Paradraya = Saka beyond the sea
+
+ID: huns-12
+TYPE: chronology
+DIFFICULTY: 2
+Q: Оқиғаларды хронологиялық ретпен қойыңыз
+Q_EN: Put the events in chronological order
+ITEM: Байдэн шайқасы
+ITEM: Ғұн державасының екіге бөлінуі
+ITEM: Ғұндардың остготтарды талқандауы
+ITEM: Каталаун шайқасы
+ITEM_EN: Battle of Baideng
+ITEM_EN: Split of the Xiongnu state
+ITEM_EN: Huns defeat the Ostrogoths
+ITEM_EN: Battle of the Catalaunian Plains
+
+ID: otyrar-12
+TYPE: map
+DIFFICULTY: 2
+Q: Отырар қаласының орны картада қай жерде?
+Q_EN: Where is the site of Otrar on the map?
+PLACE: *Отырар | 42.85 | 68.3
+PLACE: Ташкент | 41.31 | 69.28
+PLACE: Тараз | 42.9 | 71.37
+PLACE: Қызылорда | 44.85 | 65.51
+PLACE_EN: Otrar
+PLACE_EN: Tashkent
+PLACE_EN: Taraz
+PLACE_EN: Kyzylorda
+
+ID: xviii_xix-12
+TYPE: image
+DIFFICULTY: 2
+Q: Суреттегі ақынның туған жері — қай тау өңірі?
+Q_EN: The poet in the picture was born in which mountain area?
+IMAGE: abai.jpg
+A: *Шыңғыстау | Ұлытау | Қарқаралы | Баянауыл
+A_EN: *Shyngystau | Ulytau | Karkaraly | Bayanaul
