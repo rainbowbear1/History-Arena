@@ -1,9 +1,9 @@
-
 extends Control
 
-# Sign-in screen: Google through the Game Hub, or play offline as a guest.
+# Sign-in screen: Google (Firebase Authentication), or play offline as a guest.
 
-const OFFLINE_NOTE := "Game Hub әлі қосылмаған. Қонақ ретінде ойнаңыз: нәтижелер осы құрылғыда сақталып, кейін жіберіледі."
+const OFFLINE_NOTE := "Онлайн режим қосылмаған. Қонақ ретінде ойнаңыз: нәтижелер тек осы құрылғыда сақталады."
+const GUEST_NOTE := "Қонақ нәтижелері рейтингке түспейді."
 
 @onready var google_button: Button = %GoogleButton
 @onready var guest_button: Button = %GuestButton
@@ -14,13 +14,19 @@ func _ready() -> void:
 	google_button.pressed.connect(_on_google_pressed)
 	guest_button.pressed.connect(_on_guest_pressed)
 
-	if Backend.restore_session():
-		_enter_game()
-		return
+	if Backend.online_available():
+		# Firebase restores a saved session asynchronously; wait before offering the buttons.
+		google_button.disabled = true
+		guest_button.disabled = true
+		status_label.text = "Сессия тексерілуде..."
+		if await Backend.restore_session():
+			_enter_game()
+			return
+		guest_button.disabled = false
 
-	google_button.disabled = not Backend.hub_available()
-	status_label.text = "" if Backend.hub_available() else OFFLINE_NOTE
-	(google_button if Backend.hub_available() else guest_button).grab_focus.call_deferred()
+	google_button.disabled = not Backend.online_available()
+	status_label.text = GUEST_NOTE if Backend.online_available() else OFFLINE_NOTE
+	(google_button if Backend.online_available() else guest_button).grab_focus.call_deferred()
 
 
 func _on_google_pressed() -> void:
@@ -34,7 +40,7 @@ func _on_google_pressed() -> void:
 		return
 
 	status_label.text = error
-	google_button.disabled = not Backend.hub_available()
+	google_button.disabled = not Backend.online_available()
 	guest_button.disabled = false
 
 

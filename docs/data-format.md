@@ -63,7 +63,7 @@ Levels. These numbers are preliminary and will be tuned after playtesting with t
 
 Written by `progress_store.gd` (in the browser, `user://` is stored in IndexedDB). It holds, per
 level, the best score, best stars, whether it was passed and the number of attempts, plus the last
-50 attempts. Each attempt record is what the Game Hub will receive:
+50 attempts. Each attempt record is what is uploaded to Cloud Firestore (`docs/online.md`):
 
 ```json
 { "level": 1, "character": "tomyris", "score": 1100, "max_score": 1300, "correct": 11, "wrong": 2,

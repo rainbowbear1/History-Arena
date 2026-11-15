@@ -9,6 +9,7 @@ extends Control
 @onready var settings_status: Label = %SettingsStatus
 @onready var close_button: Button = %CloseButton
 
+@onready var leaderboard_button: Button = $MenuCenter/MenuVBox/LeaderboardButton
 @onready var credits_button: Button = $MenuCenter/MenuVBox/CreditsButton
 @onready var user_label: Label = $MenuCenter/MenuVBox/UserLabel
 @onready var sign_out_button: Button = $MenuCenter/MenuVBox/SignOutButton
@@ -37,6 +38,7 @@ func _ready() -> void:
 
 	play_button.pressed.connect(_on_play_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
+	leaderboard_button.pressed.connect(_on_leaderboard_pressed)
 	credits_button.pressed.connect(_on_credits_pressed)
 	sign_out_button.pressed.connect(_on_sign_out_pressed)
 	user_label.text = "Ойыншы: " + Backend.display_name() if Backend.is_signed_in() else ""
@@ -51,6 +53,10 @@ func _ready() -> void:
 
 func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://level_select.tscn")
+
+
+func _on_leaderboard_pressed() -> void:
+	get_tree().change_scene_to_file("res://leaderboard.tscn")
 
 
 func _on_settings_pressed() -> void:

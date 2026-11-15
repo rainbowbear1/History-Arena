@@ -13,16 +13,16 @@ pages 3 and 7–10), not the full vision in `docs/vision.md`.
 | Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Done (timer, speed, decoys, enemies, boss, fewer ability uses) |
 | HP −10 per mistake, +100 per correct answer | Done |
 | "Жан біткенде" medical help | Done (single HP pool, help restores 50/40/30 HP, retry the task) |
-| Results saved (score, level, correct, wrong, playtime), progress | Done on the device (M6): stars, unlocks, results screen, demo mode; upload waits for M9 |
-| Google login, profile, shared leaderboard (Game Hub) | Game side done (M9): Google login screen, guest mode, result outbox, JS bridge contract (docs/hub-integration.md); **waiting for the Hub team's bridge/backend** |
-| Security items (OAuth, no secrets in frontend, validation, rate limiting, leaderboard anti-cheat) | Mostly server-side (Hub); the game must not ship secrets and must send plausible, server-checkable results |
-| GitHub repository, deployed build | Local Git only; **no remote yet**; no public hosting yet |
+| Results saved (score, level, correct, wrong, playtime), progress | Done: on the device per account (M6) and in Cloud Firestore (M11) |
+| Google login, profile, leaderboard | M11 (15 Nov, priorities changed: independent of the Game Hub): Firebase Authentication (Google), Firestore leaderboard, security rules, tested on emulators; **goes live after your Firebase project setup** (docs/deploy.md) |
+| Security items (OAuth, no secrets in frontend, validation, rate limiting, leaderboard anti-cheat) | Firestore rules: own account only, score caps, write-once attempts, 5 s rate limit; no secrets; old toy login removed from Git history; limits in docs/online.md |
+| GitHub repository, deployed build | GitHub Pages ready (`tools/publish_pages.sh`); **waiting for your repository and approval to push** |
 
 ## Mandatory vs optional
 **Mandatory before the defense**
 1. Persistent results, stars and level unlocks; results screen with correct/wrong/time (M6).
 2. Questions for levels 4–10 using all six task types, plus a map and images for the map/image tasks (M7).
-3. Google sign-in and result upload through the shared Hub backend, with an offline fallback (M9).
+3. Google sign-in and an online leaderboard (Firebase, M11), with an offline guest fallback.
 4. A reliable web build, hosted over HTTPS, and a GitHub repository (M10).
 
 **Optional, only if time allows** (in this order)
@@ -56,7 +56,7 @@ in parallel but depends on classmates; the game must remain fully demonstrable o
 | Late changes breaking the build | Automated tests + export check before every commit; one commit per milestone |
 
 ## Dependencies on others
-- **Game Hub team:** backend provider (Firebase or Supabase), the project's public config, the
-  results/leaderboard data format, the server-side score check, and the hosting domain.
+- **You:** a Firebase project (docs/deploy.md step 1) and its public web config; a GitHub repository.
+- **Game Hub team (later, optional):** reconnecting through the same bridge contract (docs/online.md).
 - **You:** review of new questions; the choice between designated protagonists and free character
   choice (see `docs/vision.md`); scenarios for levels still marked "undecided"; a GitHub repository.

@@ -46,7 +46,7 @@ var score: int = 0
 var level: Dictionary = {}
 var theme: Dictionary = {}
 
-# Run statistics saved with the result (and later sent to the Game Hub).
+# Run statistics saved with the result and sent to the online leaderboard.
 var correct_count: int = 0
 var wrong_count: int = 0
 var playtime: float = 0.0
@@ -511,6 +511,10 @@ func show_results(attempt: Dictionary, new_best: bool) -> void:
 	]
 	if not attempt["passed"]:
 		lines.append("Өту үшін кемінде %d%% ұпай керек" % level.get("pass_percent", 60))
+	if Backend.is_online_player():
+		lines.append("Нәтиже онлайн рейтингке жіберілді")
+	elif Backend.is_guest():
+		lines.append("Қонақ: нәтиже рейтингке түспейді")
 	results_label.text = "\n".join(lines)
 
 	var next_id: int = attempt["level"] + 1

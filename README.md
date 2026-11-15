@@ -4,10 +4,10 @@ A browser FPS quiz about the history of Kazakhstan (Godot 4.7.2, web export). Th
 enemy soldier whose placard carries the right answer, across ten historical arenas from the Saka era
 to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3.
 
-> **Status of Google sign-in: NOT FINISHED.** The game side is ready (login screen, guest mode,
-> result outbox, JavaScript bridge contract), but real Google sign-in and the shared leaderboard need
-> the Game Hub team's backend. Until they provide `hub-bridge.js`, the login screen says so and offers
-> guest play; results are kept on the device. See `docs/hub-integration.md`.
+> **Online features:** Google sign-in (Firebase Authentication) and the online leaderboard (Cloud
+> Firestore) are implemented and tested against the Firebase emulators. They go live once
+> `web/firebase-config.js` holds the project's web config and the build is on GitHub Pages
+> (`docs/deploy.md`). Until then the game runs offline with guest play. See `docs/online.md`.
 
 ## What the game does
 | Assignment requirement | In the game |
@@ -18,15 +18,17 @@ to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3
 | 6 task types | single choice, fill-in-the-blank, matching, chronology, map (Natural Earth map), image (licensed photos) |
 | Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 10 s, sway speed ×1.0 → ×2.5, up to 4 decoys, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
 | "Жан біткенде" medical help | At 0 HP: one history question; correct → +50/40/30 HP and retry the task, wrong → restart |
-| Results saved (score, level, correct, wrong, playtime) | Saved on the device with stars and unlocks; queued for the Game Hub |
-| Google login, leaderboard | **Waiting for the Game Hub backend** (see above) |
+| Results saved (score, level, correct, wrong, playtime) | Saved per account on the device (stars, unlocks) and in Cloud Firestore under the player's Google account |
+| Google login, leaderboard | Firebase Authentication (Google); **Рейтинг** screen with top 20, own best total and rank; Firestore security rules |
 
 ## Run, test, build
 ```
 godot --path .                                   # open/run (Godot 4.7.2)
 godot --headless --path . --import               # first time, or after adding assets
 godot --headless --path . --script res://tests/run_tests.gd   # 668 checks; exit code = failures
-tools/export_web.sh <path-to-godot> build/web    # web build + Hub bridge file
+(cd tests/firebase && npm install && npm test)   # Firestore security rules (emulator; Node 20+, Java 21+)
+tools/export_web.sh <path-to-godot> build/web    # web build + Firebase bridge
+tools/publish_pages.sh                           # build -> local gh-pages branch (no push)
 ```
 Serve `build/web/` over HTTP(S) to play (threads are off, so no special headers are needed).
 Settings → **Демо режимі** opens every level (for presentations); **Прогресті тазалау** resets progress.
@@ -42,7 +44,8 @@ Autoloads                                                              ├─ en
   LevelDatabase      data/levels.json                                  ├─ player.gd         movement, weapon, ability key
   CharacterDatabase  data/characters.json                              └─ revival_panel     medical help
   ProgressStore      user://progress.json (stars, unlocks, history)
-  Backend            sign-in state, outbox → web_bridge_transport → window.HistoryArenaHub (Game Hub)
+  Backend            sign-in, outbox, leaderboard → web_bridge_transport → window.HistoryArenaHub
+                     (web/firebase-bridge.js → Firebase Auth + Cloud Firestore, rules: firestore.rules)
 ```
 Content is data, not code: `data/levels.json` (difficulty, theme, protagonist), `questions/*.json`
 (tasks), `data/characters.json`, `data/themes.json`. Formats: `docs/data-format.md`.
@@ -63,8 +66,8 @@ Content is data, not code: `data/levels.json` (difficulty, theme, protagonist), 
 |---|---|
 | `docs/defense-plan.md` | Status against the assignment, milestones, risks, dependencies |
 | `docs/demo-script.md` | Step-by-step defense demonstration (12 required points) |
-| `docs/deploy.md` | Hosting the web build, pre-defense checklist |
-| `docs/hub-integration.md` | Game Hub bridge contract, result payload, server-side checks, what we need |
+| `docs/deploy.md` | Firebase setup, GitHub Pages deployment, checks on the live site |
+| `docs/online.md` | Google sign-in, Firestore data, security rules, public vs private config, tampering limits |
 | `docs/data-format.md` | Levels, questions, characters, themes, saved progress |
 | `docs/content-review.md` / `docs/history-review-checklist.md` | Every task with its answer; accuracy checklist |
 | `docs/vision.md` | Long-term creative direction |
@@ -72,6 +75,8 @@ Content is data, not code: `data/levels.json` (difficulty, theme, protagonist), 
 
 ## Security notes
 - No passwords, API keys or secrets in the game or repository; the old hard-coded login was removed.
-- The Hub bridge may only contain public client configuration; results must be validated server-side
-  (rules in `docs/hub-integration.md`), and the player id comes from the Hub session, never the client.
+- `web/firebase-config.js` holds only public identifiers. Firestore rules tie every write to the
+  signed-in Google account (uid from the verified token, never from the game), cap scores per level,
+  keep write-once attempt records and rate-limit uploads. Remaining tampering limits are in
+  `docs/online.md`.
 - `.godot/` (which holds export credentials) and build outputs are git-ignored.

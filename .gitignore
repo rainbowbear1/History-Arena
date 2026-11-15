@@ -36,3 +36,14 @@ desktop.ini
 *.swp
 .vscode/
 .idea/
+
+# Firebase rule-test tooling
+node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# Firebase private credentials and CLI state (never commit)
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+service-account*.json
+.firebase/

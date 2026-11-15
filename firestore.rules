@@ -1,0 +1,111 @@
+rules_version = '2';
+
+// History Arena: who may read and write the leaderboard (deployed to Cloud Firestore).
+//
+//   players/{uid}                 one row per Google account: name, best score s1..s10 and stars
+//                                 t1..t10 per level, total = s1 + ... + s10, last attempt id
+//   players/{uid}/attempts/{id}   every finished run, write-once
+//
+// The uid always comes from the verified Firebase ID token (request.auth), never from the game.
+// Scores are still produced in the player's browser; see docs/online.md for what these rules
+// cannot prevent.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Tasks per level x 100 (questions/*.json). tests/run_tests.gd checks that these match.
+    function maxScore(level) {
+      return {'1': 1500, '2': 1300, '3': 1400, '4': 1300, '5': 1300,
+              '6': 1300, '7': 1200, '8': 1300, '9': 1300, '10': 1300}[string(level)];
+    }
+
+    // The "double score" ability can add at most this much per run (2 uses x 100).
+    function doubleBonus() {
+      return 200;
+    }
+
+    function playerName() {
+      return request.auth.token.get('name', 'Ойыншы');
+    }
+
+    function validAttempt(a) {
+      return a.keys().hasOnly(['level', 'character', 'score', 'max_score', 'correct', 'wrong',
+                               'playtime_sec', 'stars', 'passed', 'completed', 'revivals_used',
+                               'finished_at', 'game_id', 'client_version', 'created'])
+          && a.keys().hasAll(['level', 'score', 'max_score', 'stars', 'playtime_sec', 'created'])
+          && a.level is int && a.level >= 1 && a.level <= 10
+          && a.max_score == maxScore(a.level)
+          && a.score is int && a.score >= 0 && a.score % 100 == 0
+          && a.score <= a.max_score + doubleBonus()
+          && a.stars is int && a.stars >= 0 && a.stars <= 3
+          && a.playtime_sec is int && a.playtime_sec <= 86400
+          && a.playtime_sec >= a.score / 100          // at least a second per solved task
+          && a.get('correct', 0) is int && a.get('correct', 0) >= 0 && a.get('correct', 0) <= 200
+          && a.get('wrong', 0) is int && a.get('wrong', 0) >= 0 && a.get('wrong', 0) <= 200
+          && a.get('revivals_used', 0) is int && a.get('revivals_used', 0) >= 0 && a.get('revivals_used', 0) <= 5
+          && a.get('passed', false) is bool && a.get('passed', false) == (a.stars > 0)
+          && a.get('completed', false) is bool
+          && a.get('character', '') is string && a.get('character', '').size() <= 32
+          && a.get('finished_at', 0) is int
+          && a.get('game_id', 'history-arena') == 'history-arena'
+          && a.get('client_version', '') is string && a.get('client_version', '').size() <= 16
+          && a.created == request.time;
+    }
+
+    // Level j is unchanged unless it is the level k of this write's attempt.
+    function same(d, prev, k, j) {
+      return j == k || (d['s' + j] == prev.get('s' + j, 0) && d['t' + j] == prev.get('t' + j, 0));
+    }
+
+    // A best value can only rise, and only to the new attempt's value.
+    function best(d, prev, field, value) {
+      let old = prev.get(field, 0);
+      return (value > old && d[field] == value) || (value <= old && d[field] == old);
+    }
+
+    // Every player write must come with a new attempt created in the same transaction, and may
+    // only raise that attempt's level.
+    function validPlayer(uid, prev) {
+      let d = request.resource.data;
+      let attempt = /databases/$(database)/documents/players/$(uid)/attempts/$(d.last);
+      let a = getAfter(attempt).data;
+      let k = string(a.level);
+      return d.keys().hasOnly(['name', 'last', 'updated', 'total',
+                               's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10',
+                               't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'])
+          && d.last is string
+          && !exists(attempt) && existsAfter(attempt)
+          && d.name == playerName()
+          && d.updated == request.time
+          && same(d, prev, k, '1') && same(d, prev, k, '2') && same(d, prev, k, '3')
+          && same(d, prev, k, '4') && same(d, prev, k, '5') && same(d, prev, k, '6')
+          && same(d, prev, k, '7') && same(d, prev, k, '8') && same(d, prev, k, '9')
+          && same(d, prev, k, '10')
+          && best(d, prev, 's' + k, a.score) && best(d, prev, 't' + k, a.stars)
+          && d.total == d.s1 + d.s2 + d.s3 + d.s4 + d.s5 + d.s6 + d.s7 + d.s8 + d.s9 + d.s10;
+    }
+
+    match /players/{uid} {
+      // Signed-in players can see the leaderboard (names and scores only; no e-mail is stored).
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validPlayer(uid, {});
+      // At most one result every 5 seconds per player.
+      allow update: if isOwner(uid) && validPlayer(uid, resource.data)
+                    && request.time > resource.data.updated + duration.value(5, 's');
+      allow delete: if false;
+
+      match /attempts/{attemptId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validAttempt(request.resource.data);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

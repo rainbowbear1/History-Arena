@@ -49,7 +49,10 @@ func run() -> void:
 	char_db = root.get_node("CharacterDatabase")
 	# Use a separate save file so tests never touch real progress; demo mode opens levels 1-3.
 	progress = root.get_node("ProgressStore")
-	progress.path = "user://test_progress.json"
+	progress.base_path = "user://test_progress.json"
+	progress.path = progress.base_path
+	for file in ["user://test_progress_u1.json", "user://test_progress_u2.json"]:
+		DirAccess.remove_absolute(file)
 	progress.reset()
 	progress.set_demo_unlock(true)
 	backend = root.get_node("Backend")
@@ -292,6 +295,7 @@ func test_arena() -> void:
 	await test_backend()
 	backend.outbox_path = backend.OUTBOX_PATH
 	backend.load_outbox()
+	progress.base_path = ProgressStoreScript.SAVE_PATH
 	progress.path = ProgressStoreScript.SAVE_PATH
 	progress.load_data()
 
@@ -1192,15 +1196,18 @@ class FakeTransport:
 	extends RefCounted
 	var configured := true
 	var user := {}
-	var sign_in_result := {"uid": "u1", "name": "Тест Оқушы", "email": "student@example.test"}
+	var sign_in_result := {"uid": "u1", "name": "Тест Оқушы"}
 	var accept := true
 	var received: Array = []
 	var signed_out := false
+	var progress := {"ok": true, "levels": {}}
+	var board := {"ok": true, "rows": [{"name": "Айгерім", "total": 2400, "me": false}, {"name": "Тест Оқушы", "total": 1100, "me": true}], "me": {"total": 1100, "rank": 2}}
 
 	func is_configured() -> bool:
 		return configured
 
-	func current_user() -> Dictionary:
+	func wait_user() -> Dictionary:
+		await Engine.get_main_loop().process_frame
 		return user
 
 	func sign_in() -> Dictionary:
@@ -1218,74 +1225,111 @@ class FakeTransport:
 			received.append(payload)
 		return accept
 
+	func my_progress() -> Dictionary:
+		await Engine.get_main_loop().process_frame
+		return progress
+
+	func leaderboard(_limit: int) -> Dictionary:
+		await Engine.get_main_loop().process_frame
+		return board
+
 
 func test_backend() -> void:
-	print("== Sign-in and Game Hub upload")
+	print("== Sign-in and online leaderboard")
 	var source := FileAccess.get_file_as_string("res://startup_screen.gd")
 	check(not source.contains("PASSWORD") and not source.contains("VALID_USERNAME"), "no hard-coded login or password in the game")
+	backend.upload_gap = 0.0
 
-	# Offline (no Hub bridge): guest play, results queued.
+	# Offline (no bridge configured): guest play, nothing queued for upload.
 	backend.transport = null
-	backend.user = {}
+	backend._set_user({})
 	backend.outbox = []
 	backend.save_outbox()
-	check(not backend.hub_available(), "desktop/test build has no Hub bridge")
+	check(not backend.online_available(), "desktop/test build has no online bridge")
 	var error: String = await backend.sign_in_with_google()
-	check(error.contains("Game Hub") and not backend.is_signed_in(), "Google sign-in explains the Hub is not connected")
+	check(error == backend.OFFLINE_MESSAGE and not backend.is_signed_in(), "Google sign-in explains online mode is not set up")
 	backend.continue_as_guest()
 	check(backend.is_guest() and backend.display_name() == "Қонақ (офлайн)", "guest mode")
 	var attempt := {"level": 2, "character": "mode", "score": 1100, "max_score": 1300, "correct": 11, "wrong": 2,
 		"playtime_sec": 190, "stars": 2, "passed": true, "completed": true, "revivals_used": 0, "finished_at": 5}
 	backend.submit_attempt(attempt)
-	check(backend.outbox.size() == 1 and backend.outbox[0]["game_id"] == "history-arena" and backend.outbox[0]["client_version"] != "", "result queued with game id and version")
-	backend.load_outbox()
-	check(backend.outbox.size() == 1 and backend.outbox[0]["score"] == 1100, "queued results survive a restart")
+	check(backend.outbox.is_empty(), "guest results stay on the device, not in the upload queue")
+	var guest_board: Dictionary = await backend.fetch_leaderboard()
+	check(guest_board.has("error"), "guests are asked to sign in for the leaderboard")
 
-	# A configured Hub: sign in, upload the queue in order.
+	# Signed in: per-account progress, online bests merged in, results uploaded in order.
 	var fake := FakeTransport.new()
+	fake.progress = {"ok": true, "levels": {"3": {"score": 1200, "stars": 2}, "4": {"score": 0, "stars": 0}}}
 	backend.transport = fake
-	backend.user = {}
+	backend._set_user({})
+	progress.record_attempt({"level": 1, "score": 300, "stars": 0, "passed": false})
 	error = await backend.sign_in_with_google()
-	check(error.is_empty() and backend.user["uid"] == "u1" and backend.display_name() == "Тест Оқушы", "Google sign-in through the Hub")
-	for i in range(5):
-		await process_frame
-	check(fake.received.size() == 1 and backend.outbox.is_empty(), "queued result uploaded after sign-in")
+	check(error.is_empty() and backend.user["uid"] == "u1" and backend.display_name() == "Тест Оқушы", "Google sign-in shows the player's name")
+	check(progress.path != progress.base_path and progress.level_result(1)["attempts"] == 0, "each account has its own progress")
+	check(progress.level_result(3)["best_score"] == 1200 and progress.level_result(3)["passed"] and progress.is_unlocked(4), "best results saved online are merged after sign-in")
+
+	backend.submit_attempt(attempt)
+	await wait(0.1)
+	check(fake.received.size() == 1 and backend.outbox.is_empty(), "result uploaded")
+	check(fake.received[0]["game_id"] == "history-arena" and not fake.received[0].has("owner") and not fake.received[0].has("uid"), "upload carries no user id (the server takes it from the session)")
 	var second := attempt.duplicate()
 	second["level"] = 3
 	var third := attempt.duplicate()
 	third["level"] = 4
 	fake.accept = false
 	backend.submit_attempt(second)
-	for i in range(5):
-		await process_frame
-	check(backend.outbox.size() == 1 and fake.received.size() == 1, "a failed upload stays queued")
+	await wait(0.1)
+	check(backend.outbox.size() == 1 and fake.received.size() == 1 and backend.pending_uploads() == 1, "a failed upload stays queued")
 	fake.accept = true
 	backend.submit_attempt(third)
-	for i in range(8):
-		await process_frame
+	await wait(0.2)
 	check(backend.outbox.is_empty() and fake.received.map(func(p): return int(p["level"])) == [2, 3, 4], "uploads keep their order after a failure")
 
+	# A run queued by one account is never uploaded under another.
+	fake.accept = false
+	backend.submit_attempt(attempt)
+	await wait(0.1)
 	backend.sign_out()
-	check(not backend.is_signed_in() and fake.signed_out, "sign out")
+	check(not backend.is_signed_in() and fake.signed_out and progress.path == progress.base_path, "sign out returns to guest progress")
+	fake.accept = true
+	fake.received.clear()
+	fake.progress = {"ok": true, "levels": {}}
+	fake.sign_in_result = {"uid": "u2", "name": "Екінші Оқушы"}
+	await backend.sign_in_with_google()
+	await wait(0.1)
+	check(fake.received.is_empty() and backend.outbox.size() == 1 and backend.pending_uploads() == 0, "another account's queued run is not sent")
+	check(progress.level_result(3)["best_score"] == 0, "the second account does not see the first one's progress")
+	backend.sign_out()
 	fake.user = {"uid": "u1", "name": "Тест Оқушы"}
-	check(backend.restore_session() and backend.user["uid"] == "u1", "an existing Hub session is restored")
-	fake.sign_in_result = {"error": "popup closed"}
-	backend.user = {}
+	check(await backend.restore_session() and backend.user["uid"] == "u1", "a saved session is restored")
+	await wait(0.1)
+	check(fake.received.size() == 1 and backend.outbox.is_empty(), "the first account's queued run is sent when it returns")
+	var board: Dictionary = await backend.fetch_leaderboard()
+	check(board.get("ok") == true and board["rows"].size() == 2 and int(board["me"]["rank"]) == 2, "leaderboard and personal best fetched")
+	fake.sign_in_result = {"error": "кіру терезесі жабылды"}
+	backend.sign_out()
 	error = await backend.sign_in_with_google()
-	check(error.contains("popup closed") and not backend.is_signed_in(), "failed sign-in reported, nobody signed in")
+	check(error.contains("терезесі жабылды") and not backend.is_signed_in(), "failed sign-in reported, nobody signed in")
 
 	# Screens: offline login, guest -> menu shows the player, sign out returns to login.
 	backend.transport = null
-	backend.user = {}
+	backend._set_user({})
 	var screen: Node = load("res://startup_screen.tscn").instantiate()
 	root.add_child(screen)
 	current_scene = screen
 	await process_frame
-	check(screen.google_button.disabled and screen.status_label.text.begins_with("Game Hub әлі қосылмаған"), "login screen explains offline mode")
+	check(screen.google_button.disabled and screen.status_label.text == screen.OFFLINE_NOTE, "login screen explains offline mode")
 	screen.guest_button.pressed.emit()
 	await process_frame
 	await process_frame
 	check(current_scene.name == "MainMenu" and current_scene.user_label.text == "Ойыншы: Қонақ (офлайн)", "guest reaches the menu")
+	current_scene.leaderboard_button.pressed.emit()
+	await process_frame
+	await process_frame
+	check(current_scene.name == "Leaderboard" and current_scene.status_label.text.contains("Google"), "leaderboard asks guests to sign in")
+	current_scene.back_button.pressed.emit()
+	await process_frame
+	await process_frame
 	current_scene.sign_out_button.pressed.emit()
 	await process_frame
 	await process_frame
@@ -1298,12 +1342,16 @@ func test_backend() -> void:
 	screen = load("res://startup_screen.tscn").instantiate()
 	root.add_child(screen)
 	current_scene = screen
-	await process_frame
-	check(not screen.google_button.disabled, "Google button active when the Hub is configured")
+	await wait(0.1)
+	check(not screen.google_button.disabled and screen.status_label.text == screen.GUEST_NOTE, "Google button active when online mode is set up")
 	screen.google_button.pressed.emit()
-	for i in range(4):
-		await process_frame
+	await wait(0.1)
 	check(current_scene.name == "MainMenu" and current_scene.user_label.text == "Ойыншы: Тест Оқушы", "Google sign-in reaches the menu with the player's name")
+	current_scene.leaderboard_button.pressed.emit()
+	await wait(0.1)
+	var names: Array = current_scene.rows.get_children().map(func(l): return l.text)
+	check(current_scene.name == "Leaderboard" and names.has("Айгерім") and names.has("Тест Оқушы"), "leaderboard lists players and scores")
+	check(current_scene.me_label.text.contains("1100") and current_scene.me_label.text.contains("орын: 2"), "leaderboard shows the player's personal best and rank")
 	current_scene.queue_free()
 	await process_frame
 
@@ -1311,9 +1359,8 @@ func test_backend() -> void:
 	screen = load("res://startup_screen.tscn").instantiate()
 	root.add_child(screen)
 	current_scene = screen
-	await process_frame
-	await process_frame
-	check(current_scene.name == "MainMenu", "a signed-in Hub player skips the login screen")
+	await wait(0.1)
+	check(current_scene.name == "MainMenu", "a returning signed-in player skips the login screen")
 	current_scene.queue_free()
 	await process_frame
 
@@ -1325,16 +1372,36 @@ func test_backend() -> void:
 	var quiz = await _start_task(samples["single_choice"])
 	quiz.targets.filter(func(t): return t.is_correct)[0].hit()
 	await wait(1.8)
-	for i in range(4):
-		await process_frame
-	check(fake.received.size() == 1 and fake.received[0]["score"] == 100 and fake.received[0]["game_id"] == "history-arena", "finished level uploaded to the Hub")
+	await wait(0.1)
+	check(fake.received.size() == 1 and fake.received[0]["score"] == 100 and fake.received[0]["game_id"] == "history-arena", "finished level uploaded")
+	check(quiz.results_label.text.contains("рейтингке жіберілді"), "results screen says the result went to the leaderboard")
 	quiz.get_parent().queue_free()
 	await process_frame
 
 	backend.transport = null
-	backend.user = {}
+	backend._set_user({})
 	backend.outbox = []
 	backend.save_outbox()
+	test_security_rules()
+
+
+# firestore.rules caps each level's score; the caps must match the question files and abilities.
+func test_security_rules() -> void:
+	var rules := FileAccess.get_file_as_string("res://firestore.rules")
+	var all_match := true
+	for level in level_db.levels:
+		var count: int = QuestionValidator.load_file(level["question_file"]).questions.size()
+		all_match = all_match and rules.contains("'%d': %d" % [level["id"], count * 100])
+	check(all_match, "security rules know each level's maximum score")
+	var max_doubles := 0
+	for character in char_db.characters:
+		if character["ability"]["id"] == "double_score":
+			max_doubles = maxi(max_doubles, int(character["ability"]["uses"]))
+	var bonus := RegEx.create_from_string("doubleBonus\\(\\) \\{\\s*return (\\d+);").search(rules)
+	check(bonus != null and int(bonus.get_string(1)) == max_doubles * 100, "security rules allow exactly the double-score bonus")
+	check(rules.contains("request.auth.uid == uid") and not rules.contains("allow write: if true"), "security rules tie writes to the signed-in account")
+	var bridge := FileAccess.get_file_as_string("res://web/firebase-bridge.js")
+	check(bridge.contains("requireUser().uid") and not bridge.contains("a.uid") and not bridge.contains("payload.uid"), "the bridge takes the user id from the Firebase session only")
 
 
 # Loads the arena and replaces its questions with a single task.

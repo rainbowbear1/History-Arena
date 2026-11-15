@@ -51,6 +51,10 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "Ойнау"
 
+[node name="LeaderboardButton" type="Button" parent="MenuCenter/MenuVBox"]
+layout_mode = 2
+text = "Рейтинг"
+
 [node name="SettingsButton" type="Button" parent="MenuCenter/MenuVBox" unique_id=2054093337]
 layout_mode = 2
 text = "Баптаулар"

@@ -1,25 +1,30 @@
 extends Node
 
-# Sign-in and result upload for the shared Game Hub. The game never talks to a database
-# directly and holds no secrets: in the web build it calls the Hub's JavaScript bridge
-# (window.HistoryArenaHub, see docs/hub-integration.md), which the Hub team implements with
-# their chosen backend. Without a configured bridge the game runs offline: players continue as
-# guests, and finished runs wait in an outbox until they can be uploaded.
+# Google sign-in, saved results and the online leaderboard. The game never talks to a database
+# directly and holds no secrets: in the web build it calls the JavaScript bridge
+# (window.HistoryArenaHub, web/firebase-bridge.js, contract in docs/online.md), which uses Firebase
+# Authentication and Cloud Firestore. Without a configured bridge the game runs offline as a guest.
+#
+# Finished runs of a signed-in player wait in an outbox (tagged with the player's uid) until the
+# server accepts them, so a lost connection loses nothing. Guest runs stay on this device only.
 
 signal user_changed(user: Dictionary)
 
 const GAME_ID := "history-arena"
-const CLIENT_VERSION := "0.9.0"
+const CLIENT_VERSION := "1.0.0"
 const OUTBOX_PATH := "user://outbox.json"
 const MAX_OUTBOX := 100
+const OFFLINE_MESSAGE := "Онлайн режим бапталмаған: Google арқылы кіру жұмыс істемейді"
 const WebBridgeTransport := preload("res://web_bridge_transport.gd")
 
-var user: Dictionary = {}  # {"uid", "name", "email"} or {"guest": true, "name": ...}
+var user: Dictionary = {}  # {"uid", "name"} or {"guest": true, "name": ...}
 var outbox: Array = []
 var outbox_path: String = OUTBOX_PATH
 var transport = null  # Object with the methods described in web_bridge_transport.gd, or null.
 var flushing: bool = false
+var upload_gap: float = 6.0  # The security rules accept one result per player every 5 seconds.
 var last_error: String = ""
+var last_upload_ok: bool = false
 
 
 func _ready() -> void:
@@ -28,7 +33,7 @@ func _ready() -> void:
 		transport = WebBridgeTransport.new()
 
 
-func hub_available() -> bool:
+func online_available() -> bool:
 	return transport != null and transport.is_configured()
 
 
@@ -40,35 +45,39 @@ func is_guest() -> bool:
 	return user.get("guest", false)
 
 
+func is_online_player() -> bool:
+	return is_signed_in() and not is_guest() and online_available()
+
+
 func display_name() -> String:
 	if user.is_empty():
 		return ""
 	return user.get("name", "") if not is_guest() else "Қонақ (офлайн)"
 
 
-# Restores an existing Hub session (e.g. the player is already signed in on the Hub site).
+# Restores a saved Google session (Firebase keeps it across page reloads).
 func restore_session() -> bool:
-	if not hub_available():
+	if not online_available():
 		return false
-	var restored: Dictionary = transport.current_user()
-	if _valid_user(restored):
-		_set_user(restored)
-		flush_outbox()
-		return true
-	return false
+	var restored: Dictionary = await transport.wait_user()
+	if not _valid_user(restored):
+		return false
+	_set_user(restored)
+	await _after_sign_in()
+	return true
 
 
 # Returns "" on success, otherwise a message for the player.
 func sign_in_with_google() -> String:
-	if not hub_available():
-		last_error = "Google арқылы кіру Game Hub қосылғанда жұмыс істейді"
+	if not online_available():
+		last_error = OFFLINE_MESSAGE
 		return last_error
 	var result: Dictionary = await transport.sign_in()
 	if not _valid_user(result):
 		last_error = "Кіру сәтсіз аяқталды: " + str(result.get("error", "белгісіз қате"))
 		return last_error
 	_set_user(result)
-	flush_outbox()
+	await _after_sign_in()
 	last_error = ""
 	return ""
 
@@ -78,16 +87,19 @@ func continue_as_guest() -> void:
 
 
 func sign_out() -> void:
-	if hub_available() and not is_guest():
+	if online_available() and not is_guest():
 		transport.sign_out()
 	_set_user({})
 
 
-# Queues a finished run for the Hub and tries to send it. Never blocks the game.
+# Records a finished run for the online leaderboard and tries to send it. Never blocks the game.
 func submit_attempt(attempt: Dictionary) -> void:
+	if not is_signed_in() or is_guest():
+		return
 	var payload := attempt.duplicate()
 	payload["game_id"] = GAME_ID
 	payload["client_version"] = CLIENT_VERSION
+	payload["owner"] = user["uid"]  # Local only: which account the run belongs to. Not sent.
 	outbox.append(payload)
 	if outbox.size() > MAX_OUTBOX:
 		outbox = outbox.slice(outbox.size() - MAX_OUTBOX)
@@ -95,19 +107,61 @@ func submit_attempt(attempt: Dictionary) -> void:
 	flush_outbox()
 
 
-# Sends queued runs in order; stops at the first failure and keeps the rest for later.
+# Sends the current player's queued runs in order; stops at the first failure and keeps the rest.
+# Runs queued by other accounts on this device wait until that account signs in again.
 func flush_outbox() -> void:
-	if flushing or not hub_available() or not is_signed_in() or is_guest():
+	if flushing or not is_online_player():
 		return
 	flushing = true
-	# Re-check each time: the player may sign out or the Hub may disappear while we wait.
-	while not outbox.is_empty() and hub_available() and is_signed_in() and not is_guest():
-		var ok: bool = await transport.submit_result(outbox[0])
+	var uid: String = user["uid"]
+	var sent := 0
+	# Re-check each time: the player may sign out while we wait.
+	while is_online_player() and user.get("uid") == uid:
+		var index: int = outbox.find_custom(func(p): return p is Dictionary and p.get("owner") == uid)
+		if index < 0:
+			break
+		var entry: Dictionary = outbox[index]
+		if sent > 0:
+			await get_tree().create_timer(upload_gap).timeout
+		var payload := entry.duplicate()
+		payload.erase("owner")
+		var ok: bool = await transport.submit_result(payload)
+		last_upload_ok = ok
 		if not ok:
 			break
-		outbox.pop_front()
+		outbox.erase(entry)
 		save_outbox()
+		sent += 1
 	flushing = false
+
+
+func pending_uploads() -> int:
+	var uid = user.get("uid", "")
+	return outbox.filter(func(p): return p is Dictionary and p.get("owner") == uid).size()
+
+
+# {"ok": true, "rows": [{"name", "total", "me"}], "me": {"total", "rank"}} or {"error": ...}
+func fetch_leaderboard(limit: int = 20) -> Dictionary:
+	if not is_online_player():
+		return {"error": "Рейтингті көру үшін Google арқылы кіріңіз"}
+	var result: Dictionary = await transport.leaderboard(limit)
+	if result.get("ok") != true:
+		return {"error": "Рейтинг жүктелмеді: " + str(result.get("error", "белгісіз қате"))}
+	return result
+
+
+# Brings best scores saved online (e.g. on another computer) into this device's progress.
+func sync_progress() -> void:
+	if not is_online_player():
+		return
+	var remote: Dictionary = await transport.my_progress()
+	if remote.get("ok") == true and remote.get("levels") is Dictionary:
+		ProgressStore.merge_remote(remote["levels"])
+
+
+func _after_sign_in() -> void:
+	await sync_progress()
+	flush_outbox()
 
 
 func load_outbox() -> void:
@@ -127,6 +181,8 @@ func save_outbox() -> void:
 
 func _set_user(new_user: Dictionary) -> void:
 	user = new_user
+	# Each Google account has its own progress on this device; guests share the default file.
+	ProgressStore.use_profile("" if is_guest() else str(user.get("uid", "")))
 	user_changed.emit(user)
 
 
