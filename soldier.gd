@@ -1,6 +1,8 @@
 extends Node3D
 
-# A low-poly soldier built from a handful of primitive meshes (feet at y = 0, about 1.9 m tall).
+# A low-poly soldier built from a handful of primitive meshes (feet at y = 0, about 1.9 m tall):
+# tapered limbs, a torso wider at the shoulders, a round head and hands, so the silhouette reads
+# as a figure rather than stacked blocks.
 # The look comes from data/themes.json: coat/pants/skin colours, headgear, weapon, shield, robe.
 # Meshes and materials are shared between all soldiers, so a crowd stays cheap in the browser.
 
@@ -39,22 +41,22 @@ func build(look: Dictionary) -> void:
 		var leg := Node3D.new()
 		leg.position = Vector3(side * 0.1, 0.82, 0)
 		_body.add_child(leg)
-		_part("box", Vector3(0.16, 0.7, 0.18), Vector3(0, -0.37, 0), pants, leg)
+		_part("limb", Vector3(0.17, 0.7, 0.19), Vector3(0, -0.37, 0), pants, leg)
 		_part("box", Vector3(0.17, 0.14, 0.26), Vector3(0, -0.75, -0.03), pants.darkened(0.45), leg)
 		_legs.append(leg)
 	if look.get("robe", false):
 		_part("robe", Vector3.ONE, Vector3(0, 0.62, 0), coat)
-	_part("box", Vector3(0.5, 0.6, 0.28), Vector3(0, 1.1, 0), coat)
-	_part("box", Vector3(0.52, 0.08, 0.3), Vector3(0, 0.84, 0), trim)
-	_part("box", Vector3(0.14, 0.54, 0.15), Vector3(-0.33, 1.12, 0), coat)
-	_part("box", Vector3(0.12, 0.12, 0.12), Vector3(-0.33, 0.8, 0), skin)
+	_part("torso", Vector3(0.52, 0.6, 0.3), Vector3(0, 1.1, 0), coat)
+	_part("disc", Vector3(0.46, 0.08, 0.3), Vector3(0, 0.84, 0), trim)
+	_part("limb", Vector3(0.14, 0.54, 0.15), Vector3(-0.33, 1.12, 0), coat)
+	_part("sphere", Vector3(0.13, 0.13, 0.13), Vector3(-0.33, 0.8, 0), skin)
 	_arm = Node3D.new()
 	_arm.position = Vector3(0.33, 1.36, 0)
 	_body.add_child(_arm)
-	_part("box", Vector3(0.14, 0.54, 0.15), Vector3(0, -0.25, 0), coat, _arm)
-	_part("box", Vector3(0.12, 0.12, 0.12), Vector3(0, -0.57, 0), skin, _arm)
-	_part("box", Vector3(0.14, 0.08, 0.14), Vector3(0, 1.43, 0), skin)
-	_part("box", Vector3(0.28, 0.3, 0.28), Vector3(0, 1.6, 0), skin)
+	_part("limb", Vector3(0.14, 0.54, 0.15), Vector3(0, -0.25, 0), coat, _arm)
+	_part("sphere", Vector3(0.13, 0.13, 0.13), Vector3(0, -0.57, 0), skin, _arm)
+	_part("limb", Vector3(0.13, 0.1, 0.13), Vector3(0, 1.43, 0), skin)
+	_part("sphere", Vector3(0.29, 0.33, 0.3), Vector3(0, 1.6, 0), skin)
 	_headgear(look.get("headgear", "none"), _color(look.get("headgear_color", "#6b4a2b")))
 	_weapon(look.get("weapon", "none"), _color(look.get("weapon_color", "#5a3d22")))
 	if look.get("shield", false):
@@ -165,6 +167,32 @@ static func _mesh(shape: String) -> Mesh:
 	match shape:
 		"box":
 			mesh = BoxMesh.new()
+		"limb":
+			# Slightly tapered towards the hand or foot.
+			var limb := CylinderMesh.new()
+			limb.top_radius = 0.5
+			limb.bottom_radius = 0.4
+			limb.height = 1.0
+			limb.radial_segments = 7
+			limb.rings = 1
+			mesh = limb
+		"torso":
+			# Broad shoulders narrowing to the belt.
+			var torso := CylinderMesh.new()
+			torso.top_radius = 0.5
+			torso.bottom_radius = 0.38
+			torso.height = 1.0
+			torso.radial_segments = 8
+			torso.rings = 1
+			mesh = torso
+		"disc":
+			var disc := CylinderMesh.new()
+			disc.top_radius = 0.5
+			disc.bottom_radius = 0.5
+			disc.height = 1.0
+			disc.radial_segments = 8
+			disc.rings = 1
+			mesh = disc
 		"cone":
 			var cone := CylinderMesh.new()
 			cone.top_radius = 0.0

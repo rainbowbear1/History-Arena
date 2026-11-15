@@ -153,22 +153,32 @@ func _build_weapon(model: String) -> void:
 			_weapon_part(Vector3(0.005, 0.05, 0.1), Vector3(0.03, 0.0, tip.z - 0.02), Color(0.85, 0.2, 0.15), Vector3.ZERO)
 		"musket", "rifle":
 			_weapon_part(Vector3(0.07, 0.09, 0.9 if model == "musket" else 0.8), Vector3(0, 0, -0.05), WOOD, Vector3.ZERO)
-			_weapon_part(Vector3(0.04, 0.04, 0.6), Vector3(0, 0.06, -0.55), METAL, Vector3.ZERO)
+			_weapon_part(Vector3(0.045, 0.6, 0.045), Vector3(0, 0.06, -0.55), METAL, Vector3(PI / 2.0, 0, 0), true)
 			_weapon_part(Vector3(0.08, 0.16, 0.25), Vector3(0, -0.07, 0.38), WOOD.darkened(0.1), Vector3(0.3, 0, 0))
 			if model == "rifle":
 				_weapon_part(Vector3(0.05, 0.05, 0.22), Vector3(0, 0.12, -0.05), METAL, Vector3.ZERO)
 		"mg":
 			_weapon_part(Vector3(0.12, 0.12, 0.6), Vector3(0, 0, 0), METAL, Vector3.ZERO)
-			_weapon_part(Vector3(0.05, 0.05, 0.6), Vector3(0, 0.02, -0.55), METAL.darkened(0.2), Vector3.ZERO)
+			_weapon_part(Vector3(0.055, 0.6, 0.055), Vector3(0, 0.02, -0.55), METAL.darkened(0.2), Vector3(PI / 2.0, 0, 0), true)
 			_weapon_part(Vector3(0.3, 0.05, 0.3), Vector3(0, 0.1, -0.05), METAL.lightened(0.1), Vector3.ZERO)
 			_weapon_part(Vector3(0.08, 0.14, 0.22), Vector3(0, -0.06, 0.35), WOOD, Vector3.ZERO)
 
 
-func _weapon_part(size: Vector3, at: Vector3, color: Color, tilt: Vector3) -> void:
+# A box, or a round rod (`round`, for barrels) of the given size.
+func _weapon_part(size: Vector3, at: Vector3, color: Color, tilt: Vector3, round: bool = false) -> void:
 	var part := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	part.mesh = mesh
+	if round:
+		var rod := CylinderMesh.new()
+		rod.top_radius = size.x / 2.0
+		rod.bottom_radius = size.x / 2.0
+		rod.height = size.y
+		rod.radial_segments = 10
+		rod.rings = 1
+		part.mesh = rod
+	else:
+		var mesh := BoxMesh.new()
+		mesh.size = size
+		part.mesh = mesh
 	part.position = at
 	part.rotation = tilt
 	var material := StandardMaterial3D.new()
