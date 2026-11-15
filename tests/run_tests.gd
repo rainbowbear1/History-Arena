@@ -302,6 +302,7 @@ func test_arena() -> void:
 	await test_characters()
 	await test_difficulty()
 	await test_quiz_integrity()
+	await test_hud_and_labels()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -442,7 +443,7 @@ func test_hp_and_medical_help() -> void:
 	game_state.selected_level = 1
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
-	check(quiz.health == 100 and quiz.health_label.text == "HP: 100/100", "run starts with 100 HP")
+	check(quiz.health == 100 and quiz.health_label.text == "HP 100/100" and quiz.health_bar.value == 100, "run starts with 100 HP")
 	check(not arena.has_node("HUD/LivesLabel"), "no lives counter in the HUD")
 	_wrong_target(quiz).hit()
 	check(quiz.health == 90, "a wrong answer costs 10 HP")
@@ -481,7 +482,7 @@ func test_hp_and_medical_help() -> void:
 	check(panel.answer_buttons.all(func(b): return b.disabled), "answers locked after choosing")
 	await wait(1.7)
 	check(not panel.visible, "defeat screen closes after a correct answer")
-	check(quiz.health == 50 and quiz.health_label.text == "HP: 50/100", "medical help restores the level's 50 HP")
+	check(quiz.health == 50 and quiz.health_label.text == "HP 50/100" and quiz.health_bar.value == 50, "medical help restores the level's 50 HP")
 	check(quiz.score == 300, "score kept after medical help (score=%d)" % quiz.score)
 	check(quiz.question_index == retry_index, "the failed task is retried, not skipped")
 	check(quiz.question_label.text == retry_question["question"], "retried task is shown again")
@@ -659,7 +660,7 @@ func test_characters() -> void:
 	var quiz = arena.get_node("QuizManager")
 	var player = arena.get_node("Player")
 	check(quiz.max_health == 130 and quiz.health == 130, "character HP sets the HP pool")
-	check(quiz.health_label.text == "HP: 130/130", "HUD shows HP out of the character's maximum")
+	check(quiz.health_label.text == "HP 130/130" and quiz.health_bar.max_value == 130 and quiz.health_bar.value == 130, "HUD shows HP out of the character's maximum")
 	check(quiz.character_label.text == "Қабанбай батыр · Мылтық", "HUD shows character and weapon")
 	check(quiz.ability_label.text == "[E] Емдеу ×2", "HUD shows the ability and its uses")
 	check(player.speed == 5.5, "character speed applied")
@@ -868,6 +869,93 @@ func test_quiz_integrity() -> void:
 	pause_menu.resume_game()
 	await process_frame
 	check(not paused and quiz.question_index == task_index and quiz.question_label.text == task_text and quiz.targets.map(func(t): return t.answer_text) == answers, "resume continues the same task")
+	arena.queue_free()
+	await process_frame
+
+
+func test_hud_and_labels() -> void:
+	print("== HUD layout and answer labels")
+	game_state.selected_character = ""
+	game_state.selected_level = 7
+	var long_text := "Ұзын сұрақ: " + "Қазақ хандығының тарихындағы маңызды оқиғаларды еске түсіріп, дұрыс жауапты таңдаңыз. ".repeat(3)
+	for window_size in [Vector2i(800, 600), Vector2i(1280, 720), Vector2i(1920, 1080)]:
+		root.size = window_size
+		var arena := await _load_arena()
+		var quiz = arena.get_node("QuizManager")
+		quiz.set_question(long_text)
+		await process_frame
+		await process_frame
+		var panel: Rect2 = quiz.question_panel.get_global_rect()
+		var corners: Array[Rect2] = [quiz.score_label.get_global_rect(), quiz.health_bar.get_global_rect(), quiz.timer_label.get_global_rect()]
+		var screen: Rect2 = arena.get_viewport().get_visible_rect()
+		check(corners.all(func(r): return not r.intersects(panel)), "%dx%d: a long question never covers score, HP or timer" % [window_size.x, window_size.y])
+		check(quiz.question_label.get_line_count() > 1 and screen.encloses(panel), "%dx%d: a long question wraps and stays on screen" % [window_size.x, window_size.y])
+		check(not quiz.character_label.get_global_rect().intersects(panel) and screen.encloses(quiz.ability_label.get_global_rect()), "%dx%d: loadout stays at the bottom left" % [window_size.x, window_size.y])
+		arena.queue_free()
+		await process_frame
+	root.size = Vector2i(1152, 648)
+
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	quiz.take_damage(30)
+	check(quiz.health_bar.value == 70 and quiz.health_label.text == "HP 70/100", "HP bar drops at once on damage")
+	var fill: StyleBoxFlat = quiz.health_bar.get_theme_stylebox("fill")
+	quiz.health = 20
+	quiz.update_hud()
+	check(quiz.health_bar.value == 20 and fill.bg_color.r > fill.bg_color.g, "HP bar turns red when low")
+
+	await process_frame
+	await process_frame
+	var labels: Control = quiz.answer_labels
+	var panels: Array = quiz.targets.map(func(t): return labels.label_for(t))
+	check(panels.size() == 6 and panels.all(func(p): return p != null and p.visible), "every answer soldier has a floating label")
+	check(quiz.targets.all(func(t): return labels.label_for(t).get_child(0).text == t.answer_text and not t.answer_label.visible and not t.target_mesh.visible), "labels show the answers; no placards")
+	var overlaps := 0
+	for i in range(panels.size()):
+		for j in range(i + 1, panels.size()):
+			if panels[i].get_global_rect().intersects(panels[j].get_global_rect()):
+				overlaps += 1
+	check(overlaps == 0, "answer labels never overlap (%d overlaps)" % overlaps)
+	var camera: Camera3D = arena.get_viewport().get_camera_3d()
+	check(quiz.targets.all(func(t): return labels.label_for(t).get_global_rect().end.y <= camera.unproject_position(t.label_anchor()).y), "each label sits above its soldier with the pointer below")
+	var parts: Array = quiz.targets[0].soldier.find_children("*", "MeshInstance3D", true, false)
+	check(parts.all(func(p): return p.material_overlay != null and p.material_overlay.get_shader_parameter("color") == quiz.targets[0].OUTLINE_COLOR), "answer soldiers have a red outline")
+	var correct = quiz.targets.filter(func(t): return t.is_correct)[0]
+	correct.set_state(Target.State.DONE)
+	check(correct.soldier.find_children("*", "MeshInstance3D", true, false)[0].material_overlay.get_shader_parameter("color") == Target.STATE_COLORS[Target.State.DONE], "outline turns green when answered")
+	check(labels.get_index() < arena.get_node("HUD/PauseMenu").get_index(), "labels are hidden under the pause screen")
+	correct.set_state(Target.State.NORMAL)
+
+	# Shooting a soldier's body selects its answer: aim the real camera and fire the real ray.
+	var space := camera.get_world_3d().direct_space_state
+	var hittable: Array = quiz.targets.filter(func(t):
+		var query := PhysicsRayQueryParameters3D.create(camera.global_position, t.label_anchor() - Vector3(0, 0.9, 0))
+		query.exclude = [arena.get_node("Player").get_rid()]
+		var hit := space.intersect_ray(query)
+		return not hit.is_empty() and hit["collider"] == t)
+	check(hittable.size() == quiz.targets.size(), "every answer soldier's body can be shot (%d of %d)" % [hittable.size(), quiz.targets.size()])
+	camera.look_at(correct.label_anchor() - Vector3(0, 0.9, 0))
+	arena.get_node("Player").cooldown_left = 0.0
+	arena.get_node("Player").shoot()
+	check(quiz.score == 100 and correct.state == Target.State.DONE, "shooting the right soldier answers the task")
+	camera.rotation = Vector3.ZERO
+	await wait(1.3)
+	await process_frame
+	panels = quiz.targets.map(func(t): return labels.label_for(t))
+	check(quiz.question_index == 1 and panels.size() > 0 and panels.all(func(p): return p != null and p.visible), "the next task gets fresh labels")
+
+	var player: Node3D = arena.get_node("Player")
+	player.rotation.y += PI
+	await process_frame
+	await process_frame
+	check(panels.all(func(p): return not p.visible), "labels hide when their soldiers are behind the camera")
+	player.rotation.y -= PI
+	await process_frame
+	await process_frame
+	check(panels.all(func(p): return p.visible), "labels come back when the soldiers are in view")
+	quiz.clear_arena()
+	await process_frame
+	check(labels.get_child_count() == 0 or labels.get_children().all(func(c): return c.is_queued_for_deletion()), "labels go away with their task")
 	arena.queue_free()
 	await process_frame
 

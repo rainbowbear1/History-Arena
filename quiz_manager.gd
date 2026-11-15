@@ -37,6 +37,9 @@ const MULTI_STEP_TIME := 2.0
 const DECOY_TYPES := ["single_choice", "fill_blank"]
 const POINTS := 100
 const ABILITY_COLOR := Color(0.91, 0.78, 0.5)
+const HP_HIGH := Color(0.3, 0.75, 0.35)
+const HP_MID := Color(0.9, 0.75, 0.2)
+const HP_LOW := Color(0.85, 0.2, 0.15)
 const FADE_SECONDS := 0.6
 const ProgressStoreScript := preload("res://progress_store.gd")
 # Question types that can be asked on the medical-help screen (plain four-button answers).
@@ -91,14 +94,17 @@ var feedback_token: int = 0
 @onready var damage_flash: ColorRect = $"../HUD/DamageFlash"
 
 
-@onready var question_label: Label = $"../HUD/QuestionLabel"
-@onready var hint_label: Label = $"../HUD/HintLabel"
-@onready var progress_label: Label = $"../HUD/ProgressLabel"
-@onready var score_label: Label = $"../HUD/ScoreLabel"
-@onready var health_label: Label = $"../HUD/HealthLabel"
-@onready var timer_label: Label = $"../HUD/TimerLabel"
-@onready var character_label: Label = $"../HUD/CharacterLabel"
-@onready var ability_label: Label = $"../HUD/AbilityLabel"
+@onready var question_panel: PanelContainer = $"../HUD/TopBar/Row/QuestionPanel"
+@onready var question_label: Label = $"../HUD/TopBar/Row/QuestionPanel/QuestionVBox/QuestionLabel"
+@onready var hint_label: Label = $"../HUD/TopBar/Row/QuestionPanel/QuestionVBox/HintLabel"
+@onready var progress_label: Label = $"../HUD/TopBar/Row/QuestionPanel/QuestionVBox/ProgressLabel"
+@onready var score_label: Label = $"../HUD/TopBar/Row/Stats/ScoreLabel"
+@onready var health_bar: ProgressBar = $"../HUD/TopBar/Row/Stats/HealthBar"
+@onready var health_label: Label = $"../HUD/TopBar/Row/Stats/HealthBar/HealthLabel"
+@onready var timer_label: Label = $"../HUD/TopBar/Row/TimerLabel"
+@onready var character_label: Label = $"../HUD/Loadout/CharacterLabel"
+@onready var ability_label: Label = $"../HUD/Loadout/AbilityLabel"
+@onready var answer_labels: Control = $"../HUD/AnswerLabels"
 @onready var revival_panel: CenterContainer = $"../HUD/RevivalContainer"
 @onready var results_container: CenterContainer = $"../HUD/ResultsContainer"
 @onready var results_label: Label = $"../HUD/ResultsContainer/ResultsPanel/ResultsVBox/ResultsLabel"
@@ -112,6 +118,8 @@ var feedback_token: int = 0
 
 func _ready() -> void:
 	_setup_map_board()
+	# Own copy of the bar's fill, recoloured as HP changes.
+	health_bar.add_theme_stylebox_override("fill", health_bar.get_theme_stylebox("fill").duplicate())
 
 	level = LevelDatabase.get_level(GameState.selected_level)
 	if not level.is_empty():
@@ -138,7 +146,7 @@ func _ready() -> void:
 	if questions.is_empty():
 		push_error("No questions loaded!")
 		accepting_answers = false
-		question_label.text = "Сұрақтар жүктелмеді"
+		set_question("Сұрақтар жүктелмеді")
 		return
 
 	load_question()
@@ -157,11 +165,12 @@ func load_question() -> void:
 	var question: Dictionary = questions[question_index]
 	current_task = TASK_SCRIPTS[QuestionValidator.get_type(question)].new()
 
-	question_label.text = question["question"]
+	set_question(question["question"])
 	update_hud()
 
 	current_task.start(question, self)
 	hint_label.text = current_task.hint()
+	hint_label.visible = not hint_label.text.is_empty()
 	update_progress()
 
 	time_limit = 0.0
@@ -344,7 +353,7 @@ func show_defeat() -> void:
 	accepting_answers = false
 	clear_arena()
 	enemy_spawner.stop()
-	question_label.text = ""
+	set_question("")
 
 	var help_question := {}
 	if revivals_left > 0:
@@ -424,7 +433,7 @@ func finish_level() -> void:
 	run_active = false
 	clear_arena()
 	enemy_spawner.stop()
-	question_label.text = ""
+	set_question("")
 
 	last_attempt = build_attempt(true)
 	var new_best := ProgressStore.record_attempt(last_attempt)
@@ -489,16 +498,27 @@ func show_results(attempt: Dictionary, new_best: bool) -> void:
 
 
 
+func set_question(text: String) -> void:
+	question_label.text = text
+	question_panel.visible = not text.is_empty()
+
+
 func update_progress() -> void:
 	if current_task == null or current_task.total == 0:
 		progress_label.text = ""
-		return
-	progress_label.text = "%s: %d/%d" % [current_task.progress_name, current_task.done, current_task.total]
+	else:
+		progress_label.text = "%s: %d/%d" % [current_task.progress_name, current_task.done, current_task.total]
+	progress_label.visible = not progress_label.text.is_empty()
 
 
 func update_hud() -> void:
 	score_label.text = "Ұпай саны: " + str(score)
-	health_label.text = "HP: %d/%d" % [health, max_health]
+	health_label.text = "HP %d/%d" % [health, max_health]
+	health_bar.max_value = max_health
+	health_bar.value = health
+	var ratio := float(health) / max_health
+	var fill: StyleBoxFlat = health_bar.get_theme_stylebox("fill")
+	fill.bg_color = HP_LOW.lerp(HP_MID, clampf(ratio * 2.0, 0.0, 1.0)) if ratio < 0.5 else HP_MID.lerp(HP_HIGH, (ratio - 0.5) * 2.0)
 	if character.is_empty():
 		return
 	character_label.text = "%s · %s" % [character["name"], character["weapon"]["name"]]
@@ -524,6 +544,8 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 		var on_ledge := at.y > (CHOICE_ROW_Y + TOP_ROW_Y) / 2.0
 		var feet_y := (LEDGE_TOP if on_ledge else GROUND_Y) - at.y
 		target.apply_style(theme.get("target_style", "board"), theme.get("enemy_look", {}), Color.html(theme.get("placard", "#f2e6c4")), feet_y)
+		if target.uses_screen_label():
+			answer_labels.track(target)
 
 	targets.append(target)
 	return target
@@ -557,9 +579,12 @@ func clear_arena() -> void:
 	for target in targets:
 		target.queue_free()
 	targets.clear()
+	answer_labels.clear()
 	current_task = null
 	hint_label.text = ""
+	hint_label.hide()
 	progress_label.text = ""
+	progress_label.hide()
 	time_limit = 0.0
 	timer_label.text = ""
 	image_board.hide()

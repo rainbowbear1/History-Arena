@@ -19,6 +19,8 @@ var _arm: Node3D
 
 static var _materials := {}
 static var _meshes := {}
+static var _outlines := {}
+const OUTLINE_SHADER := preload("res://outline.gdshader")
 
 
 func build(look: Dictionary) -> void:
@@ -45,6 +47,18 @@ func build(look: Dictionary) -> void:
 	if look.get("shield", false):
 		_part("shield", Vector3.ONE, Vector3(-0.44, 1.05, -0.05), trim)
 	_origin = position
+
+
+# Coloured rim around the whole body (answer targets). Materials are shared per colour.
+func set_outline(color: Color) -> void:
+	var key := color.to_html()
+	if not _outlines.has(key):
+		var material := ShaderMaterial.new()
+		material.shader = OUTLINE_SHADER
+		material.set_shader_parameter("color", color)
+		_outlines[key] = material
+	for part in find_children("*", "MeshInstance3D", true, false):
+		part.material_overlay = _outlines[key]
 
 
 func set_motion(kind: String, speed: float = 1.0, distance: float = 3.0) -> void:

@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://enemy_spawner.gd" id="5_spawner"]
 [ext_resource type="Script" path="res://star_row.gd" id="6_stars"]
 [ext_resource type="Script" path="res://environment_builder.gd" id="7_env"]
+[ext_resource type="Script" path="res://answer_labels.gd" id="8_labels"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_o6pq0"]
 
@@ -41,6 +42,41 @@ size = Vector2(12, 6)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_map"]
 albedo_color = Color(0.83, 0.74, 0.55, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
+bg_color = Color(0.08, 0.08, 0.1, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0, 0, 0.9)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
+bg_color = Color(0.3, 0.75, 0.35, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_question"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0.08, 0.12, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.91, 0.78, 0.5, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="Main" type="Node3D" unique_id=51386826]
 
@@ -97,100 +133,134 @@ text = "+"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="QuestionLabel" type="Label" parent="HUD" unique_id=200959144]
-anchors_preset = -1
+[node name="TopBar" type="MarginContainer" parent="HUD"]
+anchors_preset = 10
 anchor_right = 1.0
-offset_left = 20.0
-offset_top = 20.0
-offset_right = -20.0
-offset_bottom = 90.0
 grow_horizontal = 2
-theme_override_font_sizes/font_size = 24
-text = "Қазақ хандығы қай жылы құрылды?"
-horizontal_alignment = 1
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
 
-[node name="HintLabel" type="Label" parent="HUD"]
-anchors_preset = -1
-anchor_right = 1.0
-offset_left = 200.0
-offset_top = 58.0
-offset_right = -200.0
-offset_bottom = 82.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_font_sizes/font_size = 18
-horizontal_alignment = 1
+[node name="Row" type="HBoxContainer" parent="HUD/TopBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 16
 
-[node name="ProgressLabel" type="Label" parent="HUD"]
-anchors_preset = -1
-anchor_right = 1.0
-offset_left = 200.0
-offset_top = 84.0
-offset_right = -200.0
-offset_bottom = 112.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+[node name="Stats" type="VBoxContainer" parent="HUD/TopBar/Row"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="ScoreLabel" type="Label" parent="HUD/TopBar/Row/Stats"]
+layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-horizontal_alignment = 1
-
-[node name="ScoreLabel" type="Label" parent="HUD" unique_id=1284406417]
-offset_left = 20.0
-offset_top = 20.0
-offset_right = 123.0
-offset_bottom = 43.0
+theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 22
 text = "Ұпай саны: 0"
 
-[node name="HealthLabel" type="Label" parent="HUD" unique_id=799726897]
-offset_left = 20.0
-offset_top = 55.0
-offset_right = 78.0
-offset_bottom = 78.0
-theme_override_font_sizes/font_size = 22
-text = "HP: 100"
+[node name="HealthBar" type="ProgressBar" parent="HUD/TopBar/Row/Stats"]
+custom_minimum_size = Vector2(200, 26)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
+value = 100.0
+show_percentage = false
 
-[node name="TimerLabel" type="Label" parent="HUD"]
-anchors_preset = -1
-anchor_left = 1.0
+[node name="HealthLabel" type="Label" parent="HUD/TopBar/Row/Stats/HealthBar"]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
-offset_left = -220.0
-offset_top = 20.0
-offset_right = -20.0
-offset_bottom = 52.0
-grow_horizontal = 0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 24
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 16
+text = "HP 100/100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="QuestionPanel" type="PanelContainer" parent="HUD/TopBar/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_question")
+
+[node name="QuestionVBox" type="VBoxContainer" parent="HUD/TopBar/Row/QuestionPanel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="QuestionLabel" type="Label" parent="HUD/TopBar/Row/QuestionPanel/QuestionVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Қазақ хандығы қай жылы құрылды?"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="HintLabel" type="Label" parent="HUD/TopBar/Row/QuestionPanel/QuestionVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ProgressLabel" type="Label" parent="HUD/TopBar/Row/QuestionPanel/QuestionVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+
+[node name="TimerLabel" type="Label" parent="HUD/TopBar/Row"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
 horizontal_alignment = 2
 
-[node name="CharacterLabel" type="Label" parent="HUD"]
-anchors_preset = -1
+[node name="Loadout" type="VBoxContainer" parent="HUD"]
+anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -76.0
-offset_right = 620.0
-offset_bottom = -48.0
+offset_left = 16.0
+offset_top = -72.0
+offset_right = 560.0
+offset_bottom = -12.0
 grow_vertical = 0
+mouse_filter = 2
+alignment = 2
+
+[node name="CharacterLabel" type="Label" parent="HUD/Loadout"]
+layout_mode = 2
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
+theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 20
 
-[node name="AbilityLabel" type="Label" parent="HUD"]
-anchors_preset = -1
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -44.0
-offset_right = 620.0
-offset_bottom = -16.0
-grow_vertical = 0
+[node name="AbilityLabel" type="Label" parent="HUD/Loadout"]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.91, 0.78, 0.5, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
+theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 20
+
+[node name="AnswerLabels" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("8_labels")
 
 [node name="ResultsContainer" type="CenterContainer" parent="HUD" unique_id=456787760]
 visible = false
@@ -332,14 +402,17 @@ text = "Деңгейлер"
 
 [node name="FeedbackLabel" type="Label" parent="HUD" unique_id=721242640]
 visible = false
-anchors_preset = 5
+anchors_preset = -1
 anchor_left = 0.5
+anchor_top = 0.3
 anchor_right = 0.5
+anchor_bottom = 0.3
 offset_left = -300.0
-offset_top = 115.0
 offset_right = 300.0
-offset_bottom = 160.0
+offset_bottom = 45.0
 grow_horizontal = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 32
 text = "Дұрыс!"
 horizontal_alignment = 1

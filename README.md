@@ -1,7 +1,7 @@
 # Тарих Аренасы (History Arena)
 
 A browser FPS quiz about the history of Kazakhstan (Godot 4.7.2, web export). The player shoots the
-enemy soldier whose placard carries the right answer, across ten historical arenas from the Saka era
+enemy soldier marked with the right answer (a red outline and a floating label above them), across ten historical arenas from the Saka era
 to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3.
 
 > **Online features:** Google sign-in (Firebase Authentication) and the online leaderboard (Cloud
@@ -14,7 +14,7 @@ to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3
 |---|---|
 | 10 arenas, rising difficulty, level 10 BOSS | Saka → Huns → Turkic Khaganate → Otyrar → Golden Horde → Kazakh Khanate → Dzungar wars → 18th–19th c. → 20th c. → Independence (shooting gallery + boss panel) |
 | 10 characters with HP, speed, weapon, ability, defense | Character screen; each level preselects its historical protagonist, free choice kept |
-| Shoot the correct answer: +100, wrong −10 HP | Enemy soldiers hold answer placards; a wrong answer shows an enemy landing a shot |
+| Shoot the correct answer: +100, wrong −10 HP | Answer soldiers are outlined in red with a floating answer label; a wrong answer shows an enemy landing a shot |
 | 6 task types | single choice, fill-in-the-blank, matching, chronology, map (Natural Earth map), image (licensed photos) |
 | Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 10 s, sway speed ×1.0 → ×2.5, up to 2 hand-written decoys per task, tasks in a new random order every attempt, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
 | "Жан біткенде" medical help | At 0 HP: one history question; correct → +50/40/30 HP and retry the task, wrong → restart |
@@ -38,7 +38,7 @@ Settings → **Демо режимі** opens every level (for presentations); **
 startup_screen  →  main_menu  →  level_select  →  character_select  →  main.tscn (arena)
  (Google/guest)    (settings,                      (protagonist        ├─ quiz_manager.gd   task flow, HP, timer, score, results
                     credits)                        preselected)       ├─ tasks/*.gd        one handler per task type
-                                                                       ├─ answer_target     soldier/placard targets
+                                                                       ├─ answer_target     soldier/range targets (+ answer_labels: screen labels)
 Autoloads                                                              ├─ environment_builder  theme: sky, props, background battle
   GameState          selected level / character                        ├─ enemy_spawner + enemy  posts, volleys, gallery panels
   LevelDatabase      data/levels.json                                  ├─ player.gd         movement, weapon, ability key

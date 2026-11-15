@@ -88,8 +88,8 @@ level, the best score, best stars, whether it was passed and the number of attem
 
 One entry per era: `sky_top`, `sky_horizon`, `ground`, `fog_color`, `fog_density`, `sun_color`,
 `sun_energy`, `sun_pitch`, `sun_yaw`, `ledge` (rampart colour) and `ledge_style` (`earth`, `fortress`,
-`palisade`, `sandbags`, `rock`, `stand`), `placard` (answer placard colour), `target_style`
-(`soldier` or `gallery`), `props` (list of `[kind, count]`: kurgan, hill, mountain, yurt, tent, banner,
+`palisade`, `sandbags`, `rock`, `stand`), `placard` (unused since answers moved to screen labels), `target_style`
+(`soldier`: outlined soldiers with floating answer labels; `gallery`: round range targets), `props` (list of `[kind, count]`: kurgan, hill, mountain, yurt, tent, banner,
 balbal, stele, tower, wall, dome, rock, palisade, birch, tree, sandbags, flag, booth, monument),
 `enemy_look` / `ally_look` (soldier `coat`, `pants`, `skin`, `trim`, `headgear` = none/pointed/fur/
 helmet/turban/cap/steel_helmet/kalpak, `headgear_color`, `weapon` = none/bow/spear/sword/rifle,
