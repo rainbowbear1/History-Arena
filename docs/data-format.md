@@ -39,12 +39,19 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   six answers on screen; the assignment's table, p. 9, is marked "to be refined in testing").
 - **Task order:** every attempt (including Retry) asks the level's tasks in a new random order,
   each exactly once; answer positions are shuffled too.
-- **Enemies:** `enemies` enemy soldiers hold posts on the flanks; they do not chase the player. One
-  shared volley clock (every 12 − 1.5·s seconds, at least 3.5 s) picks one enemy, which aims for
-  0.9 s (a red "!") and fires an arrow or bullet at where the player stood: step aside to dodge, or
-  shoot the enemy first. With `stars` = s: HP 1 + s/2, damage 3 + s, reduced by the character's
-  `defense` (at least 1). They only act while a task is being answered, return 6 s after being
-  killed, and give no points (so the score cannot be farmed).
+- **Enemies:** up to `enemies` active enemy soldiers (never more than 3; levels use 0, 0, 1, 1, 2,
+  2, 3, 3, 3, 0). Each task starts with a wave: missing enemies march in from the arena edge to free
+  posts on the flanks, never the posts of the previous wave. A killed enemy is replaced at most once
+  per task, 8 s later and at another post, so the line can be cleared. Toughness is counted in hits
+  of the player's own weapon: 1 hit on 1–2 stars, then enough hits for about 0.5 s (3 stars) or 1 s
+  (4–5 stars) of fire, so bows, muskets, rifles and the machine gun keep their feel but clear an
+  enemy in similar time; red pips over the head show the hits left. One shared volley clock (every
+  12 − 1.5·s seconds, at least 3.5 s) picks one enemy at its post, which aims for 0.9 s (a red "!")
+  and fires at where the player stood: step aside to dodge, or shoot first. Damage 3 + s, reduced by
+  the character's `defense` (at least 1). Enemies act only while a task is being answered and give
+  no points (so the score cannot be farmed). The shooting range (level 10) has none.
+- **Background battle:** allies beside the player fire harmless arrows or bullets at the distant
+  enemy line, which fires back now and then; background soldiers never hurt the player.
 - **Wrong answers** trigger a visible reaction shot from an enemy (or a distant soldier) and a red
   screen flash; the HP loss is still the usual 10.
 - **Boss:** a `boss` level adds one large boss enemy (12 HP, 12 damage) on the rampart's flank that

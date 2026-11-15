@@ -7,7 +7,8 @@ extends Node3D
 const HEADGEAR := ["none", "pointed", "fur", "helmet", "turban", "cap", "steel_helmet", "kalpak"]
 const WEAPONS := ["none", "bow", "spear", "sword", "rifle"]
 
-# Background motion: "idle" sways, "march" walks back and forth, "fight" lunges at a partner.
+# Background motion: "idle" sways, "march" walks back and forth, "fight" lunges at a partner;
+# "aim" raises the weapon arm, "march_in_place" swings the arms while the body is moved elsewhere.
 var motion: String = "idle"
 var motion_speed: float = 1.0
 var motion_range: float = 3.0
@@ -86,6 +87,9 @@ func _process(delta: float) -> void:
 			_arm.rotation.x = -absf(sin(_time * 2.2)) * 1.6
 		"aim":
 			_arm.rotation.x = lerpf(_arm.rotation.x, -1.5, minf(1.0, delta * 8.0))
+		"march_in_place":
+			_body.position.y = absf(sin(_time * 4.0)) * 0.08
+			_arm.rotation.x = sin(_time * 4.0) * 0.5
 
 
 func _headgear(kind: String, color: Color) -> void:

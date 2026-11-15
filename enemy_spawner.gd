@@ -1,47 +1,65 @@
 extends Node3D
 
-# Keeps the level's number of enemies at posts on the flanks (plus a boss on boss levels).
-# One shared volley clock picks a single enemy to aim and fire, so harder levels shoot more often
-# without a hail of arrows. Killed enemies return to their post after a delay.
-# In the shooting gallery (enemy_mode "gallery") enemies are sliding panels that never shoot.
+# Active enemies: the soldiers that actually threaten the player. (Background soldiers are scenery,
+# see environment_builder.gd; answer targets are answer_target.gd.)
+# - At most `enemies` (from levels.json, never more than MAX_ACTIVE) are active at once.
+# - Each task starts with a wave: missing enemies march in from the edge of the arena to free posts,
+#   never to the post they held in the previous wave.
+# - During a task a killed enemy is replaced at most REINFORCEMENTS_PER_TASK times, after
+#   REINFORCE_DELAY seconds, so the line can actually be cleared.
+# - Toughness is counted in hits of the player's own weapon, so a bow, a musket and a machine gun
+#   all need about the same time to bring an enemy down (see hits_to_kill).
+# - One shared volley clock picks a single enemy to aim and fire.
 
 const ENEMY_SCENE := preload("res://enemy.tscn")
-const RESPAWN_DELAY := 6.0
-const BOSS_HP := 12
-const BOSS_DAMAGE := 12
-# Gallery panels slide across the line of fire; more than this would hide the answers.
-const MAX_PANELS := 3
 const Projectile := preload("res://projectile.gd")
+const MAX_ACTIVE := 3
+const REINFORCE_DELAY := 8.0
+const REINFORCEMENTS_PER_TASK := 1
+# Seconds of continuous fire an enemy should take to bring down, by stars (index = stars).
+const TIME_TO_KILL := [0.0, 0.0, 0.0, 0.5, 1.0, 1.0]
+# Posts on both flanks, at different depths, clear of the answer rows (|x| <= 7.5).
+const POSTS := [
+	Vector3(-9.0, 0.2, -4.0), Vector3(9.0, 0.2, -4.0), Vector3(-10.5, 0.2, -6.5), Vector3(10.5, 0.2, -6.5),
+	Vector3(-12.0, 0.2, -3.0), Vector3(12.0, 0.2, -3.0), Vector3(-9.5, 0.2, -9.0), Vector3(9.5, 0.2, -9.0),
+	Vector3(-12.5, 0.2, -8.0), Vector3(12.5, 0.2, -8.0),
+]
+const ENTRY_X := 14.5
 
 var quiz
 var player: Node3D
 var count: int = 0
 var stars: int = 1
-var has_boss: bool = false
-var boss_defeated: bool = false
-var mode: String = "soldier"
 var look: Dictionary = {}
 var enemies: Array = []
 var running: bool = false
 var speed_scale: float = 1.0
-var respawn_token: int = 0
+var task_token: int = 0
+var reinforcements_left: int = 0
 var volley_left: float = 0.0
+var last_posts: Array = []
 var background_shooters: Array = []  # Distant soldiers used for the wrong-answer reaction.
 
 
 func configure(new_quiz, new_player: Node3D, level: Dictionary, theme: Dictionary = {}) -> void:
 	quiz = new_quiz
 	player = new_player
-	count = level.get("enemies", 0)
-	stars = level.get("stars", 1)
-	has_boss = level.get("boss", false)
 	look = theme.get("enemy_look", {})
-	mode = "panel" if theme.get("enemy_mode", "") == "gallery" else "soldier"
+	# Enemies are soldiers; an era without an enemy look (the shooting range) has none.
+	count = mini(level.get("enemies", 0), MAX_ACTIVE) if not look.is_empty() or theme.is_empty() else 0
+	stars = level.get("stars", 1)
 	volley_left = volley_interval()
 
 
-func enemy_hp() -> int:
-	return 1 + stars / 2
+# Hits of the player's weapon an enemy takes: one on easy levels, more on hard ones, scaled by the
+# weapon's cooldown so fast weapons need more hits and slow ones fewer.
+func hits_to_kill() -> int:
+	var cooldown: float = player.weapon.get("cooldown", 0.3) if player and "weapon" in player else 0.3
+	return 1 + roundi(TIME_TO_KILL[clampi(stars, 0, 5)] / cooldown)
+
+
+func weapon_damage() -> int:
+	return player.weapon.get("damage", 1) if player and "weapon" in player else 1
 
 
 func enemy_damage() -> int:
@@ -53,21 +71,22 @@ func volley_interval() -> float:
 	return maxf(3.5, 12.0 - stars * 1.5)
 
 
-# Fills the posts up to the level's count. Safe to call before every task.
+# A new task: a fresh wave fills the free posts and the task gets its reinforcement allowance.
 func start() -> void:
 	running = true
-	var regular := enemies.filter(func(e): return not e.get_meta("boss", false)).size()
-	var wanted := count if mode != "panel" else mini(count, MAX_PANELS)
-	for i in range(wanted - regular):
-		_spawn(false)
-	if has_boss and not boss_defeated and not enemies.any(func(e): return e.get_meta("boss", false)):
-		_spawn(true)
+	task_token += 1
+	reinforcements_left = REINFORCEMENTS_PER_TASK
+	var posts := _free_posts(true)
+	posts.shuffle()
+	for i in range(mini(count - enemies.size(), posts.size())):
+		_spawn(posts[i])
+	last_posts = enemies.map(func(e): return e.post)
 
 
-# Removes all enemies (defeat, results); a later start() brings them back.
+# Removes all enemies (defeat, results); a later start() brings a new wave.
 func stop() -> void:
 	running = false
-	respawn_token += 1
+	task_token += 1
 	for enemy in enemies:
 		enemy.queue_free()
 	enemies.clear()
@@ -80,9 +99,9 @@ func set_speed_scale(value: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if not running or mode == "panel" or quiz == null or not quiz.accepting_answers:
+	if not running or quiz == null or not quiz.accepting_answers:
 		return
-	var shooters := enemies.filter(func(e): return is_instance_valid(e) and e.aim_left < 0.0)
+	var shooters := enemies.filter(func(e): return is_instance_valid(e) and e.ready_to_aim())
 	if shooters.is_empty():
 		return
 	volley_left -= delta * speed_scale
@@ -94,7 +113,7 @@ func _process(delta: float) -> void:
 # A wrong answer: an enemy (or a distant soldier) visibly lands a shot. The HP loss itself is
 # applied by the quiz; this only shows where it came from.
 func reaction_shot() -> void:
-	if mode == "panel" or player == null:
+	if player == null:
 		return
 	var shooters := enemies.filter(func(e): return is_instance_valid(e))
 	if not shooters.is_empty():
@@ -109,42 +128,38 @@ func reaction_shot() -> void:
 	projectile.launch(from, player.global_position + Vector3(0, 0.4, 0), 30.0, "arrow", func(_p): pass)
 
 
-func _spawn(boss: bool) -> void:
+func _spawn(post: Vector3) -> void:
 	var enemy = ENEMY_SCENE.instantiate()
-	var index := enemies.size()
-	enemy.position = _post(index, boss)
-	enemy.set_meta("boss", boss)
-	enemy.floating = boss and mode == "soldier"
-	if boss:
-		enemy.setup(quiz, player, BOSS_HP, BOSS_DAMAGE, look, true, mode)
-	else:
-		enemy.setup(quiz, player, enemy_hp(), enemy_damage(), look, false, mode)
+	var hits := hits_to_kill()
+	enemy.setup(quiz, player, hits * weapon_damage(), enemy_damage(), look, weapon_damage())
 	enemy.speed_scale = speed_scale
+	# Marches in from the edge of the arena on its side.
+	enemy.position = Vector3(signf(post.x) * ENTRY_X, post.y, post.z)
+	enemy.post = post
 	enemy.died.connect(_on_enemy_died)
 	add_child(enemy)
 	enemy.build_look(look)
 	enemies.append(enemy)
 
 
-# Posts on both flanks, staggered back toward the rampart. Gallery panels slide in front of the targets.
-func _post(index: int, boss: bool) -> Vector3:
-	if mode == "panel":
-		return Vector3(0, 1.4, -5.0 - (index % 3) * 0.7) if not boss else Vector3(0, 3.4, -9.4)
-	if boss:
-		# On the flank of the rampart, above the answer rows (the rampart has no collision).
-		return Vector3(10.0, 3.1, -10.6)
-	var side := -1.0 if index % 2 == 0 else 1.0
-	var rank := index / 2
-	return Vector3(side * (8.5 + (rank % 3) * 1.6), 0.2, -4.5 - rank * 1.8)
+# Posts nobody holds; at the start of a wave also avoids the posts used in the last wave.
+func _free_posts(new_wave: bool) -> Array:
+	var taken := enemies.map(func(e): return e.post)
+	var free := POSTS.filter(func(p): return not taken.has(p))
+	var fresh := free.filter(func(p): return not last_posts.has(p))
+	return fresh if new_wave and fresh.size() >= count else free
 
 
 func _on_enemy_died(enemy) -> void:
 	enemies.erase(enemy)
-	if enemy.get_meta("boss", false):
-		boss_defeated = true
+	if reinforcements_left <= 0:
 		return
-
-	var token := respawn_token
-	await get_tree().create_timer(RESPAWN_DELAY, false).timeout
-	if running and token == respawn_token:
-		start()
+	reinforcements_left -= 1
+	var fallen_post: Vector3 = enemy.post
+	var token := task_token
+	await get_tree().create_timer(REINFORCE_DELAY, false).timeout
+	if not running or token != task_token or enemies.size() >= count:
+		return
+	var posts := _free_posts(false).filter(func(p): return p != fallen_post)
+	if not posts.is_empty():
+		_spawn(posts.pick_random())

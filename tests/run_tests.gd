@@ -1050,12 +1050,19 @@ func test_difficulty() -> void:
 	var spawner = quiz.enemy_spawner
 	check(spawner.enemies.size() == 1, "level 3 has one enemy")
 	var enemy = spawner.enemies[0]
-	check(enemy.max_hp == 2 and enemy.damage == 5, "enemy stats scale with stars (hp %d, damage %d)" % [enemy.max_hp, enemy.damage])
-	check(absf(enemy.position.x) >= 8.0, "enemy holds a post on the flank")
+	check(spawner.hits_to_kill() == 1 and enemy.max_hp == player.weapon["damage"] and enemy.damage == 5, "easy level: an enemy falls to one hit (hp %d, damage %d)" % [enemy.max_hp, enemy.damage])
+	check(absf(enemy.post.x) >= 8.0 and absf(enemy.position.x) > absf(enemy.post.x), "enemy marches in from the edge to a post on the flank")
+	check(not enemy.begin_aim(), "a marching enemy cannot shoot yet")
 	check(enemy.soldier != null, "enemy is a low-poly soldier")
 	check(not quiz.environment.background_soldiers.is_empty(), "background soldiers fill the scene")
+	for i in range(60):
+		if enemy.at_post():
+			break
+		await wait(0.1)
+	check(enemy.at_post(), "the enemy reaches its post")
 	await physics_frame
 	var posted_at: Vector3 = enemy.global_position
+	var posted_post: Vector3 = enemy.post
 	await wait(1.0)
 	check(Vector2(enemy.global_position.x, enemy.global_position.z).distance_to(Vector2(posted_at.x, posted_at.z)) < 0.05, "enemies do not chase the player")
 
@@ -1102,14 +1109,18 @@ func test_difficulty() -> void:
 	player.get_node("Camera3D").look_at(enemy.global_position + Vector3(0, 1.0, 0))
 	player.cooldown_left = 0.0
 	player.shoot()
-	check(enemy.hp == 1, "shooting an enemy deals weapon damage")
-	player.cooldown_left = 0.0
-	player.shoot()
 	await process_frame
-	check(spawner.enemies.is_empty(), "enemy dies at 0 HP")
+	check(spawner.enemies.is_empty(), "the shot brings the enemy down")
 	check(quiz.score == score_before, "killing enemies gives no points (no score farming)")
-	await wait(spawner.RESPAWN_DELAY + 0.3)
-	check(spawner.enemies.size() == 1, "the enemy returns to its post after a delay")
+	await wait(spawner.REINFORCE_DELAY - 1.0)
+	check(spawner.enemies.is_empty(), "no instant respawn")
+	await wait(1.3)
+	check(spawner.enemies.size() == 1 and spawner.enemies[0].post != posted_post, "one reinforcement arrives later, at a different post")
+	spawner.enemies[0].take_hit(99)
+	await wait(spawner.REINFORCE_DELAY + 0.3)
+	check(spawner.enemies.is_empty(), "the line can be cleared: one reinforcement per task")
+	spawner.start()
+	check(spawner.enemies.size() == 1, "the next task brings a new wave")
 
 	quiz.set_slow(true)
 	check(spawner.enemies[0].speed_scale == Abilities.SLOW_FACTOR, "slow time slows enemies")
@@ -1128,15 +1139,13 @@ func test_difficulty() -> void:
 	arena.queue_free()
 	await process_frame
 
-	# Level 10 is a peaceful shooting gallery: sliding panels, no shooting at the player.
+	# Level 10 is a peaceful shooting range: no enemies at all.
 	game_state.selected_level = 10
 	arena = await _load_arena()
 	quiz = arena.get_node("QuizManager")
 	spawner = quiz.enemy_spawner
-	var panels: Array = spawner.enemies.filter(func(e): return not e.get_meta("boss"))
-	check(spawner.mode == "panel" and panels.size() <= spawner.MAX_PANELS and spawner.enemies.size() == panels.size() + 1, "gallery: a few sliding panels plus the boss panel")
-	check(spawner.enemies.all(func(e): return not e.begin_aim()), "gallery panels never shoot")
-	check(quiz.targets.all(func(t): return t.get_node("TargetVisual").get_children().all(func(c): return c.get_script() != Soldier)), "gallery targets are placards on posts, not soldiers")
+	check(spawner.enemies.is_empty(), "the shooting range has no enemies")
+	check(quiz.targets.all(func(t): return t.style == "gallery" and t.get_node("TargetVisual").get_children().all(func(c): return c.get_script() != Soldier)), "range targets are round targets, not soldiers")
 	hp_before = quiz.health
 	await wait(3.0)
 	check(quiz.health == hp_before, "nothing damages the player in the gallery")
@@ -1160,20 +1169,30 @@ func test_difficulty() -> void:
 		PhysicsRayQueryParameters3D.create(Vector3(0, 1, 0), Vector3(40, 1, 0)))
 	check(not wall_hit.is_empty() and wall_hit["position"].x < 15.5, "arena walls stop players and enemies at the edge")
 
-	# Boss level
-	spawner = quiz.enemy_spawner
-	spawner.stop()
-	spawner.configure(quiz, arena.get_node("Player"), {"enemies": 0, "stars": 5, "boss": true})
-	spawner.start()
-	check(spawner.enemies.size() == 1 and spawner.enemies[0].get_meta("boss"), "boss level spawns a boss")
-	var boss = spawner.enemies[0]
-	check(boss.max_hp == spawner.BOSS_HP and boss.damage == spawner.BOSS_DAMAGE and boss.scale.x > 1.5, "boss is bigger and tougher")
-	boss.take_hit(spawner.BOSS_HP)
-	await wait(spawner.RESPAWN_DELAY + 0.3)
-	spawner.start()
-	check(spawner.enemies.is_empty() and spawner.boss_defeated, "a defeated boss stays defeated")
 	arena.queue_free()
 	await process_frame
+
+	# Later levels: at most three enemies, spread over different posts, new posts every wave, and
+	# toughness that takes about a second of fire whatever the weapon.
+	game_state.selected_level = 7
+	for id in ["tomyris", "kultegin", "kabanbay", "aliya", "manshuk"]:
+		game_state.selected_character = id
+		arena = await _load_arena()
+		spawner = arena.get_node("QuizManager").enemy_spawner
+		var weapon: Dictionary = arena.get_node("Player").weapon
+		var seconds: float = (spawner.hits_to_kill() - 1) * weapon["cooldown"]
+		check(seconds >= 0.8 and seconds <= 1.5 and spawner.enemies[0].max_hp == spawner.hits_to_kill() * weapon["damage"],
+			"level 7, %s: an enemy takes %d hits (%.2f s of fire)" % [weapon["name"], spawner.hits_to_kill(), seconds])
+		if id == "kabanbay":
+			var posts: Array = spawner.enemies.map(func(e): return e.post)
+			check(spawner.enemies.size() == 3 and posts.size() == 3 and posts[0] != posts[1] and posts[1] != posts[2] and posts[0] != posts[2], "level 7: three enemies at three different posts")
+			spawner.stop()
+			spawner.start()
+			check(spawner.enemies.all(func(e): return not posts.has(e.post)), "the next wave takes different posts")
+			spawner.configure(arena.get_node("QuizManager"), arena.get_node("Player"), {"enemies": 8, "stars": 5}, {"enemy_look": {"coat": "#000000"}})
+			check(spawner.count == spawner.MAX_ACTIVE, "never more than %d active enemies" % spawner.MAX_ACTIVE)
+		arena.queue_free()
+		await process_frame
 	game_state.selected_character = ""
 	game_state.selected_level = 1
 

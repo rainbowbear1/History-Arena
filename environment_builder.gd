@@ -6,6 +6,9 @@ extends Node3D
 # Everything is built from a few primitive meshes with flat colours (low-poly style, cheap on the web).
 
 const Soldier := preload("res://soldier.gd")
+const Projectile := preload("res://projectile.gd")
+# Background exchange of fire: one harmless shot every this many seconds (scenery only).
+const BATTLE_SHOT_EVERY := Vector2(0.9, 2.2)
 const THEMES_FILE := "res://data/themes.json"
 const LEDGE_TOP := 3.1
 const LEDGE_FRONT_Z := -9.0
@@ -17,6 +20,8 @@ var theme: Dictionary = {}
 var rng := RandomNumberGenerator.new()
 var background_soldiers: Array = []
 var background_enemies: Array = []  # Distant enemy soldiers (used for the wrong-answer reaction).
+var background_allies: Array = []  # Allies beside the player who shoot at the distant enemy line.
+var battle_left: float = 1.5
 
 static var _materials := {}
 
@@ -207,10 +212,12 @@ func _background() -> void:
 	var ally_look: Dictionary = theme.get("ally_look", {})
 	var enemy_look: Dictionary = theme.get("enemy_look", {})
 
-	# Allies line up beside the player.
+	# Allies line up beside the player and shoot at the enemy line beyond the rampart.
 	for i in range(allies / 2):
 		for side in [-1, 1]:
-			_soldier(ally_look, Vector3(side * rng.randf_range(12.5, 14.5), 0.1, rng.randf_range(-7.0, -2.0)), 0.0, "idle")
+			var ally := _soldier(ally_look, Vector3(side * rng.randf_range(12.5, 14.5), 0.1, rng.randf_range(-7.0, -2.0)), 0.0, "idle")
+			if ally:
+				background_allies.append(ally)
 
 	# The battle beyond the rampart: duels on the flanks, troops marching in the distance.
 	for i in range(enemies):
@@ -221,6 +228,41 @@ func _background() -> void:
 			background_enemies.append(_soldier(enemy_look, Vector3(x, 0.1, z), PI, "fight"))
 		else:
 			background_enemies.append(_soldier(enemy_look, Vector3(x, 0.1, z), PI, motion if motion != "fight" else "march"))
+
+
+# The battle in the background: an ally fires at a distant enemy (or, now and then, the reverse).
+# Shots are scenery: they hit nothing and nobody falls.
+func _process(delta: float) -> void:
+	if background_allies.is_empty() or background_enemies.is_empty():
+		return
+	battle_left -= delta
+	if battle_left > 0.0:
+		return
+	battle_left = rng.randf_range(BATTLE_SHOT_EVERY.x, BATTLE_SHOT_EVERY.y)
+	var ally: Node3D = background_allies.pick_random()
+	var enemy: Node3D = background_enemies.pick_random()
+	if not is_instance_valid(ally) or not is_instance_valid(enemy):
+		return
+	var outgoing := rng.randf() < 0.7
+	var shooter := ally if outgoing else enemy
+	var look: Dictionary = theme.get("ally_look" if outgoing else "enemy_look", {})
+	var kind := "bullet" if look.get("weapon", "") == "rifle" else "arrow"
+	var from := shooter.global_position + Vector3(0, 1.5, 0)
+	var to := (enemy if outgoing else ally).global_position + Vector3(rng.randf_range(-1.0, 1.0), 1.0, 0)
+	if outgoing:
+		shooter.rotation.y = atan2(-(to.x - from.x), -(to.z - from.z))
+		shooter.set_motion("aim")
+		_back_to_idle(shooter)
+	var projectile := Projectile.new()
+	add_child(projectile)
+	projectile.launch(from, to, 45.0 if kind == "bullet" else 26.0, kind, func(_point): pass)
+
+
+func _back_to_idle(soldier: Node3D) -> void:
+	await get_tree().create_timer(0.8, false).timeout
+	if is_instance_valid(soldier):
+		soldier.set_motion("idle")
+		soldier.rotation.y = 0.0
 
 
 func _soldier(look: Dictionary, at: Vector3, facing: float, motion: String) -> Node3D:

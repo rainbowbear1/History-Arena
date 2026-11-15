@@ -89,8 +89,7 @@
       "props": [["monument", 1], ["flag", 8], ["booth", 6], ["tree", 10]],
       "enemy_look": {},
       "ally_look": {"coat": "#2f8fc9", "pants": "#2a3440", "headgear": "cap", "headgear_color": "#e8c33a", "weapon": "none", "trim": "#e8c33a"},
-      "background": {"allies": 14, "enemies": 0, "motion": "idle"},
-      "enemy_mode": "gallery"
+      "background": {"allies": 14, "enemies": 0, "motion": "idle"}
     }
   }
 }
