@@ -38,11 +38,11 @@ func open(score: int, help_question: Dictionary, hp: int) -> void:
 	result_label.text = ""
 
 	if question.is_empty():
-		message_label.text = "Медициналық көмек мүмкіндігі қалмады.\nЖалпы ұпай: %d" % score
+		message_label.text = tr("Медициналық көмек мүмкіндігі қалмады.\nҰпай: %d") % score
 		question_label.hide()
 		answers_grid.hide()
 	else:
-		message_label.text = "Бірақ тарихи біліміңіз Сізді құтқара алады.\nМедициналық көмек алу үшін тарихи тапсырманы орындаңыз."
+		message_label.text = tr("Бірақ тарихи біліміңіз Сізді құтқара алады.\nМедициналық көмек алу үшін тарихи тапсырманы орындаңыз.")
 		question_label.text = question["question"]
 		question_label.show()
 		answers_grid.show()
@@ -72,13 +72,13 @@ func _on_answer_pressed(button: Button) -> void:
 	if button.text != question["correct"]:
 		button.add_theme_color_override("font_disabled_color", WRONG_COLOR)
 		result_label.add_theme_color_override("font_color", WRONG_COLOR)
-		result_label.text = "Медициналық көмек көрсетілмеді."
+		result_label.text = tr("Медициналық көмек көрсетілмеді.")
 		restart_button.grab_focus()
 		help_failed.emit()
 		return
 
 	result_label.add_theme_color_override("font_color", CORRECT_COLOR)
-	result_label.text = "Дұрыс! +%d HP. Тапсырмаға қайта ораласыз." % restore_hp
+	result_label.text = tr("Дұрыс! +%d HP. Тапсырмаға қайта ораласыз.") % restore_hp
 	await get_tree().create_timer(REVIVE_DELAY, false).timeout
 	hide()
 	revived.emit()

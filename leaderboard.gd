@@ -25,7 +25,7 @@ func refresh() -> void:
 		child.queue_free()
 	me_label.text = ""
 	refresh_button.disabled = true
-	status_label.text = "Жүктелуде..."
+	status_label.text = tr("Жүктелуде...")
 
 	var result: Dictionary = await Backend.fetch_leaderboard(LIMIT)
 	if not is_inside_tree():
@@ -36,9 +36,9 @@ func refresh() -> void:
 		return
 
 	var list: Array = result.get("rows", [])
-	status_label.text = "Әлі нәтиже жоқ. Деңгейді өтіп, бірінші болыңыз!" if list.is_empty() else ""
+	status_label.text = tr("Әлі нәтиже жоқ. Деңгейді өтіп, бірінші болыңыз!") if list.is_empty() else ""
 	if not list.is_empty():
-		_add_row("#", "Ойыншы", "Ұпай", Color(0.7, 0.7, 0.7))
+		_add_row("#", tr("Ойыншы"), tr("Ұпай"), Color(0.7, 0.7, 0.7))
 	for i in list.size():
 		var row: Dictionary = list[i]
 		var color := ME_COLOR if row.get("me", false) else Color.WHITE
@@ -47,11 +47,11 @@ func refresh() -> void:
 	var me: Dictionary = result.get("me", {})
 	var pending := Backend.pending_uploads()
 	if int(me.get("rank", 0)) > 0:
-		me_label.text = "%s · үздік жалпы ұпай: %d · орын: %d" % [Backend.display_name(), int(me["total"]), int(me["rank"])]
+		me_label.text = tr("%s · үздік жалпы ұпай: %d · орын: %d") % [Backend.display_name(), int(me["total"]), int(me["rank"])]
 	else:
-		me_label.text = "%s · рейтингте әлі нәтиже жоқ" % Backend.display_name()
+		me_label.text = tr("%s · рейтингте әлі нәтиже жоқ") % Backend.display_name()
 	if pending > 0:
-		me_label.text += "\nЖіберілуді күтуде: %d нәтиже" % pending
+		me_label.text += tr("\nЖіберілуді күтуде: %d нәтиже") % pending
 
 
 func _add_row(rank: String, player: String, total: String, color: Color) -> void:

@@ -52,7 +52,7 @@ func is_online_player() -> bool:
 func display_name() -> String:
 	if user.is_empty():
 		return ""
-	return user.get("name", "") if not is_guest() else "Қонақ (офлайн)"
+	return user.get("name", "") if not is_guest() else tr("Қонақ (офлайн)")
 
 
 # Restores a saved Google session (Firebase keeps it across page reloads).
@@ -70,11 +70,11 @@ func restore_session() -> bool:
 # Returns "" on success, otherwise a message for the player.
 func sign_in_with_google() -> String:
 	if not online_available():
-		last_error = OFFLINE_MESSAGE
+		last_error = tr(OFFLINE_MESSAGE)
 		return last_error
 	var result: Dictionary = await transport.sign_in()
 	if not _valid_user(result):
-		last_error = "Кіру сәтсіз аяқталды: " + str(result.get("error", "белгісіз қате"))
+		last_error = tr("Кіру сәтсіз аяқталды: ") + str(result.get("error", tr("белгісіз қате")))
 		return last_error
 	_set_user(result)
 	await _after_sign_in()
@@ -143,10 +143,10 @@ func pending_uploads() -> int:
 # {"ok": true, "rows": [{"name", "total", "me"}], "me": {"total", "rank"}} or {"error": ...}
 func fetch_leaderboard(limit: int = 20) -> Dictionary:
 	if not is_online_player():
-		return {"error": "Рейтингті көру үшін Google арқылы кіріңіз"}
+		return {"error": tr("Рейтингті көру үшін Google арқылы кіріңіз")}
 	var result: Dictionary = await transport.leaderboard(limit)
 	if result.get("ok") != true:
-		return {"error": "Рейтинг жүктелмеді: " + str(result.get("error", "белгісіз қате"))}
+		return {"error": tr("Рейтинг жүктелмеді: ") + str(result.get("error", tr("белгісіз қате")))}
 	return result
 
 

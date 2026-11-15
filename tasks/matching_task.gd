@@ -9,7 +9,7 @@ var selected = null
 
 
 func hint() -> String:
-	return "1) Жоғарғы қатардан біреуін атыңыз   2) Оның жұбын төменгі қатардан атыңыз"
+	return tr("1) Жоғарғы қатардан біреуін атыңыз   2) Оның жұбын төменгі қатардан атыңыз")
 
 
 func _build() -> void:
@@ -45,14 +45,14 @@ func on_target_hit(target) -> Outcome:
 		return Outcome.NONE
 
 	if selected == null:
-		message = "Алдымен жоғарғы қатардан таңдаңыз"
+		message = tr("Алдымен жоғарғы қатардан таңдаңыз")
 		return Outcome.NONE
 
 	if pair_of[selected] != pair_of[target]:
 		target.flash_wrong()
 		selected.set_state(Target.State.NORMAL)
 		selected = null
-		message = "Қате жұп!"
+		message = tr("Қате жұп!")
 		return Outcome.MISTAKE
 
 	selected.set_state(Target.State.DONE)

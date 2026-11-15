@@ -7,7 +7,7 @@ var next_index: int = 0
 
 
 func hint() -> String:
-	return "Оқиғаларды ең ертесінен бастап ретімен атыңыз"
+	return tr("Оқиғаларды ең ертесінен бастап ретімен атыңыз")
 
 
 func _build() -> void:
@@ -29,7 +29,7 @@ func on_target_hit(target) -> Outcome:
 	if target.answer_text != items[next_index]:
 		target.flash_wrong()
 		_reset()
-		message = "Қате рет! Басынан бастаңыз"
+		message = tr("Қате рет! Басынан бастаңыз")
 		return Outcome.MISTAKE
 
 	next_index += 1

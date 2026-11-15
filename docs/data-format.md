@@ -219,6 +219,18 @@ them to `assets/CREDITS.md` and the in-game credits (`main_menu.gd`). `answers` 
 ### 6. `fill_blank` — fill in the missing word
 `question` must contain `___` where the blank is. `answers` and `correct` as in `single_choice`.
 
+## Languages — `locale.gd`, `locale/en.json`
+
+Kazakh is the default; the **KZ / EN** switch is in the top-right corner of the main menu and the
+choice is saved in `user://settings.cfg`. Interface text goes through Godot's TranslationServer:
+scene texts translate automatically and code wraps its strings in `tr()`. The English strings are
+in `locale/en.json`, keyed by the Kazakh text (the fallback locale is `kk`, so a text without an
+English entry stays Kazakh). Level titles, character cards and ability names are translated the
+same way. Questions carry their English text in each task's `en` block; `Locale.localize_question()`
+swaps it in by position when the game loads a level, so ids, scoring and the correct answer do not
+depend on the language. The tests check that every interface text has an English entry and that
+every task is fully English with its correct answer in the same place.
+
 ## Running the tests
 
 ```

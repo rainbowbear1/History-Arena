@@ -3,7 +3,8 @@ extends SceneTree
 # Renders each level's first task and saves a PNG, for checking the look without playing.
 #   godot --path . --script res://tools/screenshots.gd -- [levels=1,2,...] [size=1280x720] [out=build/shots] [frames=40] [long] [task=id]
 # Needs a real window (not --headless). "long" swaps in a very long question to check wrapping;
-# "select" renders the level-select screen with sample progress instead.
+# "select" renders the level-select screen with sample progress instead, "menu" the main menu;
+# "lang=en" renders in English.
 
 var levels := range(1, 11)
 var size := Vector2i(1280, 720)
@@ -39,6 +40,19 @@ func run() -> void:
 	progress.path = progress.base_path
 	progress.set_demo_unlock(true)
 	root.get_node("GameState").shuffle_questions = false
+	var locale := root.get_node("Locale")
+	locale.settings_path = "user://screenshot_settings.cfg"
+	locale.set_language("en" if "lang=en" in OS.get_cmdline_user_args() else "kk")
+	var suffix: String = "_en" if locale.is_english() else ""
+	if "menu" in OS.get_cmdline_user_args():
+		var menu: Node = load("res://main_menu.tscn").instantiate()
+		root.add_child(menu)
+		current_scene = menu
+		for i in range(10):
+			await process_frame
+		root.get_texture().get_image().save_png(ProjectSettings.globalize_path("res://%s/main_menu%s_%dx%d.png" % [out, suffix, size.x, size.y]))
+		quit()
+		return
 	if "select" in OS.get_cmdline_user_args():
 		# Level select with sample progress: total 1800, demo mode off.
 		progress.reset()
@@ -60,6 +74,8 @@ func run() -> void:
 		root.add_child(arena)
 		current_scene = arena
 		var quiz = arena.get_node("QuizManager")
+		# Keep the real mouse from turning the camera while the window is open.
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		if not task_id.is_empty():
 			for i in range(quiz.questions.size()):
 				if quiz.questions[i].get("id") == task_id:
@@ -70,7 +86,7 @@ func run() -> void:
 		for i in range(frames):
 			await process_frame
 		var image := root.get_texture().get_image()
-		var path := "res://%s/level_%02d%s%s_%dx%d.png" % [out, level, "_long" if long_question else "", "_" + task_id if task_id else "", size.x, size.y]
+		var path := "res://%s/level_%02d%s%s%s_%dx%d.png" % [out, level, "_long" if long_question else "", "_" + task_id if task_id else "", suffix, size.x, size.y]
 		image.save_png(ProjectSettings.globalize_path(path))
 		print("saved ", path)
 		arena.queue_free()

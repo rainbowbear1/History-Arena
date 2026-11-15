@@ -25,6 +25,7 @@ var game_state: Node
 var char_db: Node
 var progress: Node
 var backend: Node
+var locale: Node
 
 
 func _initialize() -> void:
@@ -59,6 +60,10 @@ func run() -> void:
 	progress.reset()
 	progress.set_demo_unlock(true)
 	backend = root.get_node("Backend")
+	# Tests run in Kazakh with their own settings file; test_localization switches languages.
+	locale = root.get_node("Locale")
+	locale.settings_path = "user://test_settings.cfg"
+	locale.set_language("kk")
 	backend.outbox_path = "user://test_outbox.json"
 	backend.outbox = []
 	backend.save_outbox()
@@ -70,6 +75,7 @@ func run() -> void:
 	test_question_files()
 	print("== Question audit: repeats, leaks, difficulty, translations")
 	test_question_audit()
+	await test_localization()
 	print("== Level select")
 	await test_level_select()
 	print("== Arena gameplay")
@@ -267,6 +273,90 @@ func test_question_audit() -> void:
 	var bad_en := {"question": "Q", "answers": ["a", "b", "c", "d"], "correct": "a", "en": {"question": "Q", "answers": ["a", "b", "c"]}}
 	check(not QuestionValidator.validate(bad_en).is_empty(), "an English version with a missing answer is rejected")
 	check(not QuestionValidator.validate(_with(bad_en, "difficulty", 4)).is_empty(), "difficulty outside 1-3 is rejected")
+
+
+# KZ/EN: every interface text has an English entry; the switch lives in the main menu and is
+# remembered; in English every task, option, pair, event and map name is English and the correct
+# answer still scores.
+func test_localization() -> void:
+	print("== Localization: KZ / EN")
+	var english: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://locale/en.json"))
+	var keys := []
+	var literal := RegEx.create_from_string(r'(?:tr|_t)\("((?:[^"\\]|\\.)*)"\)')
+	var files := ["abilities.gd", "backend.gd", "character_select.gd", "image_panel.gd", "leaderboard.gd", "level_select.gd",
+		"main_menu.gd", "quiz_manager.gd", "revival_panel.gd", "startup_screen.gd", "tasks/choice_task.gd",
+		"tasks/chronology_task.gd", "tasks/map_task.gd", "tasks/matching_task.gd"]
+	for file in files:
+		for m in literal.search_all(FileAccess.get_file_as_string("res://" + file)):
+			keys.append(m.get_string(1).c_unescape())
+	var scene_text := RegEx.create_from_string(r'\n(?:text|tooltip_text) = "([^"]*[А-Яа-яӘәҒғҚқҢңӨөҰұҮүҺһІі][^"]*)"')
+	for scene in ["main_menu.tscn", "startup_screen.tscn", "level_select.tscn", "character_select.tscn", "leaderboard.tscn", "main.tscn"]:
+		for m in scene_text.search_all(FileAccess.get_file_as_string("res://" + scene)):
+			if m.get_string(1) != "Қазақ хандығы қай жылы құрылды?":  # Placeholder replaced at start.
+				keys.append(m.get_string(1).c_unescape())
+	for level in level_db.levels:
+		keys.append(level["title"])
+	for character in char_db.characters:
+		keys.append_array([character["name"], character["title"], character["description"], character["weapon"]["name"]])
+	for info in Abilities.INFO.values():
+		keys.append_array([info["name"], info["description"]])
+	keys.append_array(["Ретімен қойылды", "Табылған жұптар", "Жылдамдық", "Қорғаныс"])
+	var missing := keys.filter(func(k): return not english.has(k))
+	check(missing.is_empty(), "every interface text has an English entry (%d texts) %s" % [keys.size(), str(missing)])
+
+	# The switch: in the main menu, applies at once, remembered across sessions.
+	var menu: Control = load("res://main_menu.tscn").instantiate()
+	root.add_child(menu)
+	await process_frame
+	check(menu.language_buttons.size() == 2 and menu.language_buttons["kk"].button_pressed and menu.get_node("LanguageSwitch").visible, "main menu shows KZ / EN with Kazakh selected")
+	menu.language_buttons["en"].pressed.emit()
+	await process_frame
+	var play: Button = menu.play_button
+	check(locale.language == "en" and TranslationServer.get_locale() == "en" and play.text == "Ойнау" and tr(play.text) == "Play", "EN switches the interface to English")
+	var stored := ConfigFile.new()
+	stored.load(locale.settings_path)
+	check(stored.get_value("game", "language", "") == "en", "the choice is saved")
+	menu.queue_free()
+
+	# Every task of every level in English: no Kazakh letters left, correct answer kept by position.
+	var kazakh := RegEx.create_from_string("[А-Яа-яӘәҒғҚқҢңӨөҰұҮүҺһІі]")
+	var bad := []
+	for file in level_db.levels.map(func(l): return l["question_file"]) + ["res://questions/medical.json"]:
+		for q in QuestionValidator.load_file(file).questions:
+			var en: Dictionary = locale.localize_question(q)
+			var texts: Array = [en["question"]] + en.get("answers", []) + en.get("extra_answers", []) + en.get("items", [])
+			for pair in en.get("pairs", []):
+				texts.append_array([pair["left"], pair["right"]])
+			for location in en.get("locations", []):
+				texts.append(location["name"])
+			if texts.any(func(t): return kazakh.search(t) != null):
+				bad.append(q["id"] + " has Kazakh text")
+			if q.has("answers") and en["answers"].find(en["correct"]) != q["answers"].find(q["correct"]):
+				bad.append(q["id"] + " correct answer moved")
+			if q.has("locations") and q["locations"].map(func(l): return l["name"]).find(q["correct"]) != en["locations"].map(func(l): return l["name"]).find(en["correct"]):
+				bad.append(q["id"] + " map answer moved")
+			if en.get("id") != q.get("id"):
+				bad.append(str(q.get("id")) + " lost its id")
+	check(bad.is_empty(), "every task has a complete English version with the same correct answer %s" % str(bad.slice(0, 5)))
+
+	# Playing in English: the arena shows English text and the correct English target scores.
+	game_state.selected_level = 4
+	game_state.selected_character = "kaiyrkhan"
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	var original: Dictionary = QuestionValidator.load_file(level_db.get_level(4)["question_file"]).questions[0]
+	check(quiz.question_label.text == original["en"]["question"] and quiz.targets.any(func(t): return t.answer_text == original["en"]["answers"][0]),
+		"the arena asks the task in English")
+	check(quiz.score_label.text == "Score: 0" and quiz.character_label.text.begins_with("Qayir Khan"), "HUD in English")
+	quiz.targets.filter(func(t): return t.is_correct)[0].hit()
+	check(quiz.score == 100 and quiz.feedback_label.text == "Correct!", "the correct English answer scores")
+	check(quiz.medical_questions.all(func(q): return kazakh.search(q["question"]) == null), "medical help is in English too")
+	arena.queue_free()
+	await process_frame
+	locale.set_language("kk")
+	game_state.selected_character = ""
+	game_state.selected_level = 1
+	check(TranslationServer.get_locale() == "kk" and tr("Ойнау") == "Ойнау", "back to Kazakh")
 
 
 func test_level_select() -> void:

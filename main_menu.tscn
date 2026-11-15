@@ -33,6 +33,8 @@ grow_vertical = 2
 
 [node name="MenuVBox" type="VBoxContainer" parent="MenuCenter" unique_id=828446702]
 layout_mode = 2
+custom_minimum_size = Vector2(340, 0)
+theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="MenuCenter/MenuVBox" unique_id=1410652208]
 layout_mode = 2

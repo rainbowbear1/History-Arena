@@ -14,6 +14,10 @@ const INFO := {
 }
 
 const SLOW_FACTOR := 0.4
+
+
+static func _t(text: String) -> String:
+	return String(TranslationServer.translate(text))
 const SLOW_SECONDS := 8.0
 const EXTRA_SECONDS := 10.0
 const HEAL_AMOUNT := 25
@@ -23,19 +27,19 @@ static func apply(id: String, quiz) -> String:
 	match id:
 		"fifty_fifty":
 			if quiz.current_task.has_method("remove_wrong") and quiz.current_task.remove_wrong(2):
-				return "Екі қате жауап алынып тасталды"
+				return _t("Екі қате жауап алынып тасталды")
 		"slow_time":
 			if not quiz.slow_active:
 				quiz.set_slow(true)
-				return "Уақыт баяулады!"
+				return _t("Уақыт баяулады!")
 		"extra_time":
 			if quiz.timer_running():
 				quiz.time_left += EXTRA_SECONDS
-				return "+%d секунд" % EXTRA_SECONDS
+				return _t("+%d секунд") % EXTRA_SECONDS
 		"shield":
 			if not quiz.shield_active:
 				quiz.shield_active = true
-				return "Қалқан белсенді"
+				return _t("Қалқан белсенді")
 		"heal":
 			if quiz.health < quiz.max_health:
 				quiz.health = mini(quiz.health + HEAL_AMOUNT, quiz.max_health)
@@ -44,5 +48,5 @@ static func apply(id: String, quiz) -> String:
 		"double_score":
 			if not quiz.double_score_active:
 				quiz.double_score_active = true
-				return "Келесі жауап ×2 ұпай"
+				return _t("Келесі жауап ×2 ұпай")
 	return ""

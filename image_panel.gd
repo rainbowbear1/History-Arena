@@ -69,7 +69,7 @@ func _process(delta: float) -> void:
 
 func show_image(path: String) -> void:
 	picture.texture = load(path)
-	credit.text = "Фото: " + CREDITS[path.get_file()] if CREDITS.has(path.get_file()) else ""
+	credit.text = tr("Фото: ") + CREDITS[path.get_file()] if CREDITS.has(path.get_file()) else ""
 	credit.visible = not credit.text.is_empty()
 	show()
 	_layout()

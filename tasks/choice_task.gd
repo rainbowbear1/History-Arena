@@ -6,9 +6,9 @@ extends "res://tasks/quiz_task.gd"
 func hint() -> String:
 	match question.get("type"):
 		"fill_blank":
-			return "Бос орынға сәйкес жауапты атыңыз"
+			return tr("Бос орынға сәйкес жауапты атыңыз")
 		"image":
-			return "Суретке қарап, дұрыс жауапты атыңыз"
+			return tr("Суретке қарап, дұрыс жауапты атыңыз")
 	return ""
 
 

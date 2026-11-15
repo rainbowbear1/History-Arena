@@ -31,7 +31,7 @@ func _ready() -> void:
 	var group := ButtonGroup.new()
 	for character in CharacterDatabase.characters:
 		var button := Button.new()
-		button.text = character["name"]
+		button.text = tr(character["name"])
 		button.custom_minimum_size = Vector2(220, 52)
 		button.toggle_mode = true
 		button.button_group = group
@@ -48,9 +48,9 @@ func _ready() -> void:
 	var level := LevelDatabase.get_level(GameState.selected_level)
 	var protagonist: String = level.get("protagonist", "")
 	var start_id := protagonist if not protagonist.is_empty() else GameState.selected_character
-	level_label.text = "%d. %s" % [level.get("id", 0), level.get("title", "")]
+	level_label.text = "%d. %s" % [level.get("id", 0), tr(level.get("title", ""))]
 	if not protagonist.is_empty():
-		level_label.text += " · Деңгей кейіпкері: " + CharacterDatabase.get_character(protagonist)["name"]
+		level_label.text += tr(" · Деңгей кейіпкері: ") + tr(CharacterDatabase.get_character(protagonist)["name"])
 
 	var current := CharacterDatabase.get_character(start_id)
 	if not current.is_empty():
@@ -69,21 +69,21 @@ func _select(id: String) -> void:
 # Shows a character's details; leaving the hover returns to the selected one.
 func _show(id: String) -> void:
 	var character := CharacterDatabase.get_character(id)
-	name_label.text = character["name"]
-	title_label.text = character["title"]
-	description_label.text = character["description"]
+	name_label.text = tr(character["name"])
+	title_label.text = tr(character["title"])
+	description_label.text = tr(character["description"])
 
 	for row in STAT_ROWS:
 		stat_bars[row[0]].value = character[row[0]]
 		stat_values[row[0]].text = str(character[row[0]])
 
 	var weapon: Dictionary = character["weapon"]
-	weapon_label.text = "Қару: %s — зақым %d, атыс аралығы %.2f с%s" % [
-		weapon["name"], weapon["damage"], weapon["cooldown"], " (автомат)" if weapon["auto"] else ""]
+	weapon_label.text = tr("Қару: %s — зақым %d, атыс аралығы %.2f с%s") % [
+		tr(weapon["name"]), weapon["damage"], weapon["cooldown"], tr(" (автомат)") if weapon["auto"] else ""]
 
 	var ability: Dictionary = character["ability"]
 	var info: Dictionary = Abilities.INFO[ability["id"]]
-	ability_label.text = "Қабілет [E]: %s ×%d — %s" % [info["name"], ability["uses"], info["description"]]
+	ability_label.text = tr("Қабілет [E]: %s ×%d — %s") % [tr(info["name"]), ability["uses"], tr(info["description"])]
 
 
 func _on_choose_pressed() -> void:
@@ -94,7 +94,7 @@ func _on_choose_pressed() -> void:
 func _build_stat_rows() -> void:
 	for row in STAT_ROWS:
 		var label := Label.new()
-		label.text = row[1]
+		label.text = tr(row[1])
 		label.custom_minimum_size = Vector2(120, 0)
 		stats_grid.add_child(label)
 

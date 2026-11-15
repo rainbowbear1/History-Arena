@@ -9,7 +9,7 @@ const HIDDEN_AT := Vector3(0, -50, 0)
 
 
 func hint() -> String:
-	return "Картадағы дұрыс белгіні атыңыз"
+	return tr("Картадағы дұрыс белгіні атыңыз")
 
 
 func _build() -> void:

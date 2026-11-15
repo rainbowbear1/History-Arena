@@ -162,12 +162,12 @@ func _ready() -> void:
 	enemy_spawner.background_shooters = environment.background_enemies
 
 	load_questions_from_file()
-	medical_questions = QuestionValidator.load_file(MEDICAL_FILE).questions
+	medical_questions = QuestionValidator.load_file(MEDICAL_FILE).questions.map(func(q): return Locale.localize_question(q))
 
 	if questions.is_empty():
 		push_error("No questions loaded!")
 		accepting_answers = false
-		set_question("Сұрақтар жүктелмеді")
+		set_question(tr("Сұрақтар жүктелмеді"))
 		return
 
 	load_question()
@@ -224,11 +224,11 @@ func _on_time_up() -> void:
 	wrong_count += 1
 	enemy_spawner.reaction_shot()
 	var blocked := take_damage(DAMAGE)
-	finish_task("Уақыт бітті! Қалқан қорғады" if blocked else "Уақыт бітті!", Color.RED)
+	finish_task(tr("Уақыт бітті! Қалқан қорғады") if blocked else tr("Уақыт бітті!"), Color.RED)
 
 
 func update_timer() -> void:
-	timer_label.text = "Уақыт: %d" % ceili(time_left) if time_limit > 0.0 else ""
+	timer_label.text = tr("Уақыт: %d") % ceili(time_left) if time_limit > 0.0 else ""
 	timer_label.add_theme_color_override("font_color", Color.RED if time_left <= 5.0 else Color.WHITE)
 
 
@@ -247,30 +247,30 @@ func target_hit(target) -> void:
 			if not message.is_empty():
 				show_feedback(message, Color.WHITE, 1.0)
 		QuizTask.Outcome.PROGRESS:
-			show_feedback("Дұрыс! %d/%d" % [current_task.done, current_task.total], Color.GREEN, 0.6)
+			show_feedback(tr("Дұрыс! %d/%d") % [current_task.done, current_task.total], Color.GREEN, 0.6)
 		QuizTask.Outcome.MISTAKE:
 			wrong_count += 1
 			enemy_spawner.reaction_shot()
 			var blocked := take_damage(DAMAGE)
 			if health <= 0:
-				finish_task("Қате!", Color.RED)
+				finish_task(tr("Қате!"), Color.RED)
 			elif blocked:
-				show_feedback("Қалқан қорғады!", ABILITY_COLOR, 1.0)
+				show_feedback(tr("Қалқан қорғады!"), ABILITY_COLOR, 1.0)
 			else:
-				show_feedback(message if not message.is_empty() else "Қате!", Color.RED, 1.0)
+				show_feedback(message if not message.is_empty() else tr("Қате!"), Color.RED, 1.0)
 		QuizTask.Outcome.SOLVED:
 			correct_count += 1
 			var doubled := double_score_active
 			double_score_active = false
 			score += POINTS * (2 if doubled else 1)
 			update_hud()
-			finish_task("Дұрыс! ×2" if doubled else "Дұрыс!", Color.GREEN)
+			finish_task(tr("Дұрыс! ×2") if doubled else tr("Дұрыс!"), Color.GREEN)
 		QuizTask.Outcome.FAILED:
 			missed_questions.append(current_task.question)
 			wrong_count += 1
 			enemy_spawner.reaction_shot()
 			var blocked := take_damage(DAMAGE)
-			finish_task("Қате! Қалқан қорғады" if blocked else "Қате!", Color.RED)
+			finish_task(tr("Қате! Қалқан қорғады") if blocked else tr("Қате!"), Color.RED)
 
 
 # Applies damage unless the shield ability absorbs it. Returns true if the shield blocked it.
@@ -298,11 +298,11 @@ func enemy_attack(amount: int) -> void:
 	var reduced := maxi(1, roundi(amount * (100 - defense) / 100.0))
 	var blocked := take_damage(reduced)
 	if health <= 0:
-		finish_task("Жау жеңді!", Color.RED)
+		finish_task(tr("Жау жеңді!"), Color.RED)
 	elif blocked:
-		show_feedback("Қалқан қорғады!", ABILITY_COLOR, 0.8)
+		show_feedback(tr("Қалқан қорғады!"), ABILITY_COLOR, 0.8)
 	else:
-		show_feedback("Жау шабуылы! −%d HP" % reduced, Color.RED, 0.8)
+		show_feedback(tr("Жау шабуылы! −%d HP") % reduced, Color.RED, 0.8)
 
 
 func use_ability() -> void:
@@ -311,7 +311,7 @@ func use_ability() -> void:
 
 	var text := Abilities.apply(character["ability"]["id"], self)
 	if text.is_empty():
-		show_feedback("Қазір қолдануға болмайды", Color.WHITE, 1.0)
+		show_feedback(tr("Қазір қолдануға болмайды"), Color.WHITE, 1.0)
 		return
 
 	ability_uses -= 1
@@ -442,6 +442,13 @@ func show_feedback(text: String, color: Color, duration: float) -> void:
 	feedback_label.text = text
 	feedback_label.add_theme_color_override("font_color", color)
 	feedback_label.show()
+	# A short pop: the message grows in and settles, so right and wrong register at a glance.
+	feedback_label.pivot_offset = feedback_label.size / 2.0
+	feedback_label.scale = Vector2.ONE * 1.35
+	feedback_label.modulate.a = 0.0
+	var pop := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pop.tween_property(feedback_label, "scale", Vector2.ONE, 0.25)
+	pop.tween_property(feedback_label, "modulate:a", 1.0, 0.12)
 
 	await get_tree().create_timer(duration, false).timeout
 
@@ -493,25 +500,25 @@ func build_attempt(completed: bool) -> Dictionary:
 
 func show_results(attempt: Dictionary, new_best: bool) -> void:
 	var best: Dictionary = ProgressStore.level_result(attempt["level"])
-	results_title.text = "Деңгей өтілді!" if attempt["passed"] else "Деңгей өтілмеді"
+	results_title.text = tr("Деңгей өтілді!") if attempt["passed"] else tr("Деңгей өтілмеді")
 	results_stars.stars = attempt["stars"]
 
 	var seconds: int = attempt["playtime_sec"]
 	var lines := [
-		"Ұпай: %d / %d" % [attempt["score"], attempt["max_score"]],
-		"Дұрыс: %d    Қате: %d" % [attempt["correct"], attempt["wrong"]],
-		"Уақыт: %02d:%02d" % [seconds / 60, seconds % 60],
-		"Жаңа рекорд!" if new_best else "Үздік нәтиже: %d" % best["best_score"],
+		tr("Ұпай: %d / %d") % [attempt["score"], attempt["max_score"]],
+		tr("Дұрыс: %d    Қате: %d") % [attempt["correct"], attempt["wrong"]],
+		tr("Уақыт: %02d:%02d") % [seconds / 60, seconds % 60],
+		tr("Жаңа рекорд!") if new_best else tr("Үздік нәтиже: %d") % best["best_score"],
 	]
 	if not attempt["passed"]:
-		lines.append("Өту үшін кемінде %d%% ұпай керек" % level.get("pass_percent", 60))
-	lines.append("Жалпы ұпай: %d" % ProgressStore.total_score())
+		lines.append(tr("Өту үшін кемінде %d%% ұпай керек") % level.get("pass_percent", 60))
+	lines.append(tr("Жалпы ұпай: %d") % ProgressStore.total_score())
 	for id in ProgressStore.just_opened:
-		lines.append("Жаңа деңгей ашылды: %d. %s" % [id, LevelDatabase.get_level(id)["title"]])
+		lines.append(tr("Жаңа деңгей ашылды: %d. %s") % [id, tr(LevelDatabase.get_level(id)["title"])])
 	if Backend.is_online_player():
-		lines.append("Нәтиже онлайн рейтингке жіберілді")
+		lines.append(tr("Нәтиже онлайн рейтингке жіберілді"))
 	elif Backend.is_guest():
-		lines.append("Қонақ: нәтиже рейтингке түспейді")
+		lines.append(tr("Қонақ: нәтиже рейтингке түспейді"))
 	results_label.text = "\n".join(lines)
 
 	var next_id: int = attempt["level"] + 1
@@ -532,12 +539,12 @@ func update_progress() -> void:
 	if current_task == null or current_task.total == 0:
 		progress_label.text = ""
 	else:
-		progress_label.text = "%s: %d/%d" % [current_task.progress_name, current_task.done, current_task.total]
+		progress_label.text = "%s: %d/%d" % [tr(current_task.progress_name), current_task.done, current_task.total]
 	progress_label.visible = not progress_label.text.is_empty()
 
 
 func update_hud() -> void:
-	score_label.text = "Ұпай саны: " + str(score)
+	score_label.text = tr("Ұпай саны: %d") % score
 	health_label.text = "HP %d/%d" % [health, max_health]
 	health_bar.max_value = max_health
 	health_bar.value = health
@@ -546,9 +553,9 @@ func update_hud() -> void:
 	fill.bg_color = HP_LOW.lerp(HP_MID, clampf(ratio * 2.0, 0.0, 1.0)) if ratio < 0.5 else HP_MID.lerp(HP_HIGH, (ratio - 0.5) * 2.0)
 	if character.is_empty():
 		return
-	character_label.text = "%s · %s" % [character["name"], character["weapon"]["name"]]
-	var ability_name: String = Abilities.INFO[character["ability"]["id"]]["name"]
-	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, "  · Қалқан белсенді" if shield_active else ""]
+	character_label.text = "%s · %s" % [tr(character["name"]), tr(character["weapon"]["name"])]
+	var ability_name: String = tr(Abilities.INFO[character["ability"]["id"]]["name"])
+	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, tr("  · Қалқан белсенді") if shield_active else ""]
 
 
 # `placement` is where its screen label goes: "above" the head or "below" the feet (answer_labels.gd).
@@ -735,7 +742,8 @@ func load_questions_from_file() -> void:
 	for error in result.errors:
 		push_warning(error)
 
-	questions = result.questions
+	# Tasks in the chosen language (Locale swaps in each task's English text by position).
+	questions = result.questions.map(func(q): return Locale.localize_question(q))
 	# A new order on every attempt (Retry reloads the scene), so a level cannot be memorised by
 	# its sequence. Every task is still asked exactly once.
 	if GameState.shuffle_questions:

@@ -18,21 +18,21 @@ func _ready() -> void:
 		# Firebase restores a saved session asynchronously; wait before offering the buttons.
 		google_button.disabled = true
 		guest_button.disabled = true
-		status_label.text = "Сессия тексерілуде..."
+		status_label.text = tr("Сессия тексерілуде...")
 		if await Backend.restore_session():
 			_enter_game()
 			return
 		guest_button.disabled = false
 
 	google_button.disabled = not Backend.online_available()
-	status_label.text = GUEST_NOTE if Backend.online_available() else OFFLINE_NOTE
+	status_label.text = tr(GUEST_NOTE if Backend.online_available() else OFFLINE_NOTE)
 	(google_button if Backend.online_available() else guest_button).grab_focus.call_deferred()
 
 
 func _on_google_pressed() -> void:
 	google_button.disabled = true
 	guest_button.disabled = true
-	status_label.text = "Google арқылы кіру..."
+	status_label.text = tr("Google арқылы кіру...")
 
 	var error := await Backend.sign_in_with_google()
 	if error.is_empty():

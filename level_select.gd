@@ -13,7 +13,7 @@ var total_label: Label
 func _ready() -> void:
 	# Current total (sum of each level's best score), which is what opens later levels.
 	total_label = Label.new()
-	total_label.text = "Жалпы ұпай: %d" % ProgressStore.total_score()
+	total_label.text = tr("Жалпы ұпай: %d") % ProgressStore.total_score()
 	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	total_label.add_theme_font_size_override("font_size", 22)
 	level_grid.get_parent().add_child(total_label)
@@ -44,7 +44,7 @@ func _ready() -> void:
 				# Locked: show the total score that opens it.
 				button.text = "%d\n%d" % [level_number, ProgressStore.unlock_score(level_number)]
 				button.add_theme_font_size_override("font_size", 15)
-				button.tooltip_text = "Ашу үшін жалпы ұпай: %d" % ProgressStore.unlock_score(level_number)
+				button.tooltip_text = tr("Ашу үшін жалпы ұпай: %d") % ProgressStore.unlock_score(level_number)
 
 		button.mouse_entered.connect(_show_level_info.bind(level_number))
 
@@ -60,17 +60,17 @@ func _ready() -> void:
 func _show_level_info(level_number: int) -> void:
 	var level := LevelDatabase.get_level(level_number)
 	var difficulty := "BOSS" if level["boss"] else "%d/5" % level["stars"]
-	var text := "%d. %s\nҚиындық: %s" % [level_number, level["title"], difficulty]
+	var text: String = tr("%d. %s\nҚиындық: %s") % [level_number, tr(level["title"]), difficulty]
 
 	if not LevelDatabase.is_playable(level_number):
-		text += " · дайындалуда"
+		text += tr(" · дайындалуда")
 	elif not ProgressStore.is_unlocked(level_number):
 		var needed := ProgressStore.unlock_score(level_number)
-		text += "\nЖабық: жалпы ұпай %d керек (қазір %d, тағы %d)" % [needed, ProgressStore.total_score(), needed - ProgressStore.total_score()]
+		text += tr("\nЖабық: жалпы ұпай %d керек (қазір %d, тағы %d)") % [needed, ProgressStore.total_score(), needed - ProgressStore.total_score()]
 	else:
 		var result := ProgressStore.level_result(level_number)
 		if result["attempts"] > 0:
-			text += "\nҮздік ұпай: %d" % result["best_score"]
+			text += tr("\nҮздік ұпай: %d") % result["best_score"]
 
 	level_info_label.text = text
 
