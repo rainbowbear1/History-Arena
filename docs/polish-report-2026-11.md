@@ -73,3 +73,14 @@ the main menu and level select after the button polish, rounded soldiers on leve
    body face for questions and labels (candidates: PT Sans / PT Serif, Fira Sans, Noto Sans).
 4. **Level 10 timer** raised from 10 s to 16 s per task to allow for moving targets.
 5. The rewritten historical content (checklist above).
+
+## Final adjustments (16 November 2026)
+
+| # | Commit | What changed |
+|---|---|---|
+| M25 | `62ab818` | Approved era-based character unlocks (Aliya with level 9, Manshuk after passing level 9); locked characters greyed out, marked and explained. Fonts: Fira Sans (text, buttons) and PT Serif Bold (headings), SIL OFL 1.1, full Kazakh alphabet checked. |
+| M26 | `3ae8dee` | Musket, rifle and machine-gun silhouettes (round barrels, round MG muzzle); flying arrows, muzzle flashes and tracers; 0.12 s bow draw that fires on release. Hits, damage and fire rates unchanged. |
+| M27 | `06f344d` | TXT question import/export/check (`tools/questions_txt.py`, `docs/question-import.md`, `docs/question-template.txt`); no question content changed. |
+
+Tests: 881 checks, 0 failed; question audit clean; web export rebuilt and checked in a browser
+(fonts, EN text, locked characters with their unlock hints). Waiting for the teammates' TXT files.
