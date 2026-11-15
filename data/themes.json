@@ -85,7 +85,7 @@
     "independence": {
       "sky_top": "#2f8fe0", "sky_horizon": "#cfeaf7", "ground": "#bfc7cc", "fog_color": "#cfeaf7", "fog_density": 0.003,
       "sun_color": "#fffaf0", "sun_energy": 1.4, "sun_pitch": -55, "sun_yaw": 10,
-      "ledge": "#2f8fc9", "ledge_style": "range", "placard": "#ffffff", "target_style": "gallery",
+      "ledge": "#2f8fc9", "ledge_style": "gallery", "placard": "#ffffff", "target_style": "gallery",
       "props": [["monument", 1], ["flag", 8], ["booth", 6], ["tree", 10]],
       "enemy_look": {},
       "ally_look": {"coat": "#2f8fc9", "pants": "#2a3440", "headgear": "cap", "headgear_color": "#e8c33a", "weapon": "none", "trim": "#e8c33a"},

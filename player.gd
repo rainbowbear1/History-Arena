@@ -98,6 +98,10 @@ func shoot() -> void:
 	if target and target.has_method("take_hit"):
 		target.take_hit(weapon["damage"])
 		return
+	# Gallery ducks block the shot (no penalty); wait for them to pass.
+	if target and target.is_in_group("obstacle"):
+		target.hit()
+		return
 	var labelled = quiz_manager.label_target_at(get_viewport().get_visible_rect().size / 2.0)
 	if labelled:
 		labelled.hit()

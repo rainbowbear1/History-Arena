@@ -1131,28 +1131,82 @@ func test_hud_and_labels() -> void:
 	await process_frame
 
 
+# Level 10 is an arcade shooting gallery (gallery.gd): plaques ride three tracks in alternating
+# directions, keep their spacing, carry readable labels, and tin ducks cross in front.
 func test_shooting_range() -> void:
-	print("== Level 10 shooting range")
+	print("== Level 10 arcade shooting gallery")
 	game_state.selected_level = 10
+	game_state.selected_character = ""
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
+	var gallery = quiz.gallery
 	await process_frame
-	await process_frame
-	var xs: Array = quiz.targets.map(func(t): return t.starting_position.x)
-	xs.sort()
-	var one_row: bool = quiz.targets.all(func(t): return is_equal_approx(t.starting_position.y, quiz.CHOICE_ROW_Y))
-	var spaced := true
-	for i in range(1, xs.size()):
-		spaced = spaced and xs[i] - xs[i - 1] >= quiz.RANGE_SPACING - 0.01
-	check(quiz.targets.size() == 6 and one_row and spaced, "range: answers and decoys stand in one wide row")
-	var panels: Array = quiz.targets.map(func(t): return quiz.answer_labels.label_for(t))
-	var overlaps := 0
-	for i in range(panels.size()):
-		for j in range(i + 1, panels.size()):
-			if panels[i].get_global_rect().intersects(panels[j].get_global_rect()):
-				overlaps += 1
-	check(panels.all(func(p): return p.visible) and overlaps == 0, "range: every label visible, none overlapping")
-	check(level_db.get_level(10)["target_speed"] <= 1.5 and quiz.enemy_spawner.enemies.is_empty(), "range: calm target movement, no enemies")
+	check(gallery != null and gallery.is_inside_tree() and quiz.enemy_spawner.enemies.is_empty(), "level 10 opens the gallery, with no enemies")
+	# A choice task with two decoys: six plaques, two per track.
+	var question: Dictionary = quiz.questions.filter(func(q): return q.get("type", "single_choice") == "single_choice" and q.has("extra_answers"))[0]
+	quiz.questions = [question]
+	quiz.question_index = 0
+	quiz.load_question()
+	await physics_frame
+	var by_track := [[], [], []]
+	for entry in gallery.entries:
+		by_track[entry["track"]].append(entry["target"])
+	check(quiz.targets.size() == 6 and by_track.all(func(t): return t.size() == 2), "six answers ride the three tracks, two on each")
+	var before: Array = quiz.targets.map(func(t): return t.position.x)
+	await wait(1.0)
+	var moved := []
+	for i in range(quiz.targets.size()):
+		var track: int = gallery.entries.filter(func(e): return e["target"] == quiz.targets[i])[0]["track"]
+		var dx: float = gallery.wrap_x(quiz.targets[i].position.x - before[i])
+		moved.append(signf(dx) == gallery.TRACKS[track]["dir"] and absf(dx) > 0.5)
+	check(moved.all(func(m): return m), "plaques move sideways, each track in its own direction")
+	check(gallery.TRACKS[0]["dir"] != gallery.TRACKS[1]["dir"] and gallery.TRACKS[1]["dir"] != gallery.TRACKS[2]["dir"], "neighbouring tracks run opposite ways")
+	var apart: bool = by_track.all(func(t): return is_equal_approx(absf(gallery.wrap_x(t[0].position.x - t[1].position.x)), gallery.LOOP / 2.0))
+	check(apart, "plaques on one track keep their distance")
+	# Labels are printed on the plaques and stay readable while they move.
+	var bad := []
+	for sample in range(10):
+		for f in range(6):
+			await process_frame
+		var shown: Array = quiz.targets.filter(func(t): return quiz.answer_labels.label_for(t).visible)
+		var on_stage: Array = quiz.targets.filter(func(t): return absf(t.position.x) < gallery.STAGE_HALF - 1.6)
+		if not on_stage.all(func(t): return shown.has(t)):
+			bad.append("a plaque on stage without its label")
+		var rects: Array = shown.map(func(t): return quiz.answer_labels.label_for(t).get_global_rect())
+		for i in range(rects.size()):
+			for j in range(i + 1, rects.size()):
+				if rects[i].intersects(rects[j]):
+					bad.append("overlap")
+	check(bad.is_empty(), "labels of plaques on stage are always shown and never overlap %s" % str(bad.slice(0, 3)))
+	var camera: Camera3D = arena.get_viewport().get_camera_3d()
+	var centred: Array = quiz.targets.filter(func(t): return quiz.answer_labels.label_for(t).visible).map(func(t):
+		return quiz.answer_labels.label_for(t).get_global_rect().has_point(camera.unproject_position(t.label_anchor())))
+	check(not centred.is_empty() and centred.all(func(c): return c), "each label sits on its plaque")
+	# Tin ducks: they block a shot (no score, no penalty) and tip over.
+	var duck = gallery.ducks[0]["body"]
+	check(gallery.ducks.size() == 3 and duck.is_in_group("obstacle") and not quiz.targets.has(duck), "a flock of three ducks without answers")
+	var player = arena.get_node("Player")
+	gallery.travelled = 0.0
+	gallery.speed_scale = 0.0
+	await physics_frame
+	await physics_frame
+	camera.look_at(duck.global_position + Vector3(0, 0.4, 0))
+	player.cooldown_left = 0.0
+	var score_before: int = quiz.score
+	var hp_before: int = quiz.health
+	player.shoot()
+	check(duck.tipped and quiz.score == score_before and quiz.health == hp_before, "a duck in the way stops the shot without penalty")
+	camera.rotation = Vector3.ZERO
+	# Faster towards the end; the finale brings a second flock; slow time slows the tracks.
+	gallery.set_progress(0, 15)
+	var start_speed: float = gallery.track_speed(0)
+	gallery.set_progress(14, 15)
+	check(gallery.track_speed(0) > start_speed * 1.3 and gallery.ducks.size() == 6, "the last tasks are faster and bring a second flock of ducks")
+	quiz.set_slow(true)
+	check(gallery.track_speed(0) < start_speed, "slow time slows the tracks")
+	quiz.set_slow(false)
+	var level: Dictionary = level_db.get_level(10)
+	check(level["time_per_question"] >= 15 and level.get("music", "") != "" and quiz.music == null, "gallery timer allows for moving targets; its music slot stays silent until the file exists")
 	arena.queue_free()
 	await process_frame
 	game_state.selected_level = 1

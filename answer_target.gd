@@ -18,11 +18,16 @@ const STATE_COLORS := {
 const WRONG_COLOR := Color(0.85, 0.3, 0.3)
 const OUTLINE_COLOR := Color(0.95, 0.15, 0.1)
 const SOLDIER_HEIGHT := 2.0
-const RANGE_RADIUS := 0.75
+# Gallery plaque (Independence level): face size and the frame colours it can get.
+const PLAQUE_SIZE := Vector2(2.6, 1.0)
+const PLAQUE_FRAMES := [Color(0.86, 0.2, 0.18), Color(0.16, 0.45, 0.82), Color(0.1, 0.6, 0.45), Color(0.95, 0.6, 0.1), Color(0.55, 0.3, 0.75)]
+const PLAQUE_FACE := Color(0.98, 0.95, 0.86)
 
 var style := "board"
 var soldier: Node3D = null
 var range_rim: MeshInstance3D = null
+var frame_color := PLAQUE_FRAMES[0]
+var _pose_tween: Tween
 var head_height := 1.1
 var feet_height := -1.0
 var flashing := false
@@ -55,8 +60,8 @@ func set_label(text: String) -> void:
 
 
 # "soldier": a low-poly soldier standing on the ground (feet_y below the target's centre) with a
-# coloured outline; "gallery": a round shooting-range target on a stand. Both show their answer in
-# a screen-space label (answer_labels.gd) instead of on the target. "board" (default, used for map
+# coloured outline; "gallery": a carnival plaque riding the gallery rail (gallery.gd). Both show
+# their answer in a screen-space label (answer_labels.gd) instead of on the target. "board" (default, used for map
 # pins) keeps the plain board with its own 3D text.
 func apply_style(new_style: String, look: Dictionary, _placard_color: Color, feet_y: float) -> void:
 	if new_style == "board" or (new_style == "soldier" and look.is_empty()):
@@ -78,39 +83,42 @@ func apply_style(new_style: String, look: Dictionary, _placard_color: Color, fee
 		head_height = feet_y + SOLDIER_HEIGHT + 0.15
 		feet_height = feet_y
 	else:
-		_build_range_target(feet_y)
-		shape.size = Vector3(RANGE_RADIUS * 2.0, RANGE_RADIUS * 2.0, 0.4)
-		head_height = RANGE_RADIUS + 0.1
-		feet_height = -RANGE_RADIUS - 0.1
+		_build_plaque()
+		shape.size = Vector3(PLAQUE_SIZE.x + 0.15, PLAQUE_SIZE.y + 0.15, 0.3)
+		head_height = 0.0  # The label is printed on the middle of the plaque.
+		feet_height = -PLAQUE_SIZE.y / 2.0
 	collision.shape = shape
 	_set_color(null)
 
 
-# Concentric rings on a wooden stand, facing the player.
-func _build_range_target(feet_y: float) -> void:
-	var stand := MeshInstance3D.new()
-	var stand_mesh := BoxMesh.new()
-	stand_mesh.size = Vector3(0.1, -feet_y, 0.1)
-	stand.mesh = stand_mesh
-	stand.position = Vector3(0, feet_y / 2.0, -0.12)
-	stand.material_override = _flat(Color(0.45, 0.33, 0.22))
-	target_visual.add_child(stand)
-	var rings := [[1.0, Color(0.95, 0.95, 0.92)], [0.78, Color(0.12, 0.12, 0.14)], [0.56, Color(0.2, 0.45, 0.85)], [0.34, Color(0.85, 0.2, 0.18)], [0.14, Color(0.98, 0.82, 0.2)]]
-	for i in range(rings.size()):
-		var ring := MeshInstance3D.new()
-		var disc := CylinderMesh.new()
-		disc.top_radius = RANGE_RADIUS * rings[i][0]
-		disc.bottom_radius = disc.top_radius
-		disc.height = 0.06
-		disc.radial_segments = 24
-		disc.rings = 1
-		ring.mesh = disc
-		ring.rotation.x = PI / 2.0
-		ring.position.z = 0.02 * i
-		ring.material_override = _flat(rings[i][1])
-		target_visual.add_child(ring)
-		if i == 0:
-			range_rim = ring
+# A cream plaque in a coloured frame with a small bullseye at each end, on a post down to the
+# rail. The frame (range_rim) shows the state colour.
+func _build_plaque() -> void:
+	frame_color = PLAQUE_FRAMES.pick_random()
+	_plaque_part(BoxMesh.new(), Vector3(0.08, 0.9, 0.08), Vector3(0, -PLAQUE_SIZE.y / 2.0 - 0.4, -0.08), Color(0.5, 0.52, 0.56))
+	range_rim = _plaque_part(BoxMesh.new(), Vector3(PLAQUE_SIZE.x + 0.15, PLAQUE_SIZE.y + 0.15, 0.08), Vector3(0, 0, -0.04), frame_color)
+	_plaque_part(BoxMesh.new(), Vector3(PLAQUE_SIZE.x, PLAQUE_SIZE.y, 0.1), Vector3.ZERO, PLAQUE_FACE)
+	for side in [-1.0, 1.0]:
+		for ring in [[0.2, Color(0.85, 0.15, 0.12)], [0.13, Color(0.98, 0.98, 0.95)], [0.06, Color(0.85, 0.15, 0.12)]]:
+			var disc := CylinderMesh.new()
+			disc.top_radius = ring[0]
+			disc.bottom_radius = ring[0]
+			disc.height = 0.02
+			disc.radial_segments = 16
+			disc.rings = 1
+			var part := _plaque_part(disc, Vector3.ONE, Vector3(side * (PLAQUE_SIZE.x / 2.0 - 0.22), 0, 0.06 + (0.2 - ring[0]) * 0.1), ring[1])
+			part.rotation.x = PI / 2.0
+
+
+func _plaque_part(mesh: PrimitiveMesh, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
+	if mesh is BoxMesh:
+		mesh.size = size
+	var part := MeshInstance3D.new()
+	part.mesh = mesh
+	part.position = at
+	part.material_override = _flat(color)
+	target_visual.add_child(part)
+	return part
 
 
 static func _flat(color: Color) -> StandardMaterial3D:
@@ -154,12 +162,26 @@ func set_size(factor: float) -> void:
 func set_state(new_state: State) -> void:
 	state = new_state
 	_set_color(STATE_COLORS.get(state, null))
+	# Gallery plaques tip back like a carnival target when answered and stand up again on a reset.
+	if style == "gallery":
+		_pose(Vector3(-0.75 if state == State.DONE else 0.0, 0, 0), 0.25)
+
+
+func _pose(rotation_to: Vector3, seconds: float) -> void:
+	if _pose_tween:
+		_pose_tween.kill()
+	_pose_tween = create_tween()
+	_pose_tween.tween_property(target_visual, "rotation", rotation_to, seconds)
 
 
 # Briefly tints the target red, then returns to its current state colour.
 func flash_wrong() -> void:
 	flashing = true
 	_set_color(WRONG_COLOR)
+	if style == "gallery":
+		var wobble := create_tween()
+		for angle in [0.18, -0.14, 0.08, 0.0]:
+			wobble.tween_property(target_visual, "rotation:z", angle, 0.08)
 	await get_tree().create_timer(0.4, false).timeout
 	flashing = false
 	if is_inside_tree():
@@ -171,7 +193,7 @@ func _set_color(color) -> void:
 		soldier.set_outline(color if color != null else OUTLINE_COLOR)
 		return
 	if style == "gallery":
-		range_rim.material_override = _flat(color if color != null else Color(0.95, 0.95, 0.92))
+		range_rim.material_override = _flat(color if color != null else frame_color)
 		return
 	if color == null:
 		color = base_color

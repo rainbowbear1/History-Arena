@@ -26,6 +26,7 @@ Run the tests (below) after every content change; they report the exact file, en
 | `revivals` | whole number | How many times medical help can be offered in one run. |
 | `pass_percent` | 0–100 | Score needed (as % of the maximum) to pass the level (stars). |
 | `unlock_score` | whole number | Total score (sum of every level's best) that opens this level; 0 for level 1. |
+| `music` | `res://` path | Optional. Music that loops while the level is played; nothing plays until the file exists (level 10 reserves `res://assets/music/independence.ogg` for an original track). |
 
 All fields drive the gameplay (`pass_percent` decides passing and stars, see Saved progress):
 
@@ -58,7 +59,15 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   12 − 1.5·s seconds, at least 3.5 s) picks one enemy at its post, which aims for 0.9 s (a red "!")
   and fires at where the player stood: step aside to dodge, or shoot first. Damage 3 + s, reduced by
   the character's `defense` (at least 1). Enemies act only while a task is being answered and give
-  no points (so the score cannot be farmed). The shooting range (level 10) has none.
+  no points (so the score cannot be farmed). The shooting gallery (level 10) has none.
+- **Shooting gallery (level 10, `gallery.gd`):** an arcade booth instead of a battlefield. Answer
+  plaques ride three horizontal tracks at different heights and depths, neighbouring tracks moving
+  opposite ways; a plaque leaving the stage slides behind a curtain and comes back on the other
+  side, and plaques on one track keep the same distance, so labels never bunch up. Labels are
+  printed on the plaques. Answers take turns on the tracks; matching puts left items on the top
+  track and right items on the bottom one. A flock of three tin ducks crosses the foreground: ducks
+  carry no answer, stop a shot that hits them (no penalty) and leave gaps. Speeds rise by up to 35 %
+  over the level; the last three tasks add a second flock. 16 s per task to allow for the movement.
 - **Background battle:** allies beside the player fire harmless arrows or bullets at the distant
   enemy line, which fires back now and then; background soldiers never hurt the player.
 - **Wrong answers** trigger a visible reaction shot from an enemy (or a distant soldier) and a red
@@ -115,9 +124,9 @@ level, the best score, best stars, whether it was passed and the number of attem
 ## Themes — `data/themes.json`
 
 One entry per era: `sky_top`, `sky_horizon`, `ground`, `fog_color`, `fog_density`, `sun_color`,
-`sun_energy`, `sun_pitch`, `sun_yaw`, `ledge` (rampart colour) and `ledge_style` (`earth`, `mound` (burial mound, steppe eras), `range` (level 10: no wall, lanes and a backstop), `fortress`,
+`sun_energy`, `sun_pitch`, `sun_yaw`, `ledge` (rampart colour) and `ledge_style` (`earth`, `mound` (burial mound, steppe eras), `gallery` (level 10: arcade booth with counter, curtains, bunting, bulbs and a shañyraq emblem), `fortress`,
 `palisade`, `sandbags`, `rock`, `stand`), `placard` (unused since answers moved to screen labels), `target_style`
-(`soldier`: outlined soldiers with floating answer labels; `gallery`: round range targets), `props` (list of `[kind, count]`: kurgan, hill, mountain, yurt, tent, banner,
+(`soldier`: outlined soldiers with floating answer labels; `gallery`: plaques on the gallery tracks), `props` (list of `[kind, count]`: kurgan, hill, mountain, yurt, tent, banner,
 balbal, stele, tower, wall, dome, rock, palisade, birch, tree, sandbags, flag, booth, monument),
 `enemy_look` / `ally_look` (soldier `coat`, `pants`, `skin`, `trim`, `headgear` = none/pointed/fur/
 helmet/turban/cap/steel_helmet/kalpak, `headgear_color`, `weapon` = none/bow/spear/sword/rifle,

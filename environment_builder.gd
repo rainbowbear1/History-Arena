@@ -108,17 +108,93 @@ func _ledge() -> void:
 			for i in range(6):
 				var stone := _sphere(Vector3(0.8, 0.5, 0.7), Vector3(rng.randf_range(-8.0, 8.0), 0.2, LEDGE_FRONT_Z + 2.4 + rng.randf_range(-0.3, 0.3)), color.darkened(0.2))
 				stone.rotation.y = rng.randf() * TAU
-		"range":
-			# A modern shooting range: no wall, lane lines on the ground, a low earth backstop far
-			# behind the targets and a firing-line bench in front of the player.
-			for i in range(8):
-				_box(Vector3(0.12, 0.02, 14.0), Vector3(-12.6 + i * 3.6, 0.07, -4.0), Color(0.95, 0.95, 0.95))
-			_box(Vector3(30.0, 0.04, 0.3), Vector3(0, 0.07, 3.0), Color(0.95, 0.85, 0.2))
-			_box(Vector3(40.0, 4.0, 3.0), Vector3(0, 2.0, -24.0), _color(theme["ground"]).darkened(0.25))
-			for i in range(5):
-				_box(Vector3(5.0, 0.9, 0.8), Vector3(-12.0 + i * 6.0, 0.45, 4.5), Color(0.55, 0.42, 0.3))
+		"gallery":
+			_gallery_stage(color)
 		_:
 			_box(Vector3(LEDGE_WIDTH, LEDGE_TOP, depth), center, color)
+
+
+# The Independence level's arcade shooting gallery: a counter in front of the player, a stage with a
+# striped back wall, red curtains on both sides (plaques slide behind them and come back; they also
+# hide labels and stop shots), striped bunting and light bulbs on the frame, and a gold shañyraq
+# emblem with diamond ornaments above the stage. The tracks and ducks are gallery.gd.
+func _gallery_stage(accent: Color) -> void:
+	var teal := Color(0.1, 0.42, 0.48)
+	var gold := Color(0.95, 0.75, 0.25)
+	var red := Color(0.72, 0.1, 0.12)
+	var cream := Color(0.98, 0.94, 0.84)
+	# Counter the player shoots over (it also keeps the player out of the stage).
+	_solid_box(Vector3(17.0, 1.0, 0.7), Vector3(0, 0.5, -5.0), Color(0.55, 0.3, 0.16))
+	for i in range(9):
+		_box(Vector3(1.0, 0.75, 0.04), Vector3(-8.0 + i * 2.0, 0.45, -4.63), accent if i % 2 == 0 else cream)
+	_box(Vector3(17.4, 0.1, 0.9), Vector3(0, 1.05, -5.0), Color(0.4, 0.22, 0.12))
+	# Stage floor and back wall with broad stripes.
+	_box(Vector3(18.4, 0.3, 10.0), Vector3(0, 0.15, -10.5), Color(0.32, 0.2, 0.13))
+	for i in range(12):
+		_box(Vector3(1.55, 8.0, 0.3), Vector3(-8.53 + i * 1.55, 4.0, -15.2), teal if i % 2 == 0 else teal.lightened(0.18))
+	# Side curtains with gold trim.
+	for side in [-1.0, 1.0]:
+		_solid_box(Vector3(0.7, 7.6, 9.4), Vector3(side * 8.95, 3.8, -10.5), red)
+		_box(Vector3(0.08, 7.6, 0.3), Vector3(side * 8.58, 3.8, -5.95), gold)
+	# Striped roof over the stage.
+	for i in range(12):
+		_box(Vector3(1.55, 0.15, 9.8), Vector3(-8.53 + i * 1.55, 8.25, -10.6), red if i % 2 == 0 else cream)
+	# Top valance with triangular bunting and bulbs.
+	_box(Vector3(18.6, 1.1, 0.5), Vector3(0, 7.65, -5.9), red)
+	_box(Vector3(18.6, 0.12, 0.55), Vector3(0, 7.08, -5.9), gold)
+	for i in range(23):
+		var flag := _cylinder(0.0, 0.32, 0.6, Vector3(-8.8 + i * 0.8, 6.75, -5.75), cream if i % 2 == 0 else accent)
+		flag.rotation.z = PI
+		flag.scale.z = 0.15
+	for i in range(19):
+		_bulb(Vector3(-9.0 + i * 1.0, 7.0, -5.55))
+	for side in [-1.0, 1.0]:
+		for i in range(7):
+			_bulb(Vector3(side * 8.5, 0.9 + i * 0.95, -5.6))
+	# Shañyraq emblem: a gold ring with crossing bars, flanked by diamond ornaments.
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.75
+	torus.outer_radius = 0.95
+	torus.rings = 24
+	torus.ring_segments = 6
+	ring.mesh = torus
+	ring.rotation.x = PI / 2.0
+	ring.position = Vector3(0, 8.9, -5.9)
+	ring.material_override = _material(gold)
+	add_child(ring)
+	for angle in [-0.5, 0.0, 0.5]:
+		var bar := _box(Vector3(0.1, 1.7, 0.08), Vector3(0, 8.9, -5.9), gold)
+		bar.rotation.z = angle + PI / 2.0
+		var cross := _box(Vector3(0.1, 1.7, 0.08), Vector3(0, 8.9, -5.9), gold)
+		cross.rotation.z = angle
+	for side in [-1.0, 1.0]:
+		for i in range(4):
+			var diamond := _box(Vector3(0.45, 0.45, 0.1), Vector3(side * (2.0 + i * 1.6), 8.45, -5.85), gold if i % 2 == 0 else cream)
+			diamond.rotation.z = PI / 4.0
+
+
+func _bulb(at: Vector3) -> void:
+	var bulb := _sphere(Vector3(0.2, 0.2, 0.2), at, Color(1.0, 0.92, 0.6))
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = Color(1.0, 0.93, 0.62)
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bulb.material_override = glow
+
+
+# A box that also blocks the player and shots.
+func _solid_box(size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
+	var body := StaticBody3D.new()
+	body.position = at
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	body.add_child(shape)
+	add_child(body)
+	var mesh := _box(size, Vector3.ZERO, color)
+	mesh.reparent(body, false)
+	return mesh
 
 
 # Props go outside the playable square, in a ring around the arena.

@@ -3,7 +3,8 @@ extends Control
 # Screen-space answer labels for soldier and shooting-range targets. Each label keeps the same text
 # size at any distance, is hidden when its target is behind the camera, off screen or behind an
 # obstacle, and has a pointer to its target. Labels of one row share a band: "above" floats over
-# the heads, "below" hangs under the feet, so a front row and a rampart row behind it never mix.
+# the heads, "below" hangs under the feet, so a front row and a rampart row behind it never mix;
+# "on:<track>" is printed on a gallery plaque (no pointer), one band per gallery track.
 # Within a band a label is never wider than the gap to its neighbours (long answers wrap onto
 # more lines instead) and labels are pushed sideways until none overlap.
 
@@ -98,8 +99,15 @@ func _process(_delta: float) -> void:
 		entry["foot"] = camera.unproject_position(target.foot_anchor()) if entry["placement"] == "below" else point
 		entry["visible"] = true
 
+	# Lower bands first; a band that would touch one placed before it steps away from it.
 	var placed: Array[Rect2] = []
-	for placement in ["below", "above"]:
+	var tracks := []
+	for entry in entries:
+		if entry["placement"].begins_with("on:") and not tracks.has(entry["placement"]):
+			tracks.append(entry["placement"])
+	tracks.sort_custom(func(a, b): return a > b)  # "on:2" (lowest track) before "on:0".
+	var bands := ["below"] + tracks + ["above"]
+	for placement in bands:
 		var row := entries.filter(func(e): return e["visible"] and e["placement"] == placement)
 		row.sort_custom(func(a, b): return a["anchor"].x < b["anchor"].x)
 		_fit_widths(row)
@@ -134,7 +142,11 @@ func _place_row(row: Array, placement: String, placed: Array[Rect2], screen: Vec
 	var top := top_limit()
 	for entry in row:
 		var size: Vector2 = entry["panel"].get_combined_minimum_size()
-		var y: float = entry["anchor"].y - size.y - POINTER_GAP if placement == "above" else entry["foot"].y + POINTER_GAP
+		var y: float = entry["foot"].y + POINTER_GAP
+		if placement == "above":
+			y = entry["anchor"].y - size.y - POINTER_GAP
+		elif placement.begins_with("on:"):
+			y = entry["anchor"].y - size.y / 2.0
 		y = clampf(y, top, maxf(top, screen.y - BOTTOM_MARGIN - size.y))
 		var rect := Rect2(Vector2(entry["anchor"].x - size.x / 2.0, y), size)
 		if not rects.is_empty():
@@ -153,7 +165,7 @@ func _place_row(row: Array, placement: String, placed: Array[Rect2], screen: Vec
 		# A band never covers another one: "above" labels step up, "below" labels step down.
 		for other in placed:
 			if rects[i].grow(LABEL_SPACING / 2.0).intersects(other):
-				if placement == "above":
+				if placement != "below":
 					rects[i].position.y = maxf(top, other.position.y - rects[i].size.y - LABEL_SPACING)
 				else:
 					rects[i].position.y = other.end.y + LABEL_SPACING
@@ -179,6 +191,8 @@ func _draw() -> void:
 	for entry in entries:
 		if not entry["visible"]:
 			continue
+		if entry["placement"].begins_with("on:"):
+			continue  # Printed on its plaque: no pointer.
 		var panel: PanelContainer = entry["panel"]
 		var color: Color = entry["style"].border_color
 		var below: bool = entry["placement"] == "below"
@@ -214,4 +228,5 @@ func _can_see(camera: Camera3D, target, head: Vector3) -> bool:
 	query.exclude = exclude
 	var hit := camera.get_world_3d().direct_space_state.intersect_ray(query)
 	# Other soldiers and enemies move about; only walls, rocks and buildings hide a label.
-	return hit.is_empty() or hit["collider"] == target or hit["collider"].has_method("label_anchor") or hit["collider"].has_method("take_hit")
+	return hit.is_empty() or hit["collider"] == target or hit["collider"].has_method("label_anchor") or hit["collider"].has_method("take_hit") \
+		or hit["collider"].is_in_group("obstacle")

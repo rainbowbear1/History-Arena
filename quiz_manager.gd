@@ -36,6 +36,7 @@ const GROUND_Y := 0.1
 const LEDGE_TOP := 3.1
 # Drop a real map here and it replaces the placeholder board.
 const ImagePanelScript := preload("res://image_panel.gd")
+const GalleryScript := preload("res://gallery.gd")
 const MapOverlayScript := preload("res://map_overlay.gd")
 
 const DAMAGE := 10
@@ -101,6 +102,9 @@ var feedback_token: int = 0
 # Photo and map of image and map tasks live in the HUD (image_panel.gd, map_overlay.gd).
 var image_panel: PanelContainer
 var map_overlay: Control
+# The Independence level's moving tracks and ducks (gallery.gd); null on other levels.
+var gallery: Node3D
+var music: AudioStreamPlayer
 @onready var enemy_spawner: Node3D = $"../Enemies"
 @onready var environment: Node3D = $"../Environment"
 @onready var damage_flash: ColorRect = $"../HUD/DamageFlash"
@@ -150,6 +154,10 @@ func _ready() -> void:
 	revival_panel.help_failed.connect(_record_defeat)
 	environment.apply(level.get("theme", ""), level.get("id", 0), $"../WorldEnvironment", $"../Sun", $"../Ground")
 	theme = environment.theme
+	if is_range():
+		gallery = GalleryScript.new()
+		get_parent().add_child.call_deferred(gallery)
+	_start_music()
 	enemy_spawner.configure(self, $"../Player", level, theme)
 	enemy_spawner.background_shooters = environment.background_enemies
 
@@ -181,6 +189,8 @@ func load_question() -> void:
 	set_question(question["question"])
 	update_hud()
 
+	if gallery:
+		gallery.set_progress(question_index, questions.size())
 	current_task.start(question, self)
 	hint_label.text = current_task.hint()
 	hint_label.visible = not hint_label.text.is_empty()
@@ -311,6 +321,8 @@ func use_ability() -> void:
 
 # Slows answer targets (and later enemies) for a few seconds.
 func set_slow(enabled: bool) -> void:
+	if gallery:
+		gallery.slowed = enabled
 	slow_active = enabled
 	for target in targets:
 		target.speed_scale = Abilities.SLOW_FACTOR if enabled else 1.0
@@ -560,6 +572,8 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 		target.apply_style(theme.get("target_style", "board"), theme.get("enemy_look", {}), Color.html(theme.get("placard", "#f2e6c4")), feet_y)
 		if target.uses_screen_label():
 			answer_labels.track(target, placement)
+		if gallery and placement.begins_with("on:"):
+			gallery.add(target, int(placement.trim_prefix("on:")))
 
 	targets.append(target)
 	return target
@@ -574,7 +588,17 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 # for the photo).
 func answer_layout(count: int, labels_below: bool = false) -> Array:
 	if is_range():
-		return row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "below" if labels_below else "above"})
+		# Gallery: answers take turns on the three tracks, spread evenly along each loop.
+		var per_track := [0, 0, 0]
+		for i in range(count):
+			per_track[i % 3] += 1
+		var spots := []
+		var next := [0, 0, 0]
+		for i in range(count):
+			var track: int = i % 3
+			spots.append(_track_spot(track, GalleryScript.spread(per_track[track], track * 3.3)[next[track]]))
+			next[track] += 1
+		return spots
 	if count <= MAX_FRONT_ROW:
 		return _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below" if labels_below else "above")
 	var front := ceili(count / 2.0)
@@ -586,10 +610,16 @@ func answer_layout(count: int, labels_below: bool = false) -> Array:
 # ground (labels below).
 func matching_layout(count: int) -> Dictionary:
 	if is_range():
-		return {"top": row_positions(count, TOP_ROW_Y).map(func(at): return {"at": at, "placement": "above"}),
-			"bottom": row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "below"})}
+		# Gallery: left items on the top track, their partners on the bottom track.
+		return {"top": GalleryScript.spread(count).map(func(x): return _track_spot(0, x)),
+			"bottom": GalleryScript.spread(count, 2.5).map(func(x): return _track_spot(2, x))}
 	return {"top": _row(count, BACK_SPACING if count < 4 else FRONT_SPACING + 0.4, TOP_ROW_Y, TOP_ROW_Z, "above"),
 		"bottom": _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below")}
+
+
+func _track_spot(track: int, x: float) -> Dictionary:
+	var lane: Dictionary = GalleryScript.TRACKS[track]
+	return {"at": Vector3(x, lane["y"], lane["z"]), "placement": "on:%d" % track}
 
 
 func _row(count: int, spacing: float, y: float, z: float, placement: String) -> Array:
@@ -615,6 +645,20 @@ func row_positions(count: int, y: float) -> Array:
 # The answer target whose label is under `point` (the crosshair), if any.
 func label_target_at(point: Vector2):
 	return answer_labels.target_at(point) if accepting_answers else null
+
+
+# A level may name its own music (levels.json "music", a res:// audio file); it loops while the
+# level is played. Nothing plays when the field is empty or the file is not there yet.
+func _start_music() -> void:
+	var path: String = level.get("music", "")
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return
+	music = AudioStreamPlayer.new()
+	music.stream = load(path)
+	music.bus = "Master"
+	music.finished.connect(music.play)
+	add_child(music)
+	music.play()
 
 
 # The peaceful shooting range uses round targets in one wide row instead of soldiers on two rows.
@@ -656,6 +700,8 @@ func clear_arena() -> void:
 	timer_label.text = ""
 	image_panel.hide()
 	map_overlay.close()
+	if gallery:
+		gallery.clear()
 
 
 # The photo panel and the map overlay sit in the HUD above the answer labels and below the
