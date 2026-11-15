@@ -102,6 +102,21 @@ func _ledge() -> void:
 			for i in range(5):
 				var rock := _sphere(Vector3(rng.randf_range(2.5, 4.0), rng.randf_range(2.0, 3.2), 2.2), Vector3(-6 + i * 3, 1.2, LEDGE_FRONT_Z - 0.6), color.darkened(rng.randf_range(0.0, 0.15)))
 				rock.rotation.y = rng.randf() * TAU
+		"mound":
+			# A grassy burial mound instead of a wall: the top row stands on its crest.
+			_sphere(Vector3(20.0, LEDGE_TOP * 2.0, 4.2), Vector3(0, 0, LEDGE_FRONT_Z - 1.5), _color(theme["ground"]).darkened(0.12))
+			for i in range(6):
+				var stone := _sphere(Vector3(0.8, 0.5, 0.7), Vector3(rng.randf_range(-8.0, 8.0), 0.2, LEDGE_FRONT_Z + 2.4 + rng.randf_range(-0.3, 0.3)), color.darkened(0.2))
+				stone.rotation.y = rng.randf() * TAU
+		"range":
+			# A modern shooting range: no wall, lane lines on the ground, a low earth backstop far
+			# behind the targets and a firing-line bench in front of the player.
+			for i in range(8):
+				_box(Vector3(0.12, 0.02, 14.0), Vector3(-12.6 + i * 3.6, 0.07, -4.0), Color(0.95, 0.95, 0.95))
+			_box(Vector3(30.0, 0.04, 0.3), Vector3(0, 0.07, 3.0), Color(0.95, 0.85, 0.2))
+			_box(Vector3(40.0, 4.0, 3.0), Vector3(0, 2.0, -24.0), _color(theme["ground"]).darkened(0.25))
+			for i in range(5):
+				_box(Vector3(5.0, 0.9, 0.8), Vector3(-12.0 + i * 6.0, 0.45, 4.5), Color(0.55, 0.42, 0.3))
 		_:
 			_box(Vector3(LEDGE_WIDTH, LEDGE_TOP, depth), center, color)
 

@@ -17,6 +17,7 @@ var _time: float = 0.0
 var _origin: Vector3
 var _body: Node3D
 var _arm: Node3D
+var _legs: Array = []
 
 static var _materials := {}
 static var _meshes := {}
@@ -32,17 +33,28 @@ func build(look: Dictionary) -> void:
 	var skin := _color(look.get("skin", "#c99a6e"))
 	var trim := _color(look.get("trim", look.get("headgear_color", "#c9a24a")))
 
-	_part("box", Vector3(0.36, 0.8, 0.24), Vector3(0, 0.4, 0), pants)
+	# Two legs on hip pivots (they swing when marching), each with a boot.
+	_legs = []
+	for side in [-1.0, 1.0]:
+		var leg := Node3D.new()
+		leg.position = Vector3(side * 0.1, 0.82, 0)
+		_body.add_child(leg)
+		_part("box", Vector3(0.16, 0.7, 0.18), Vector3(0, -0.37, 0), pants, leg)
+		_part("box", Vector3(0.17, 0.14, 0.26), Vector3(0, -0.75, -0.03), pants.darkened(0.45), leg)
+		_legs.append(leg)
 	if look.get("robe", false):
 		_part("robe", Vector3.ONE, Vector3(0, 0.62, 0), coat)
-	_part("box", Vector3(0.52, 0.62, 0.3), Vector3(0, 1.1, 0), coat)
-	_part("box", Vector3(0.54, 0.08, 0.32), Vector3(0, 0.84, 0), trim)
-	_part("box", Vector3(0.15, 0.56, 0.15), Vector3(-0.34, 1.1, 0), coat)
+	_part("box", Vector3(0.5, 0.6, 0.28), Vector3(0, 1.1, 0), coat)
+	_part("box", Vector3(0.52, 0.08, 0.3), Vector3(0, 0.84, 0), trim)
+	_part("box", Vector3(0.14, 0.54, 0.15), Vector3(-0.33, 1.12, 0), coat)
+	_part("box", Vector3(0.12, 0.12, 0.12), Vector3(-0.33, 0.8, 0), skin)
 	_arm = Node3D.new()
-	_arm.position = Vector3(0.34, 1.36, 0)
+	_arm.position = Vector3(0.33, 1.36, 0)
 	_body.add_child(_arm)
-	_part("box", Vector3(0.15, 0.56, 0.15), Vector3(0, -0.26, 0), coat, _arm)
-	_part("box", Vector3(0.3, 0.3, 0.3), Vector3(0, 1.58, 0), skin)
+	_part("box", Vector3(0.14, 0.54, 0.15), Vector3(0, -0.25, 0), coat, _arm)
+	_part("box", Vector3(0.12, 0.12, 0.12), Vector3(0, -0.57, 0), skin, _arm)
+	_part("box", Vector3(0.14, 0.08, 0.14), Vector3(0, 1.43, 0), skin)
+	_part("box", Vector3(0.28, 0.3, 0.28), Vector3(0, 1.6, 0), skin)
 	_headgear(look.get("headgear", "none"), _color(look.get("headgear_color", "#6b4a2b")))
 	_weapon(look.get("weapon", "none"), _color(look.get("weapon_color", "#5a3d22")))
 	if look.get("shield", false):
@@ -78,10 +90,12 @@ func _process(delta: float) -> void:
 		"idle":
 			_body.position.y = absf(sin(_time * 1.3)) * 0.03
 			_arm.rotation.x = sin(_time) * 0.15
+			_stride(0.0)
 		"march":
 			position.x = _origin.x + sin(_time * 0.35) * motion_range
 			_body.position.y = absf(sin(_time * 4.0)) * 0.08
 			rotation.y = PI / 2.0 if cos(_time * 0.35) > 0.0 else -PI / 2.0
+			_stride(_time * 4.0)
 		"fight":
 			position.z = _origin.z + sin(_time * 2.2) * 0.35
 			_arm.rotation.x = -absf(sin(_time * 2.2)) * 1.6
@@ -90,6 +104,13 @@ func _process(delta: float) -> void:
 		"march_in_place":
 			_body.position.y = absf(sin(_time * 4.0)) * 0.08
 			_arm.rotation.x = sin(_time * 4.0) * 0.5
+			_stride(_time * 4.0)
+
+
+# Legs swing in opposite directions while walking.
+func _stride(phase: float) -> void:
+	for i in range(_legs.size()):
+		_legs[i].rotation.x = sin(phase + PI * i) * 0.45
 
 
 func _headgear(kind: String, color: Color) -> void:

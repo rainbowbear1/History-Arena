@@ -303,6 +303,7 @@ func test_arena() -> void:
 	await test_difficulty()
 	await test_quiz_integrity()
 	await test_hud_and_labels()
+	await test_shooting_range()
 	test_total_score_unlocks()
 	await test_progress()
 	await test_full_playthrough()
@@ -959,6 +960,33 @@ func test_hud_and_labels() -> void:
 	check(labels.get_child_count() == 0 or labels.get_children().all(func(c): return c.is_queued_for_deletion()), "labels go away with their task")
 	arena.queue_free()
 	await process_frame
+
+
+func test_shooting_range() -> void:
+	print("== Level 10 shooting range")
+	game_state.selected_level = 10
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	await process_frame
+	await process_frame
+	var xs: Array = quiz.targets.map(func(t): return t.starting_position.x)
+	xs.sort()
+	var one_row: bool = quiz.targets.all(func(t): return is_equal_approx(t.starting_position.y, quiz.CHOICE_ROW_Y))
+	var spaced := true
+	for i in range(1, xs.size()):
+		spaced = spaced and xs[i] - xs[i - 1] >= quiz.RANGE_SPACING - 0.01
+	check(quiz.targets.size() == 6 and one_row and spaced, "range: answers and decoys stand in one wide row")
+	var panels: Array = quiz.targets.map(func(t): return quiz.answer_labels.label_for(t))
+	var overlaps := 0
+	for i in range(panels.size()):
+		for j in range(i + 1, panels.size()):
+			if panels[i].get_global_rect().intersects(panels[j].get_global_rect()):
+				overlaps += 1
+	check(panels.all(func(p): return p.visible) and overlaps == 0, "range: every label visible, none overlapping")
+	check(level_db.get_level(10)["target_speed"] <= 1.5 and quiz.enemy_spawner.enemies.is_empty(), "range: calm target movement, no enemies")
+	arena.queue_free()
+	await process_frame
+	game_state.selected_level = 1
 
 
 func test_difficulty() -> void:

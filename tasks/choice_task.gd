@@ -17,6 +17,13 @@ func _build() -> void:
 		quiz.show_image(question["image"])
 
 	var answers: Array = question["answers"].duplicate()
+	var decoys: Array = []
+	if quiz.DECOY_TYPES.has(question.get("type", "single_choice")) and quiz.extra_decoys() > 0:
+		decoys = quiz.decoy_answers(question, quiz.extra_decoys())
+	# On the shooting range the decoys join the one row; elsewhere they stand on the top row.
+	if quiz.is_range():
+		answers += decoys
+		decoys = []
 	answers.shuffle()
 	var positions: Array = quiz.row_positions(answers.size(), quiz.CHOICE_ROW_Y)
 
@@ -25,8 +32,7 @@ func _build() -> void:
 		target.is_correct = answers[i] == question["correct"]
 
 	# Harder levels add fake answers on the top row.
-	if quiz.DECOY_TYPES.has(question.get("type", "single_choice")) and quiz.extra_decoys() > 0:
-		var decoys: Array = quiz.decoy_answers(question, quiz.extra_decoys())
+	if not decoys.is_empty():
 		var decoy_positions: Array = quiz.row_positions(decoys.size(), quiz.TOP_ROW_Y)
 		for i in range(decoys.size()):
 			quiz.spawn_target(decoys[i], decoy_positions[i])

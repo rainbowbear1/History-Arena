@@ -99,6 +99,7 @@ func shoot() -> void:
 var _model: Node3D
 
 const WOOD := Color(0.45, 0.28, 0.14)
+const BOW_SEGMENTS := 10
 const METAL := Color(0.32, 0.33, 0.36)
 
 
@@ -111,15 +112,31 @@ func _build_weapon(model: String) -> void:
 		old.queue_free()
 	_model = Node3D.new()
 	_model.scale = Vector3.ONE * (0.4 if model == "bow" else 0.6)
-	_model.rotation_degrees = Vector3(0, 0, -12) if model == "bow" else Vector3.ZERO
+	# The bow is turned a little so its curve shows, and tilted like a held bow.
+	_model.rotation_degrees = Vector3(0, 28, -14) if model == "bow" else Vector3.ZERO
 	weapon_holder.add_child(_model)
 	match model:
 		"bow":
-			_weapon_part(Vector3(0.05, 0.75, 0.05), Vector3(0, 0, 0), WOOD, Vector3(0, 0, 0))
-			_weapon_part(Vector3(0.05, 0.4, 0.05), Vector3(0, 0.48, 0.08), WOOD, Vector3(-0.5, 0, 0))
-			_weapon_part(Vector3(0.05, 0.4, 0.05), Vector3(0, -0.48, 0.08), WOOD, Vector3(0.5, 0, 0))
-			_weapon_part(Vector3(0.01, 1.3, 0.01), Vector3(0, 0, 0.2), Color(0.9, 0.88, 0.8), Vector3.ZERO)
-			_weapon_part(Vector3(0.025, 0.025, 0.8), Vector3(0, 0.02, -0.15), WOOD.lightened(0.2), Vector3.ZERO)
+			# A recurve bow: one continuous curved limb from tip to tip (segments meet end to end),
+			# a leather grip, a straight string between the tips and a nocked arrow.
+			var points := []
+			for i in range(BOW_SEGMENTS + 1):
+				var t := -1.0 + 2.0 * i / BOW_SEGMENTS
+				var z := -0.14 * (1.0 - t * t)
+				if absf(t) > 0.8:
+					z += 0.09 * (absf(t) - 0.8) / 0.2  # Tips curl forward again (recurve).
+				points.append(Vector3(0, 0.6 * t, z))
+			for i in range(BOW_SEGMENTS):
+				var a: Vector3 = points[i]
+				var b: Vector3 = points[i + 1]
+				var thickness := lerpf(0.05, 0.028, absf((a.y + b.y) / 1.2))
+				_weapon_part(Vector3(thickness, a.distance_to(b) + 0.01, thickness * 1.3), (a + b) / 2.0, WOOD, Vector3(atan2(b.z - a.z, b.y - a.y), 0, 0))
+			_weapon_part(Vector3(0.065, 0.16, 0.075), points[BOW_SEGMENTS / 2], Color(0.3, 0.18, 0.1), Vector3.ZERO)
+			var tip: Vector3 = points[0]
+			_weapon_part(Vector3(0.008, 1.2, 0.008), Vector3(0, 0, tip.z), Color(0.92, 0.9, 0.82), Vector3.ZERO)
+			_weapon_part(Vector3(0.02, 0.02, 0.75), Vector3(0.03, 0.0, tip.z - 0.33), WOOD.lightened(0.3), Vector3.ZERO)
+			_weapon_part(Vector3(0.03, 0.03, 0.06), Vector3(0.03, 0.0, tip.z - 0.72), METAL, Vector3.ZERO)
+			_weapon_part(Vector3(0.005, 0.05, 0.1), Vector3(0.03, 0.0, tip.z - 0.02), Color(0.85, 0.2, 0.15), Vector3.ZERO)
 		"musket", "rifle":
 			_weapon_part(Vector3(0.07, 0.09, 0.9 if model == "musket" else 0.8), Vector3(0, 0, -0.05), WOOD, Vector3.ZERO)
 			_weapon_part(Vector3(0.04, 0.04, 0.6), Vector3(0, 0.06, -0.55), METAL, Vector3.ZERO)

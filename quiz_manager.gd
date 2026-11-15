@@ -21,6 +21,9 @@ const ROW_SPACING := 3.0
 # standing on the rampart behind them (see environment_builder.gd).
 const CHOICE_ROW_Y := 2.6
 const TOP_ROW_Y := 5.6
+# Shooting range (level 10): one wide row on the lanes; a second row (matching) stands further back.
+const RANGE_SPACING := 3.6
+const RANGE_BACK_ROW := Vector2(4.4, -12.0)
 const TOP_ROW_Z := -10.0
 const GROUND_Y := 0.1
 const LEDGE_TOP := 3.1
@@ -544,7 +547,7 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 		target.set_size(size)
 	elif not theme.is_empty():
 		# Positions are 32-bit floats, so compare against the midpoint between the rows.
-		var on_ledge := at.y > (CHOICE_ROW_Y + TOP_ROW_Y) / 2.0
+		var on_ledge := at.y > (CHOICE_ROW_Y + TOP_ROW_Y) / 2.0 and not is_range()
 		var feet_y := (LEDGE_TOP if on_ledge else GROUND_Y) - at.y
 		target.apply_style(theme.get("target_style", "board"), theme.get("enemy_look", {}), Color.html(theme.get("placard", "#f2e6c4")), feet_y)
 		if target.uses_screen_label():
@@ -557,9 +560,19 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 # Evenly spaced positions for a row of targets centred in front of the player.
 func row_positions(count: int, y: float) -> Array:
 	var positions := []
+	var spacing := RANGE_SPACING if is_range() else ROW_SPACING
+	var z := TOP_ROW_Z if y == TOP_ROW_Y else TARGET_Z
+	if is_range() and y == TOP_ROW_Y:
+		y = RANGE_BACK_ROW.x
+		z = RANGE_BACK_ROW.y
 	for i in range(count):
-		positions.append(Vector3((i - (count - 1) / 2.0) * ROW_SPACING, y, TOP_ROW_Z if y == TOP_ROW_Y else TARGET_Z))
+		positions.append(Vector3((i - (count - 1) / 2.0) * spacing, y, z))
 	return positions
+
+
+# The peaceful shooting range uses round targets in one wide row instead of soldiers on two rows.
+func is_range() -> bool:
+	return theme.get("target_style", "") == "gallery"
 
 
 func show_image(path: String) -> void:
