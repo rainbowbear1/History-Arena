@@ -8,6 +8,7 @@ const OPTION_COUNT := 4
 const BLANK := "___"
 # Smallest distance between two map locations (0–1 map units) so their pins don't overlap.
 const MIN_PIN_GAP := 0.08
+const MAX_EXTRA_ANSWERS := 4
 
 
 static func get_type(question: Dictionary) -> String:
@@ -112,7 +113,51 @@ static func _check_options(question: Dictionary) -> String:
 	if not answers.has(question["correct"]):
 		return "\"correct\" answer is not one of the answers"
 
+	if question.has("extra_answers"):
+		return _check_extra_answers(question)
+
 	return ""
+
+
+# Hand-written extra wrong answers for harder levels. They must be the same kind of answer as
+# the correct one (a date beside dates) and never restate one of the four options.
+static func _check_extra_answers(question: Dictionary) -> String:
+	var extras = question["extra_answers"]
+	if not extras is Array or extras.is_empty() or extras.size() > MAX_EXTRA_ANSWERS:
+		return "\"extra_answers\" must be an array of 1 to %d answers" % MAX_EXTRA_ANSWERS
+	if get_type(question) == "image":
+		return "image tasks cannot have \"extra_answers\""
+
+	var keys := {}
+	for answer in question["answers"]:
+		keys[answer_key(answer)] = true
+	var wants_digits := has_digit(question["correct"])
+	for extra in extras:
+		if not _is_text(extra):
+			return "every extra answer must be a non-empty string"
+		if keys.has(answer_key(extra)):
+			return "extra answer \"%s\" repeats an option" % extra
+		keys[answer_key(extra)] = true
+		if has_digit(extra) != wants_digits:
+			return "extra answer \"%s\" is not the same kind as the correct answer" % extra
+	return ""
+
+
+static func has_digit(text: String) -> bool:
+	for c in text:
+		if c >= "0" and c <= "9":
+			return true
+	return false
+
+
+# Answers with numbers compare by their digits ("552 ж." == "552"); others by lowercase letters.
+static func answer_key(text: String) -> String:
+	var key := ""
+	var digits_only := has_digit(text)
+	for c in text.to_lower():
+		if (c >= "0" and c <= "9") or (not digits_only and c.to_upper() != c.to_lower()):
+			key += c
+	return key
 
 
 static func _check_matching(question: Dictionary) -> String:

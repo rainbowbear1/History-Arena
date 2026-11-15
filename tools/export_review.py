@@ -27,6 +27,8 @@ def answer(q):
         return "**%s** (%.2f° N, %.2f° E); other pins: %s" % (q["correct"], loc["lat"], loc["lon"], others)
     wrong = ", ".join(a for a in q["answers"] if a != q["correct"])
     extra = " — image: `%s`" % q["image"].replace("res://", "") if kind == "image" else ""
+    if q.get("extra_answers"):
+        extra += "; decoys on harder levels: %s" % ", ".join(q["extra_answers"])
     return "**%s** (wrong: %s)%s" % (q["correct"], wrong, extra)
 
 

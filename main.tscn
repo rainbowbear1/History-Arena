@@ -344,47 +344,6 @@ theme_override_font_sizes/font_size = 32
 text = "Дұрыс!"
 horizontal_alignment = 1
 
-[node name="PauseMenu" type="Control" parent="HUD" unique_id=181673631]
-process_mode = 3
-visible = false
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("2_1bvp3")
-
-[node name="CenterContainer" type="CenterContainer" parent="HUD/PauseMenu" unique_id=1108636041]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="PausePanel" type="PanelContainer" parent="HUD/PauseMenu/CenterContainer" unique_id=863705172]
-layout_mode = 2
-
-[node name="PauseVBox" type="VBoxContainer" parent="HUD/PauseMenu/CenterContainer/PausePanel" unique_id=678461786]
-layout_mode = 2
-
-[node name="PauseLabel" type="Label" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=846470578]
-layout_mode = 2
-text = "Ойын тоқталды"
-
-[node name="ResumeButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=399429686]
-layout_mode = 2
-text = "Жалғастыру"
-
-[node name="RestartButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1639498069]
-layout_mode = 2
-text = "Қайта бастау"
-
-[node name="LevelsButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1078300344]
-layout_mode = 2
-text = "Деңгейлер"
-
 [node name="Environment" type="Node3D" parent="."]
 script = ExtResource("7_env")
 
@@ -458,6 +417,63 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="PauseMenu" type="Control" parent="HUD" unique_id=181673631]
+process_mode = 3
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_1bvp3")
+
+[node name="Backdrop" type="ColorRect" parent="HUD/PauseMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.09, 0.15, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="HUD/PauseMenu" unique_id=1108636041]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="HUD/PauseMenu/CenterContainer" unique_id=863705172]
+layout_mode = 2
+
+[node name="PauseVBox" type="VBoxContainer" parent="HUD/PauseMenu/CenterContainer/PausePanel" unique_id=678461786]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="PauseLabel" type="Label" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=846470578]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Ойын тоқталды"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=399429686]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Жалғастыру"
+
+[node name="RestartButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1639498069]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Қайта бастау"
+
+[node name="LevelsButton" type="Button" parent="HUD/PauseMenu/CenterContainer/PausePanel/PauseVBox" unique_id=1078300344]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Деңгейлер"
 
 [connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/NextButton" to="QuizManager" method="_on_next_button_pressed"]
 [connection signal="pressed" from="HUD/ResultsContainer/ResultsPanel/ResultsVBox/RestartButton" to="QuizManager" method="_on_restart_button_pressed"]

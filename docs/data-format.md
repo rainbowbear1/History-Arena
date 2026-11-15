@@ -32,10 +32,13 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   counts as a wrong answer (−10 HP, correct answer revealed). The timer stops between tasks and
   while paused.
 - **Targets:** sway speed is multiplied by `target_speed`.
-- **Decoys:** `extra_decoys` wrong answers, taken from other questions in the same level, are added
-  on the top row for `single_choice` and `fill_blank` tasks (image tasks need the top row for the
-  picture). Dates get date decoys, and a decoy never restates an option in another form ("552" next
-  to "552 ж.").
+- **Decoys:** up to `extra_decoys` extra wrong answers are added on the top row for
+  `single_choice` and `fill_blank` tasks (image tasks need the top row for the picture). They come
+  **only from that task's own `extra_answers`**, never from other questions; a task with fewer (or
+  no) extra answers simply shows fewer targets. Levels: 0 extra on 1–4, 1 on 5–6, 2 on 7–10 (at most
+  six answers on screen; the assignment's table, p. 9, is marked "to be refined in testing").
+- **Task order:** every attempt (including Retry) asks the level's tasks in a new random order,
+  each exactly once; answer positions are shuffled too.
 - **Enemies:** `enemies` enemy soldiers hold posts on the flanks; they do not chase the player. One
   shared volley clock (every 12 − 1.5·s seconds, at least 3.5 s) picks one enemy, which aims for
   0.9 s (a red "!") and fires an arrow or bullet at where the player stood: step aside to dodge, or
@@ -135,6 +138,10 @@ Examples of every type: `tests/fixtures/all_types.json`.
 
 ### 1. `single_choice` — one correct answer
 `answers`: exactly 4 unique texts. `correct`: one of them.
+`extra_answers` (optional, also for `fill_blank`): 1–4 hand-written wrong answers used as decoys on
+harder levels. Each must be the same kind as `correct` (a date if the answer is a date, no digits
+otherwise), must not restate an option ("1456 ж." beside "1456"), and should be plausible for the
+question: rulers beside rulers, rivers beside rivers. Leave it out when no sensible one exists.
 
 ### 2. `matching` — pair up two columns (person ↔ event, state ↔ year, term ↔ definition)
 `pairs`: 2–4 objects `{ "left": ..., "right": ... }`. Left texts unique, right texts unique.

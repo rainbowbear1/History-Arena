@@ -16,7 +16,7 @@ to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3
 | 10 characters with HP, speed, weapon, ability, defense | Character screen; each level preselects its historical protagonist, free choice kept |
 | Shoot the correct answer: +100, wrong −10 HP | Enemy soldiers hold answer placards; a wrong answer shows an enemy landing a shot |
 | 6 task types | single choice, fill-in-the-blank, matching, chronology, map (Natural Earth map), image (licensed photos) |
-| Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 10 s, sway speed ×1.0 → ×2.5, up to 4 decoys, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
+| Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 10 s, sway speed ×1.0 → ×2.5, up to 2 hand-written decoys per task, tasks in a new random order every attempt, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
 | "Жан біткенде" medical help | At 0 HP: one history question; correct → +50/40/30 HP and retry the task, wrong → restart |
 | Results saved (score, level, correct, wrong, playtime) | Saved per account on the device (stars, unlocks) and in Cloud Firestore under the player's Google account |
 | Google login, leaderboard | Firebase Authentication (Google); **Рейтинг** screen with top 20, own best total and rank; Firestore security rules |

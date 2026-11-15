@@ -311,50 +311,13 @@ func extra_decoys() -> int:
 	return level.get("extra_decoys", 0)
 
 
-# Wrong answers borrowed from other questions in this level, to use as decoy targets.
-# Prefers answers of the same kind (dates with dates, names with names).
+# Extra wrong answers for decoy targets. They come only from the question's own hand-written
+# "extra_answers" (checked by QuestionValidator), never from other questions: a question without
+# them gets fewer targets rather than an unrelated one.
 func decoy_answers(question: Dictionary, count: int) -> Array:
-	var wants_digits := _has_digit(question["correct"])
-	# Compare by meaning, so "552" is never a decoy beside "552 ж.".
-	var taken := {}
-	for answer in question["answers"]:
-		taken[_answer_key(answer)] = true
-
-	var same_kind := []
-	var other_kind := []
-	for other in questions:
-		if other == question or not DECOY_TYPES.has(QuestionValidator.get_type(other)):
-			continue
-		for answer in other["answers"]:
-			var key := _answer_key(answer)
-			if taken.has(key):
-				continue
-			taken[key] = true
-			if _has_digit(answer) == wants_digits:
-				same_kind.append(answer)
-			else:
-				other_kind.append(answer)
-
-	same_kind.shuffle()
-	other_kind.shuffle()
-	return (same_kind + other_kind).slice(0, count)
-
-
-static func _has_digit(text: String) -> bool:
-	for c in text:
-		if c >= "0" and c <= "9":
-			return true
-	return false
-
-
-# Answers with numbers compare by their digits ("552 ж." == "552"); others by lowercase letters.
-static func _answer_key(text: String) -> String:
-	var key := ""
-	var digits_only := _has_digit(text)
-	for c in text.to_lower():
-		if (c >= "0" and c <= "9") or (not digits_only and c.to_upper() != c.to_lower()):
-			key += c
-	return key
+	var extras: Array = question.get("extra_answers", []).duplicate()
+	extras.shuffle()
+	return extras.slice(0, count)
 
 
 func remove_target(target) -> void:
@@ -634,4 +597,8 @@ func load_questions_from_file() -> void:
 		push_warning(error)
 
 	questions = result.questions
+	# A new order on every attempt (Retry reloads the scene), so a level cannot be memorised by
+	# its sequence. Every task is still asked exactly once.
+	if GameState.shuffle_questions:
+		questions.shuffle()
 	print("Loaded ", questions.size(), " questions from ", question_file)

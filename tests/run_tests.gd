@@ -46,6 +46,8 @@ func wait(seconds: float) -> void:
 func run() -> void:
 	level_db = root.get_node("LevelDatabase")
 	game_state = root.get_node("GameState")
+	# Fixed task order for the tests that expect it; test_quiz_integrity turns shuffling back on.
+	game_state.shuffle_questions = false
 	char_db = root.get_node("CharacterDatabase")
 	# Use a separate save file so tests never touch real progress; demo mode opens levels 1-3.
 	progress = root.get_node("ProgressStore")
@@ -152,6 +154,13 @@ func test_question_types() -> void:
 		["map with missing coordinate rejected", _map_with(0, "y", null)],
 		["map with wrong correct rejected", _with(_map_with(0, "x", 0.1), "correct", "Нет")],
 		["map with overlapping pins rejected", _map_with(1, "x", 0.15)],
+		["extra answer repeating an option rejected", _with(single, "extra_answers", ["A "])],
+		["extra date beside a name rejected", _with(single, "extra_answers", ["1465"])],
+		["extra name beside a date rejected", _with(_with(_with(single, "answers", ["1465", "1456", "1505", "1511"]), "correct", "1465"), "extra_answers", ["Керей"])],
+		["extra date restating an option rejected", _with(_with(_with(single, "answers", ["1465", "1456", "1505", "1511"]), "correct", "1465"), "extra_answers", ["1456 ж."])],
+		["five extra answers rejected", _with(single, "extra_answers", ["e", "f", "g", "h", "i"])],
+		["empty extra answers rejected", _with(single, "extra_answers", [])],
+		["extra answers on an image task rejected", _with(_with(_with(single, "type", "image"), "image", "res://icon.svg"), "extra_answers", ["e"])],
 	]
 	for case in cases:
 		check(QuestionValidator.validate(case[1]) != "", case[0])
@@ -159,6 +168,8 @@ func test_question_types() -> void:
 	check(QuestionValidator.validate(_pairs_question(4)) == "", "matching with 4 pairs accepted")
 	check(QuestionValidator.validate({"type": "chronology", "question": "Q", "items": ["a", "b", "c"]}) == "", "chronology with 3 items accepted")
 	check(QuestionValidator.validate(_with(_map_with(0, "x", 0.1), "correct", "B")) == "", "spread-out map accepted")
+	check(QuestionValidator.validate(_with(single, "extra_answers", ["e", "f"])) == "", "same-kind extra answers accepted")
+	check(QuestionValidator.answer_key("552 ж.") == QuestionValidator.answer_key("552") and QuestionValidator.answer_key("Мөде") == QuestionValidator.answer_key("мөде"), "answer keys ignore formatting")
 
 	# File-level problems
 	var dir := "user://test_fixtures"
@@ -290,6 +301,7 @@ func test_arena() -> void:
 	await test_hp_and_medical_help()
 	await test_characters()
 	await test_difficulty()
+	await test_quiz_integrity()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -760,6 +772,106 @@ func test_characters() -> void:
 	game_state.selected_character = ""
 
 
+func test_quiz_integrity() -> void:
+	print("== Quiz integrity: decoys, answer kinds, task order, pause screen")
+	game_state.selected_character = ""
+	for level in level_db.levels:
+		game_state.selected_level = level["id"]
+		var arena := await _load_arena()
+		var quiz = arena.get_node("QuizManager")
+
+		# Every option set is one kind of answer: all dates, or no dates.
+		var mixed := []
+		for q in quiz.questions:
+			if q.has("answers"):
+				var kinds := {}
+				for answer in q["answers"] + q.get("extra_answers", []):
+					kinds[QuestionValidator.has_digit(answer)] = true
+				if kinds.size() > 1:
+					mixed.append(q["id"])
+		check(mixed.is_empty(), "level %d: dates are only offered beside dates %s" % [level["id"], str(mixed)])
+
+		# Play every choice task: decoys only from that task's own extra answers, one correct target.
+		var wrong := []
+		var choice_tasks := 0
+		var without_extras := 0
+		for i in range(quiz.questions.size()):
+			var q: Dictionary = quiz.questions[i]
+			if not quiz.DECOY_TYPES.has(QuestionValidator.get_type(q)):
+				continue
+			choice_tasks += 1
+			if not q.has("extra_answers"):
+				without_extras += 1
+			quiz.question_index = i
+			quiz.load_question()
+			var expected: int = 4 + mini(level["extra_decoys"], q.get("extra_answers", []).size())
+			var stray: Array = quiz.targets.filter(func(t): return not q["answers"].has(t.answer_text) and not q.get("extra_answers", []).has(t.answer_text))
+			var correct: Array = quiz.targets.filter(func(t): return t.is_correct)
+			if quiz.targets.size() != expected or not stray.is_empty() or correct.size() != 1 or correct[0].answer_text != q["correct"]:
+				wrong.append(q["id"])
+		check(wrong.is_empty(), "level %d: every choice task shows only its own options and extra answers %s" % [level["id"], str(wrong)])
+		if level["extra_decoys"] > 0:
+			# Some tasks have no sensible extra answer (the three law codes, "how many zhuzes"); they
+			# show four options rather than an unrelated one.
+			check(without_extras * 2 <= choice_tasks, "level %d: most choice tasks have hand-written extra answers (%d of %d without)" % [level["id"], without_extras, choice_tasks])
+		arena.queue_free()
+		await process_frame
+
+	# A new task order on every attempt, each task exactly once; Retry reshuffles.
+	game_state.shuffle_questions = true
+	game_state.selected_level = 5
+	var file_ids: Array = QuestionValidator.load_file(level_db.get_level(5)["question_file"]).questions.map(func(q): return q["id"])
+	var sorted_file_ids := file_ids.duplicate()
+	sorted_file_ids.sort()
+	var orders := []
+	var arena := await _load_arena()
+	for attempt in range(3):
+		var ids: Array = arena.get_node("QuizManager").questions.map(func(q): return q["id"])
+		var sorted_ids := ids.duplicate()
+		sorted_ids.sort()
+		check(sorted_ids == sorted_file_ids, "attempt %d asks every task exactly once" % (attempt + 1))
+		orders.append(ids)
+		arena.get_node("QuizManager")._on_restart_button_pressed()
+		await process_frame
+		await process_frame
+		arena = current_scene
+	check(orders[0] != orders[1] or orders[1] != orders[2], "Retry gives a new task order")
+	check(orders.any(func(o): return o != file_ids), "tasks are not asked in file order")
+	var quiz = arena.get_node("QuizManager")
+	var positions := {}
+	for attempt in range(12):
+		quiz.questions = [quiz.questions.filter(func(q): return QuestionValidator.get_type(q) == "single_choice")[0]]
+		quiz.question_index = 0
+		quiz.load_question()
+		positions[quiz.targets.filter(func(t): return t.is_correct)[0].starting_position.x] = true
+	check(positions.size() > 1, "the correct answer moves between positions")
+	arena.queue_free()
+	await process_frame
+	game_state.shuffle_questions = false
+
+	# Pausing hides the whole quiz behind an opaque screen and keeps the task as it was.
+	game_state.selected_level = 1
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	var pause_menu: Control = arena.get_node("HUD/PauseMenu")
+	var backdrop: ColorRect = pause_menu.get_node("Backdrop")
+	var task_text: String = quiz.question_label.text
+	var task_index: int = quiz.question_index
+	var answers: Array = quiz.targets.map(func(t): return t.answer_text)
+	pause_menu.pause_game()
+	await process_frame
+	var left: float = quiz.time_left
+	await create_timer(0.4, true).timeout
+	check(paused and pause_menu.visible and quiz.time_left == left, "pause freezes the game and the timer")
+	check(backdrop.color.a == 1.0 and backdrop.get_global_rect().size == arena.get_viewport().get_visible_rect().size, "pause screen is opaque and covers the whole window")
+	check(pause_menu.get_index() == arena.get_node("HUD").get_child_count() - 1, "pause screen is drawn above every HUD element")
+	pause_menu.resume_game()
+	await process_frame
+	check(not paused and quiz.question_index == task_index and quiz.question_label.text == task_text and quiz.targets.map(func(t): return t.answer_text) == answers, "resume continues the same task")
+	arena.queue_free()
+	await process_frame
+
+
 func test_difficulty() -> void:
 	print("== Difficulty: timer, speed, decoys")
 	var samples := {}
@@ -814,28 +926,27 @@ func test_difficulty() -> void:
 		await process_frame
 	game_state.selected_character = ""
 
-	# Level 3: faster targets, one decoy, one enemy.
+	# Level 3: faster targets, no decoys yet (the assignment's table: 3 wrong answers on levels 1-4).
 	game_state.selected_level = 3
 	var arena := await _load_arena()
 	quiz = arena.get_node("QuizManager")
 	check(quiz.targets.all(func(t): return t.move_speed >= 1.25 * 0.8 - 0.001 and t.move_speed <= 1.25 * 1.2 + 0.001), "targets sway 1.25x faster on level 3")
+	check(quiz.targets.size() == 4, "level 3 shows the four options only (got %d)" % quiz.targets.size())
+	arena.queue_free()
+	await process_frame
+
+	# Level 7: two decoys, both from the question's own hand-written extra answers.
+	game_state.selected_level = 7
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
 	var question: Dictionary = quiz.questions[0]
-	check(quiz.targets.size() == 5, "level 3 adds one decoy target (got %d)" % quiz.targets.size())
+	check(question.has("extra_answers") and quiz.targets.size() == 6, "level 7 adds two decoy targets (got %d)" % quiz.targets.size())
 	var decoys: Array = quiz.targets.filter(func(t): return not question["answers"].has(t.answer_text))
-	check(decoys.size() == 1 and not decoys[0].is_correct, "decoy is a wrong answer from another question")
-	check(is_equal_approx(decoys[0].starting_position.y, quiz.TOP_ROW_Y), "decoy sits on the top row")
+	check(decoys.size() == 2 and decoys.all(func(t): return question["extra_answers"].has(t.answer_text) and not t.is_correct), "decoys are the question's own extra answers")
+	check(decoys.all(func(t): return is_equal_approx(t.starting_position.y, quiz.TOP_ROW_Y)), "decoys sit on the top row")
 	check(quiz.targets.filter(func(t): return t.is_correct).size() == 1, "still exactly one correct target")
-	var year_question: Dictionary = quiz.questions.filter(func(q): return q.get("correct") == "751")[0]
-	var year_decoys: Array = quiz.decoy_answers(year_question, 2)
-	check(year_decoys.size() == 2 and year_decoys.all(func(a): return quiz._has_digit(a)), "date questions get date decoys %s" % str(year_decoys))
-	check(not year_decoys.any(func(a): return year_question["answers"].has(a)), "decoys never repeat the real options")
-	var founding: Dictionary = quiz.questions[0]
-	for attempt in range(20):
-		var picked: Array = quiz.decoy_answers(founding, 4)
-		if picked.any(func(a): return quiz._answer_key(a) in ["552", "603", "704", "751"]):
-			check(false, "decoys never restate an option in another form %s" % str(picked))
-			break
-	check(quiz._answer_key("552 ж.") == quiz._answer_key("552") and quiz._answer_key("Мөде") == quiz._answer_key("мөде"), "answer keys ignore formatting")
+	check(quiz.decoy_answers({"answers": ["a", "b", "c", "d"], "correct": "a"}, 2).is_empty(), "a question without extra answers gets no decoys")
+	check(quiz.decoy_answers(_with(question, "extra_answers", ["x"]), 2) == ["x"], "fewer extra answers give fewer decoys")
 	quiz.questions = [samples["image"]]
 	quiz.question_index = 0
 	quiz.load_question()
