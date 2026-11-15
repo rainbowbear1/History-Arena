@@ -52,7 +52,8 @@ const HP_LOW := Color(0.85, 0.2, 0.15)
 const FADE_SECONDS := 0.6
 const ProgressStoreScript := preload("res://progress_store.gd")
 # Question types that can be asked on the medical-help screen (plain four-button answers).
-const REVIVAL_TYPES := ["single_choice", "fill_blank"]
+# Medical help asks from its own bank, never from the level's tasks.
+const MEDICAL_FILE := "res://questions/medical.json"
 
 var score: int = 0
 var level: Dictionary = {}
@@ -77,6 +78,7 @@ var accepting_answers: bool = true
 # Questions the player got wrong this run; asked first on the medical-help screen.
 var missed_questions: Array = []
 var used_revival_questions: Array = []
+var medical_questions: Array = []
 
 # Chosen character and the state of its E ability.
 var character: Dictionary = {}
@@ -152,6 +154,7 @@ func _ready() -> void:
 	enemy_spawner.background_shooters = environment.background_enemies
 
 	load_questions_from_file()
+	medical_questions = QuestionValidator.load_file(MEDICAL_FILE).questions
 
 	if questions.is_empty():
 		push_error("No questions loaded!")
@@ -385,22 +388,19 @@ func _record_defeat() -> void:
 	Backend.submit_attempt(last_attempt)
 
 
-# Never the task being retried (its answer may have just been shown). Prefers a
-# question missed earlier this run, then one not asked yet, so the medical-help
-# task reinforces what the player got wrong.
+# A random question from the medical-help bank (questions/medical.json), which tests other facts
+# than the level, so it never repeats a task of the run. Never twice in one run, and not one of
+# the questions recent defeats asked (GameState.recent_medical), so a failed help question cannot
+# simply be answered again after Restart.
 func pick_revival_question() -> Dictionary:
-	var current = questions[question_index] if question_index < questions.size() else null
-	var eligible := questions.filter(func(q): return q != current and REVIVAL_TYPES.has(QuestionValidator.get_type(q)))
-	var unused := eligible.filter(func(q): return not used_revival_questions.has(q))
-
-	var missed := unused.filter(func(q): return missed_questions.has(q))
-	if not missed.is_empty():
-		return missed.pick_random()
-	if not unused.is_empty():
-		return unused.pick_random()
-	if not eligible.is_empty():
-		return eligible.pick_random()
-	return {}
+	var fresh := medical_questions.filter(func(q): return not used_revival_questions.has(q))
+	var unseen := fresh.filter(func(q): return not GameState.recent_medical.has(q.get("id")))
+	var pool := unseen if not unseen.is_empty() else fresh
+	if pool.is_empty():
+		return {}
+	var question: Dictionary = pool.pick_random()
+	GameState.remember_medical(question.get("id"))
+	return question
 
 
 # Medical help succeeded: restore the level's revive_hp and retry the task the

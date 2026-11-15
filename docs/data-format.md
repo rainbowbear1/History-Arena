@@ -69,12 +69,14 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
 
 ### HP and medical help
 The player has one pool of 100 HP; every mistake costs 10 HP. At 0 HP the "СІЗ ЖЕҢІЛДІҢІЗ!" screen
-offers one historical question as medical help (up to `revivals` times per run). It asks a
-`single_choice` or `fill_blank` question from the same level — never the task the player just failed,
-preferring a question missed earlier, then one not asked yet. A correct answer restores `revive_hp`
-HP and the player retries the task they failed (answers reshuffled; matching/chronology start over),
-keeping their score and completed tasks. A wrong answer means no medical help, leaving Restart and
-Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
+offers one historical question as medical help (up to `revivals` times per run). It comes from a
+**separate bank**, `questions/medical.json` (35 bilingual single-choice questions on literature, music,
+culture, the Second World War and modern history that the level banks do not ask), picked at
+random: never twice in one run, and not one of the last 12 help questions asked this session, so a
+question that was just failed is not offered again after Restart. A correct answer restores
+`revive_hp` HP and the player retries the task they failed (answers reshuffled; matching/chronology
+start over), keeping their score and completed tasks. A wrong answer means no medical help,
+leaving Restart and Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
 
 ## Saved progress — `user://progress.json`
 

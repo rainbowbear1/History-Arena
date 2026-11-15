@@ -542,8 +542,6 @@ func test_hp_and_medical_help() -> void:
 	# Reaching 0 HP opens the defeat screen with a medical-help question.
 	quiz.score = 300
 	quiz.health = 10
-	var earlier_miss: Dictionary = quiz.questions[0]
-	quiz.missed_questions = [earlier_miss]
 	var retry_index: int = quiz.question_index
 	var retry_question: Dictionary = quiz.questions[retry_index]
 	_wrong_target(quiz).hit()
@@ -556,12 +554,12 @@ func test_hp_and_medical_help() -> void:
 	check(not quiz.results_container.visible, "results screen not shown on defeat")
 	check(quiz.targets.is_empty(), "arena cleared on defeat")
 	check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "mouse released on defeat")
-	check(panel.question != retry_question, "medical help never asks the task being retried")
-	check(panel.question == earlier_miss, "medical help prefers a question missed earlier")
-	check(panel.question_label.visible and panel.question_label.text == earlier_miss["question"], "help question shown")
+	check(not quiz.questions.has(panel.question) and str(panel.question.get("id")).begins_with("medical-"), "medical help asks from its own bank, not the level's tasks")
+	check(game_state.recent_medical.has(panel.question["id"]), "the help question is remembered for later defeats")
+	check(panel.question_label.visible and panel.question_label.text == panel.question["question"], "help question shown")
 	var shown: Array = panel.answer_buttons.map(func(b): return b.text)
 	shown.sort()
-	var expected: Array = earlier_miss["answers"].duplicate()
+	var expected: Array = panel.question["answers"].duplicate()
 	expected.sort()
 	check(shown == expected, "help answers shown on four buttons")
 	check(quiz.revivals_left == 1, "offering help uses one medical-help attempt")
@@ -583,11 +581,11 @@ func test_hp_and_medical_help() -> void:
 
 	# Second defeat: a wrong medical-help answer gives no help.
 	quiz.health = 10
-	var second_retry: Dictionary = quiz.questions[quiz.question_index]
+	var first_help: Dictionary = quiz.used_revival_questions[0]
 	_wrong_target(quiz).hit()
 	await wait(1.8)
 	check(panel.visible and quiz.revivals_left == 0, "second defeat uses the last medical-help attempt")
-	check(panel.question != earlier_miss and panel.question != second_retry, "a fresh help question is asked")
+	check(panel.question != first_help and quiz.medical_questions.has(panel.question), "a fresh help question is asked")
 	_press_wrong(panel)
 	check(panel.result_label.text == "Медициналық көмек көрсетілмеді.", "wrong help answer: no medical help")
 	await wait(1.7)
@@ -630,7 +628,7 @@ func test_hp_and_medical_help() -> void:
 	_by_text(quiz, chronology["items"][3]).hit()
 	check(quiz.health == 0 and not quiz.accepting_answers, "chronology mistake at 0 HP ends the task")
 	await wait(1.8)
-	check(quiz.revival_panel.visible and quiz.revival_panel.question == samples["single_choice"], "help question comes from another task")
+	check(quiz.revival_panel.visible and quiz.medical_questions.has(quiz.revival_panel.question), "help question comes from the medical bank")
 	_press_correct(quiz.revival_panel)
 	await wait(1.7)
 	check(quiz.question_index == 0 and quiz.current_task.done == 0, "chronology retried from the start")
@@ -638,10 +636,28 @@ func test_hp_and_medical_help() -> void:
 	quiz.get_parent().queue_free()
 	await process_frame
 
-	# Only the retried task is eligible: no medical-help question.
+	# Selection: random, never twice in a run, not one recent defeats asked, empty when used up.
 	quiz = await _start_task(samples["single_choice"])
-	quiz.questions = [samples["single_choice"], samples["matching"], samples["chronology"]]
-	check(quiz.pick_revival_question().is_empty(), "no help question when only the retried task qualifies")
+	var bank: Array = quiz.medical_questions
+	game_state.recent_medical = []
+	var asked := []
+	for i in range(bank.size()):
+		var q: Dictionary = quiz.pick_revival_question()
+		quiz.used_revival_questions.append(q)
+		asked.append(q["id"])
+	var unique := {}
+	for id in asked:
+		unique[id] = true
+	check(unique.size() == bank.size(), "a run never gets the same help question twice (%d of %d)" % [unique.size(), bank.size()])
+	check(quiz.pick_revival_question().is_empty(), "no help question once the whole bank was asked")
+	check(game_state.recent_medical.size() == game_state.RECENT_MEDICAL, "recent help questions are capped at %d" % game_state.RECENT_MEDICAL)
+	quiz.used_revival_questions = []
+	var after_restart := []
+	for i in range(20):
+		after_restart.append(quiz.pick_revival_question()["id"])
+		game_state.recent_medical = asked.slice(asked.size() - game_state.RECENT_MEDICAL)
+	check(after_restart.all(func(id): return not asked.slice(asked.size() - game_state.RECENT_MEDICAL).has(id)), "after a restart the last help questions are not asked again")
+	check(after_restart.any(func(id): return id != after_restart[0]), "help questions are picked at random")
 	quiz.get_parent().queue_free()
 	await process_frame
 
