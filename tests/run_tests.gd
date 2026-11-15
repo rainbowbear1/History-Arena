@@ -14,6 +14,7 @@ const ProgressStoreScript := preload("res://progress_store.gd")
 const Projectile := preload("res://projectile.gd")
 const Soldier := preload("res://soldier.gd")
 const EnvironmentBuilder := preload("res://environment_builder.gd")
+const QuestionAudit := preload("res://question_audit.gd")
 
 var failures := 0
 var checks := 0
@@ -67,6 +68,8 @@ func run() -> void:
 	print("== Question format")
 	test_question_types()
 	test_question_files()
+	print("== Question audit: repeats, leaks, difficulty, translations")
+	test_question_audit()
 	print("== Level select")
 	await test_level_select()
 	print("== Arena gameplay")
@@ -153,7 +156,7 @@ func test_question_types() -> void:
 		["map with coordinate above 1 rejected", _map_with(0, "x", 1.5)],
 		["map with missing coordinate rejected", _map_with(0, "y", null)],
 		["map with wrong correct rejected", _with(_map_with(0, "x", 0.1), "correct", "Нет")],
-		["map with overlapping pins rejected", _map_with(1, "x", 0.15)],
+		["map with overlapping pins rejected", _map_with(1, "x", 0.13)],
 		["extra answer repeating an option rejected", _with(single, "extra_answers", ["A "])],
 		["extra date beside a name rejected", _with(single, "extra_answers", ["1465"])],
 		["extra name beside a date rejected", _with(_with(_with(single, "answers", ["1465", "1456", "1505", "1511"]), "correct", "1465"), "extra_answers", ["Керей"])],
@@ -215,6 +218,55 @@ func test_question_files() -> void:
 	for type in QuestionValidator.TYPES:
 		check(type_counts.get(type, 0) >= (5 if type in ["map", "image"] else 10), "%s tasks across the game: %d" % [type, type_counts.get(type, 0)])
 	check(ResourceLoader.exists("res://assets/maps/kazakhstan.svg") and load("res://assets/maps/kazakhstan.svg") is Texture2D, "Kazakhstan map loads")
+
+
+# Content quality (question_audit.gd): within a level no task repeats another, tests the same
+# fact twice or gives away an answer; difficulty rises from the early levels to the final one;
+# every task has an English version; medical help has its own bank.
+func test_question_audit() -> void:
+	var bands := [[], [], [], []]  # Levels 1-3, 4-6, 7-9, 10.
+	var level_texts := []
+	for level in level_db.levels:
+		var questions: Array = QuestionValidator.load_file(level["question_file"]).questions
+		var issues := QuestionAudit.audit(questions)
+		check(issues.is_empty(), "level %d: no repeated facts or leaked answers %s" % [level["id"], str(issues)])
+		var untagged := questions.filter(func(q): return not q.has("difficulty") or not q.has("en"))
+		check(untagged.is_empty(), "level %d: every task has a difficulty and an English version" % level["id"])
+		var easy := questions.filter(func(q): return q.get("difficulty", 1) == 1).size()
+		if level["id"] >= 7:
+			check(easy == 0, "level %d: no introductory questions on the hard levels (%d)" % [level["id"], easy])
+		elif level["id"] >= 4:
+			check(easy * 5 <= questions.size(), "level %d: at most a fifth introductory questions (%d)" % [level["id"], easy])
+		bands[mini((level["id"] - 1) / 3, 3)].append(QuestionAudit.average_difficulty(questions))
+		for q in questions:
+			level_texts.append(QuestionAudit.stems(q["question"]))
+	var averages: Array = bands.map(func(b): return b.reduce(func(a, x): return a + x, 0.0) / b.size())
+	check(averages[0] < averages[1] and averages[1] < averages[2] and averages[2] < averages[3],
+		"difficulty rises by band: %s" % str(averages.map(func(a): return snappedf(a, 0.01))))
+
+	var medical := QuestionValidator.load_file("res://questions/medical.json")
+	check(medical.errors.is_empty(), "medical bank loads without errors %s" % str(medical.errors))
+	check(medical.questions.size() >= 30, "medical bank has at least 30 questions (%d)" % medical.questions.size())
+	check(medical.questions.all(func(q): return QuestionValidator.get_type(q) == "single_choice" and q.has("en")),
+		"medical questions are bilingual single-choice tasks")
+	check(QuestionAudit.audit(medical.questions).is_empty(), "medical bank: no repeats or leaks %s" % str(QuestionAudit.audit(medical.questions)))
+	var copies: Array = medical.questions.filter(func(m):
+		var mine := QuestionAudit.stems(m["question"])
+		return level_texts.any(func(t): return QuestionAudit.jaccard(mine, t) >= QuestionAudit.NEAR_DUPLICATE))
+	check(copies.is_empty(), "medical questions are not copies of level tasks %s" % str(copies.map(func(q): return q["id"])))
+
+	# The audit itself catches the problems it is meant to catch.
+	var leaked := {"id": "a", "question": "Абай Құнанбайұлы қай жылы туған?", "answers": ["1845 ж.", "1835 ж.", "1855 ж.", "1865 ж."], "correct": "1845 ж."}
+	var reveal := {"id": "b", "type": "matching", "question": "Сәйкестендіріңіз", "pairs": [{"left": "Абай", "right": "1845 жылы туды"}, {"left": "x", "right": "y"}]}
+	check(not QuestionAudit.audit([leaked, reveal]).is_empty(), "audit: a pair that states another task's year is caught")
+	var self_leak := {"id": "c", "question": "Күлтегін ескерткіші кімге арналған?", "answers": ["Күлтегінге", "Бумынға", "Аттилаға", "Мөдеге"], "correct": "Күлтегінге"}
+	check(not QuestionAudit.audit([self_leak]).is_empty(), "audit: a prompt that contains its own answer is caught")
+	var near := {"id": "d", "question": "Алтын адам қай қорғаннан табылды?", "answers": ["Есік", "Берел", "Шілікті", "Бесшатыр"], "correct": "Есік"}
+	var near2 := {"id": "e", "question": "Алтын адам қай қорғаннан табылған?", "answers": ["Есік қорғаны", "Берел", "Шілікті", "Бесшатыр"], "correct": "Есік қорғаны"}
+	check(not QuestionAudit.audit([near, near2]).is_empty(), "audit: near-duplicate prompts are caught")
+	var bad_en := {"question": "Q", "answers": ["a", "b", "c", "d"], "correct": "a", "en": {"question": "Q", "answers": ["a", "b", "c"]}}
+	check(not QuestionValidator.validate(bad_en).is_empty(), "an English version with a missing answer is rejected")
+	check(not QuestionValidator.validate(_with(bad_en, "difficulty", 4)).is_empty(), "difficulty outside 1-3 is rejected")
 
 
 func test_level_select() -> void:
@@ -1249,17 +1301,17 @@ func test_total_score_unlocks() -> void:
 
 	var run := func(id: int, score: int): return {"level": id, "score": score, "stars": 1, "passed": true, "completed": true}
 	check(progress.is_unlocked(1) and not progress.is_unlocked(2), "only level 1 open at the start")
-	progress.record_attempt(run.call(1, 800))
-	check(progress.total_score() == 800 and not progress.is_unlocked(2), "800 is not enough for level 2 (900)")
-	progress.record_attempt(run.call(1, 600))
-	check(progress.total_score() == 800, "a worse replay does not change the total")
-	progress.record_attempt(run.call(1, 1500))
-	check(progress.total_score() == 1500 and progress.is_unlocked(2) and progress.just_opened == [2], "beating the best raises the total and opens level 2")
+	progress.record_attempt(run.call(1, 700))
+	check(progress.total_score() == 700 and not progress.is_unlocked(2), "700 is not enough for level 2 (750)")
+	progress.record_attempt(run.call(1, 500))
+	check(progress.total_score() == 700, "a worse replay does not change the total")
+	progress.record_attempt(run.call(1, 1300))
+	check(progress.total_score() == 1300 and progress.is_unlocked(2) and progress.just_opened == [2], "beating the best raises the total and opens level 2")
 	for i in range(5):
-		progress.record_attempt(run.call(1, 1500))
-	check(progress.total_score() == 1500 and not progress.is_unlocked(3), "farming level 1 again adds nothing")
+		progress.record_attempt(run.call(1, 1300))
+	check(progress.total_score() == 1300 and not progress.is_unlocked(3), "farming level 1 again adds nothing")
 	progress.record_attempt(run.call(2, 300))
-	check(progress.total_score() == 1800 and progress.is_unlocked(3), "level 3 opens at 1600 from two levels")
+	check(progress.total_score() == 1600 and progress.is_unlocked(3), "level 3 opens at 1500 from two levels")
 	level_db.get_level(3)["unlock_score"] = 99999
 	check(progress.is_unlocked(3), "an opened level stays open")
 	level_db.get_level(3)["unlock_score"] = 1600

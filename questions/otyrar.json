@@ -2,100 +2,136 @@
   {
     "id": "otyrar-01",
     "type": "single_choice",
-    "question": "Шыңғыс хан әскері Отырарды қай жылы қоршады?",
-    "answers": ["1219 ж.", "1465 ж.", "1723 ж.", "1916 ж."],
-    "correct": "1219 ж."
+    "difficulty": 2,
+    "question": "Шыңғыс хан әскері Отырарды қоршауды қай жылы бастады?",
+    "answers": ["1219 ж.", "1218 ж.", "1220 ж.", "1221 ж."],
+    "correct": "1219 ж.",
+    "en": {"question": "In which year did Genghis Khan's army begin the siege of Otrar?", "answers": ["1219", "1218", "1220", "1221"]}
   },
   {
     "id": "otyrar-02",
     "type": "single_choice",
-    "question": "Моңғол шапқыншылығы кезінде Отырар қорғанысын басқарған билеуші кім?",
-    "answers": ["Қайырхан", "Тоқтамыс", "Керей", "Бумын"],
-    "correct": "Қайырхан"
+    "difficulty": 1,
+    "question": "1218 жылы моңғол саудагерлерінің керуенін қырғызған, кейін қаланы қорғауды басқарған Отырар әміршісі кім?",
+    "answers": ["Қайырхан", "Темір Мәлік", "Хұмар тегін", "Жалаладдин"],
+    "correct": "Қайырхан",
+    "en": {"question": "Which governor of Otrar had the Mongol trade caravan killed in 1218 and later led the city's defence?", "answers": ["Qayir Khan", "Temür Malik", "Khumar Tegin", "Jalal ad-Din"]}
   },
   {
     "id": "otyrar-03",
     "type": "single_choice",
-    "question": "1218 жылы Отырарда моңғол саудагерлері керуенінің қырылуы қай мемлекетпен соғысқа себеп болды?",
-    "answers": ["Хорезм", "Византия", "Цин империясы", "Ресей империясы"],
-    "correct": "Хорезм"
+    "difficulty": 2,
+    "question": "Отырар 1218 жылы қай мемлекеттің құрамында болды?",
+    "answers": ["Хорезмшахтар мемлекеті", "Қарақытай мемлекеті", "Қарахан мемлекеті", "Ұйғыр идиқұттығы"],
+    "correct": "Хорезмшахтар мемлекеті",
+    "en": {"question": "Which state did Otrar belong to in 1218?", "answers": ["The Khwarazmian Empire", "The Qara Khitai", "The Karakhanid state", "The Uyghur Idiqut state"]}
   },
   {
     "id": "otyrar-04",
-    "type": "fill_blank",
-    "question": "Отырар — Ұлы ___ жолындағы ірі сауда қаласы болды.",
-    "answers": ["Жібек", "Темір", "Теңіз", "Тас"],
-    "correct": "Жібек"
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Отырар өңірінде (Фараб) туған, «Екінші ұстаз» атанған ғұлама кім?",
+    "answers": ["Әбу Насыр әл-Фараби", "Ибн Сина", "Әбу Райхан әл-Бируни", "Махмұд Қашқари"],
+    "correct": "Әбу Насыр әл-Фараби",
+    "en": {"question": "Which scholar, born in the Otrar area (Farab), became known as the 'Second Teacher'?", "answers": ["Abu Nasr al-Farabi", "Ibn Sina", "Abu Rayhan al-Biruni", "Mahmud al-Kashgari"]}
   },
   {
     "id": "otyrar-05",
     "type": "single_choice",
-    "question": "Темучин қай жылы Шыңғыс хан атанып, Моңғол империясының негізін қалады?",
-    "answers": ["1206 ж.", "1219 ж.", "1162 ж.", "1237 ж."],
-    "correct": "1206 ж."
+    "difficulty": 2,
+    "question": "Темучин қай жылы Шыңғыс хан деп жарияланды?",
+    "answers": ["1206 ж.", "1204 ж.", "1211 ж.", "1215 ж."],
+    "correct": "1206 ж.",
+    "en": {"question": "In which year was Temüjin proclaimed Genghis Khan?", "answers": ["1206", "1204", "1211", "1215"]}
   },
   {
     "id": "otyrar-06",
-    "type": "single_choice",
-    "question": "Шыңғыс хан енгізген моңғол заңдарының жинағы қалай аталады?",
-    "answers": ["«Ұлы Яса»", "«Жеті жарғы»", "«Қасым ханның қасқа жолы»", "«Құтадғу біліг»"],
-    "correct": "«Ұлы Яса»"
+    "type": "matching",
+    "difficulty": 2,
+    "question": "Моңғол империясының атауларын мағынасымен сәйкестендіріңіз",
+    "pairs": [
+      {"left": "Ұлы Яса", "right": "Шыңғыс хан заңдарының жинағы"},
+      {"left": "Құрылтай", "right": "Ақсүйектердің жалпы жиналысы"},
+      {"left": "Жарлық", "right": "Ханның жазбаша бұйрығы"},
+      {"left": "Пайза", "right": "Билікті растайтын металл тақта"}
+    ],
+    "en": {"question": "Match the Mongol Empire terms with their meanings", "pairs": [{"left": "Great Yasa", "right": "Code of Genghis Khan's laws"}, {"left": "Kurultai", "right": "Assembly of the nobility"}, {"left": "Yarlyk", "right": "The khan's written decree"}, {"left": "Paiza", "right": "Metal tablet of authority"}]}
   },
   {
     "id": "otyrar-07",
-    "type": "matching",
-    "question": "Тұлғаны сипаттамасымен сәйкестендіріңіз",
-    "pairs": [
-      {"left": "Шыңғыс хан", "right": "Моңғол империясының негізін қалады"},
-      {"left": "Қайырхан", "right": "Отырар қорғанысын басқарды"},
-      {"left": "Мұхаммед шах", "right": "Моңғолдармен соғысқан Хорезм билеушісі"}
-    ]
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Шыңғыс хан Отырарды қоршауға қай ұлдарын қалдырды?",
+    "answers": ["Шағатай мен Үгедей", "Жошы мен Төле", "Төле мен Үгедей", "Бату мен Орда"],
+    "correct": "Шағатай мен Үгедей",
+    "en": {"question": "Which of his sons did Genghis Khan leave to besiege Otrar?", "answers": ["Chagatai and Ögedei", "Jochi and Tolui", "Tolui and Ögedei", "Batu and Orda"]}
   },
   {
     "id": "otyrar-08",
     "type": "single_choice",
-    "question": "Шыңғыс хан Отырарды қоршауға қай ұлдарын қалдырды?",
-    "answers": ["Шағатай мен Үгедей", "Бату мен Берке", "Тоқтамыс пен Едіге", "Керей мен Жәнібек"],
-    "correct": "Шағатай мен Үгедей"
+    "difficulty": 3,
+    "question": "Хорезмшах Мұхаммедті қуып, кейін Каспийді айналып жорыққа шыққан моңғол қолбасшылары кімдер?",
+    "answers": ["Жебе мен Сүбедей", "Мұқали мен Боорчу", "Шиги-Құтұқу мен Тоғачар", "Желме мен Боороғұл"],
+    "correct": "Жебе мен Сүбедей",
+    "en": {"question": "Which Mongol generals pursued the Khwarazmshah Muhammad and then rode on around the Caspian?", "answers": ["Jebe and Subutai", "Muqali and Bo'orchu", "Shigi Qutuqu and Toghachar", "Jelme and Boroqul"]}
   },
   {
     "id": "otyrar-09",
     "type": "chronology",
+    "difficulty": 2,
     "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Моңғол империясының құрылуы", "Отырардағы керуеннің қырылуы", "Шыңғыс ханның Отырарды қоршауы", "Алтын Орданың құрылуы"]
+    "items": ["Темучиннің Шыңғыс хан деп жариялануы", "Отырардағы керуеннің қырылуы", "Хорезмшах Мұхаммедтің қайтыс болуы", "Калка өзеніндегі шайқас"],
+    "en": {"question": "Put the events in chronological order", "items": ["Temüjin proclaimed Genghis Khan", "Killing of the caravan at Otrar", "Death of the Khwarazmshah Muhammad", "Battle of the Kalka River"]}
   },
   {
     "id": "otyrar-10",
     "type": "single_choice",
-    "question": "1220 жылы моңғолдар Отырарды алғаннан кейін қала қандай күйге түсті?",
-    "answers": ["Қиратылды", "Хандықтың астанасы болды", "Ресейге берілді", "Еш зардап шекпеді"],
-    "correct": "Қиратылды"
+    "difficulty": 2,
+    "question": "Хорезмшах Мұхаммедтің моңғолдарға қарсы ұзақ күрескен ұлы кім?",
+    "answers": ["Жалаладдин", "Текеш", "Атсыз", "Ұзлағ шах"],
+    "correct": "Жалаладдин",
+    "en": {"question": "Which son of the Khwarazmshah Muhammad kept fighting the Mongols for years?", "answers": ["Jalal ad-Din", "Tekish", "Atsiz", "Uzlagh Shah"]}
   },
   {
     "id": "otyrar-11",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Хорезмшах Мұхаммед моңғолдардан қашып, қай теңіздегі аралда қайтыс болды?",
+    "answers": ["Каспий теңізі", "Арал теңізі", "Парсы шығанағы", "Қара теңіз"],
+    "correct": "Каспий теңізі",
+    "en": {"question": "Fleeing the Mongols, the Khwarazmshah Muhammad died on an island in which sea?", "answers": ["The Caspian Sea", "The Aral Sea", "The Persian Gulf", "The Black Sea"]}
+  },
+  {
+    "id": "otyrar-12",
     "type": "map",
+    "difficulty": 2,
     "question": "Отырар қаласының орны картада қай жерде?",
     "correct": "Отырар",
     "locations": [
       {"name": "Отырар", "x": 0.527, "y": 0.78, "lat": 42.85, "lon": 68.3},
-      {"name": "Астана", "x": 0.587, "y": 0.305, "lat": 51.17, "lon": 71.45},
-      {"name": "Атырау", "x": 0.213, "y": 0.537, "lat": 47.11, "lon": 51.88},
-      {"name": "Семей", "x": 0.755, "y": 0.348, "lat": 50.41, "lon": 80.25}
-    ]
-  },
-  {
-    "id": "otyrar-12",
-    "type": "image",
-    "question": "Суретте Отырар қаласының орны көрсетілген. Шыңғыс хан әскері бұл қаланы қай ғасырда қоршады?",
-    "image": "res://assets/images/otrar_aerial.jpg",
-    "answers": ["XIII ғасырда", "IX ғасырда", "XVI ғасырда", "XIX ғасырда"],
-    "correct": "XIII ғасырда"
+      {"name": "Ташкент", "x": 0.546, "y": 0.868, "lat": 41.31, "lon": 69.28},
+      {"name": "Тараз", "x": 0.585, "y": 0.777, "lat": 42.9, "lon": 71.37},
+      {"name": "Қызылорда", "x": 0.473, "y": 0.666, "lat": 44.85, "lon": 65.51}
+    ],
+    "en": {"question": "Where is the site of Otrar on the map?", "locations": ["Otrar", "Tashkent", "Taraz", "Kyzylorda"]}
   },
   {
     "id": "otyrar-13",
-    "type": "single_choice",
-    "question": "1219 жылы моңғолдар шабуыл жасағанда Хорезм мемлекетін қай шах биледі?",
-    "answers": ["Мұхаммед", "Текеш", "Атсыз", "Қайырхан"],
-    "correct": "Мұхаммед"
+    "type": "image",
+    "difficulty": 2,
+    "question": "Суретте Отырар қаласының орны көрсетілген. Қала қай өзеннің бойында орналасқан?",
+    "image": "res://assets/images/otrar_aerial.jpg",
+    "answers": ["Сырдария", "Шу", "Талас", "Іле"],
+    "correct": "Сырдария",
+    "en": {"question": "The picture shows the site of Otrar. On which river does the city stand?", "answers": ["Syr Darya", "Chu", "Talas", "Ili"]}
+  },
+  {
+    "id": "otyrar-14",
+    "type": "fill_blank",
+    "difficulty": 3,
+    "question": "Отырарға көмекке жіберіліп, кейін қаладан шығып моңғолдарға берілген Хорезм қолбасшысы — ___.",
+    "answers": ["Қараджа хажиб", "Темір Мәлік", "Хұмар тегін", "Ұзлағ шах"],
+    "correct": "Қараджа хажиб",
+    "en": {"question": "The Khwarazmian commander sent to help Otrar, who later left the city and surrendered to the Mongols, was ___.", "answers": ["Qaracha Hajib", "Temür Malik", "Khumar Tegin", "Uzlagh Shah"]}
   }
 ]

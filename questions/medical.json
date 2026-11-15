@@ -1,0 +1,317 @@
+[
+  {
+    "id": "medical-01",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Қазақ хандығының алғашқы хандары кімдер?",
+    "answers": ["Керей мен Жәнібек", "Қасым мен Хақназар", "Есім мен Тұрсын", "Тәуке мен Абылай"],
+    "correct": "Керей мен Жәнібек",
+    "en": {"question": "Who were the first khans of the Kazakh Khanate?", "answers": ["Kerey and Zhanibek", "Qasym and Haqnazar", "Esim and Tursyn", "Tauke and Abylai"]}
+  },
+  {
+    "id": "medical-02",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Құтадғу біліг» дастанының авторы кім?",
+    "answers": ["Жүсіп Баласағұни", "Махмұд Қашқари", "Қожа Ахмет Ясауи", "Сүлейман Бақырғани"],
+    "correct": "Жүсіп Баласағұни",
+    "en": {"question": "Who wrote the poem 'Kutadgu Bilig'?", "answers": ["Yusuf Balasaguni", "Mahmud al-Kashgari", "Khoja Ahmed Yasawi", "Suleiman Bakirgani"]}
+  },
+  {
+    "id": "medical-03",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Диуани лұғат ат-түрк» сөздігінің авторы кім?",
+    "answers": ["Махмұд Қашқари", "Жүсіп Баласағұни", "Әбу Насыр әл-Фараби", "Ахмет Йүгінеки"],
+    "correct": "Махмұд Қашқари",
+    "en": {"question": "Who compiled the dictionary 'Diwan Lughat al-Turk'?", "answers": ["Mahmud al-Kashgari", "Yusuf Balasaguni", "Abu Nasr al-Farabi", "Ahmad Yugnaki"]}
+  },
+  {
+    "id": "medical-04",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Диуани хикмет» кітабының авторы кім?",
+    "answers": ["Қожа Ахмет Ясауи", "Сүлейман Бақырғани", "Жүсіп Баласағұни", "Махмұд Қашқари"],
+    "correct": "Қожа Ахмет Ясауи",
+    "en": {"question": "Who wrote the 'Diwan-i Hikmet'?", "answers": ["Khoja Ahmed Yasawi", "Suleiman Bakirgani", "Yusuf Balasaguni", "Mahmud al-Kashgari"]}
+  },
+  {
+    "id": "medical-05",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Қазақстанның тұңғыш ғарышкері кім?",
+    "answers": ["Тоқтар Әубәкіров", "Талғат Мұсабаев", "Айдын Айымбетов", "Мұхтар Аймаханов"],
+    "correct": "Тоқтар Әубәкіров",
+    "en": {"question": "Who was Kazakhstan's first cosmonaut?", "answers": ["Toktar Aubakirov", "Talgat Musabayev", "Aidyn Aimbetov", "Mukhtar Aimakhanov"]}
+  },
+  {
+    "id": "medical-06",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Мұхтар Әуезовтің «Абай жолы» эпопеясы неше кітаптан тұрады?",
+    "answers": ["Төрт", "Екі", "Үш", "Бес"],
+    "correct": "Төрт",
+    "en": {"question": "How many books make up Mukhtar Auezov's epic 'The Path of Abai'?", "answers": ["Four", "Two", "Three", "Five"]}
+  },
+  {
+    "id": "medical-07",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Оян, қазақ!» өлеңдер жинағының авторы кім?",
+    "answers": ["Міржақып Дулатұлы", "Ахмет Байтұрсынұлы", "Мағжан Жұмабаев", "Сұлтанмахмұт Торайғыров"],
+    "correct": "Міржақып Дулатұлы",
+    "en": {"question": "Who wrote the poetry collection 'Wake up, Kazakh!'?", "answers": ["Mirzhakyp Dulatuly", "Akhmet Baitursynuly", "Magzhan Zhumabayev", "Sultanmakhmut Toraigyrov"]}
+  },
+  {
+    "id": "medical-08",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "1913 жылы «Қазақ» газетін шығара бастағандардың бірі, тіл ғалымы кім?",
+    "answers": ["Ахмет Байтұрсынұлы", "Мұхтар Әуезов", "Сәкен Сейфуллин", "Ілияс Жансүгіров"],
+    "correct": "Ахмет Байтұрсынұлы",
+    "en": {"question": "Which linguist was among the founders of the newspaper 'Qazaq' in 1913?", "answers": ["Akhmet Baitursynuly", "Mukhtar Auezov", "Saken Seifullin", "Ilyas Zhansugurov"]}
+  },
+  {
+    "id": "medical-09",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Менің Қазақстаным» әнінің әуенін жазған композитор кім?",
+    "answers": ["Шәмші Қалдаяқов", "Нұрғиса Тілендиев", "Әсет Бейсеуов", "Ахмет Жұбанов"],
+    "correct": "Шәмші Қалдаяқов",
+    "en": {"question": "Which composer wrote the music of the song 'Menin Qazaqstanym'?", "answers": ["Shamshi Kaldayakov", "Nurgisa Tlendiyev", "Aset Beiseuov", "Akhmet Zhubanov"]}
+  },
+  {
+    "id": "medical-10",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "«Адай» күйінің авторы кім?",
+    "answers": ["Құрманғазы", "Дәулеткерей", "Тәттімбет", "Қазанғап"],
+    "correct": "Құрманғазы",
+    "en": {"question": "Who composed the kui 'Adai'?", "answers": ["Kurmangazy", "Dauletkerei", "Tattimbet", "Kazangap"]}
+  },
+  {
+    "id": "medical-11",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Тамғалы петроглифтері қай облыста орналасқан?",
+    "answers": ["Алматы облысы", "Жамбыл облысы", "Түркістан облысы", "Қарағанды облысы"],
+    "correct": "Алматы облысы",
+    "en": {"question": "In which region are the Tamgaly petroglyphs?", "answers": ["Almaty Region", "Zhambyl Region", "Turkistan Region", "Karaganda Region"]}
+  },
+  {
+    "id": "medical-12",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "2003 жылы Қазақстаннан ЮНЕСКО-ның Бүкіләлемдік мұра тізіміне алғаш енген нысан қайсы?",
+    "answers": ["Қожа Ахмет Ясауи кесенесі", "Тамғалы петроглифтері", "Сарыарқа далалары мен көлдері", "Ұлы Жібек жолы ескерткіштері"],
+    "correct": "Қожа Ахмет Ясауи кесенесі",
+    "en": {"question": "Which site in Kazakhstan was the first to join the UNESCO World Heritage List, in 2003?", "answers": ["Mausoleum of Khoja Ahmed Yasawi", "Tamgaly petroglyphs", "Saryarka steppe and lakes", "Silk Road sites"]}
+  },
+  {
+    "id": "medical-13",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Абылай ханның кеңесшісі болған жырау кім?",
+    "answers": ["Бұқар жырау", "Асан Қайғы", "Доспамбет жырау", "Шалкиіз жырау"],
+    "correct": "Бұқар жырау",
+    "en": {"question": "Which zhyrau was an adviser to Abylai Khan?", "answers": ["Bukhar Zhyrau", "Asan Kaigy", "Dospambet Zhyrau", "Shalkiiz Zhyrau"]}
+  },
+  {
+    "id": "medical-14",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Аңыз бойынша халқына жайлы мекен — Жерұйықты іздеген ойшыл кім?",
+    "answers": ["Асан Қайғы", "Бұқар жырау", "Қазтуған жырау", "Жиренше шешен"],
+    "correct": "Асан Қайғы",
+    "en": {"question": "In legend, which thinker searched for Zheruiyq, a land of plenty for his people?", "answers": ["Asan Kaigy", "Bukhar Zhyrau", "Kaztugan Zhyrau", "Zhirenshe the Orator"]}
+  },
+  {
+    "id": "medical-15",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Қазақтың тұңғыш кәсіби драма театры 1926 жылы қай қалада ашылды?",
+    "answers": ["Қызылорда", "Алматы", "Орынбор", "Семей"],
+    "correct": "Қызылорда",
+    "en": {"question": "In which city did the first Kazakh professional drama theatre open in 1926?", "answers": ["Kyzylorda", "Almaty", "Orenburg", "Semey"]}
+  },
+  {
+    "id": "medical-16",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Қыз Жібек» операсының композиторы кім?",
+    "answers": ["Евгений Брусиловский", "Ахмет Жұбанов", "Мұқан Төлебаев", "Латиф Хамиди"],
+    "correct": "Евгений Брусиловский",
+    "en": {"question": "Who composed the opera 'Kyz Zhibek'?", "answers": ["Yevgeny Brusilovsky", "Akhmet Zhubanov", "Mukan Tulebayev", "Latif Khamidi"]}
+  },
+  {
+    "id": "medical-17",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Біржан – Сара» операсының авторы кім?",
+    "answers": ["Мұқан Төлебаев", "Евгений Брусиловский", "Нұрғиса Тілендиев", "Ғазиза Жұбанова"],
+    "correct": "Мұқан Төлебаев",
+    "en": {"question": "Who wrote the opera 'Birzhan and Sara'?", "answers": ["Mukan Tulebayev", "Yevgeny Brusilovsky", "Nurgisa Tlendiyev", "Gaziza Zhubanova"]}
+  },
+  {
+    "id": "medical-18",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Мәскеуді қорғаған 316-атқыштар дивизиясын кім басқарды?",
+    "answers": ["Иван Панфилов", "Георгий Жуков", "Константин Рокоссовский", "Иван Конев"],
+    "correct": "Иван Панфилов",
+    "en": {"question": "Who commanded the 316th Rifle Division that defended Moscow?", "answers": ["Ivan Panfilov", "Georgy Zhukov", "Konstantin Rokossovsky", "Ivan Konev"]}
+  },
+  {
+    "id": "medical-19",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Тар жол, тайғақ кешу» романының авторы кім?",
+    "answers": ["Сәкен Сейфуллин", "Бейімбет Майлин", "Ілияс Жансүгіров", "Мағжан Жұмабаев"],
+    "correct": "Сәкен Сейфуллин",
+    "en": {"question": "Who wrote the novel 'Tar zhol, taiğaq keshu' (The Narrow Path)?", "answers": ["Saken Seifullin", "Beimbet Mailin", "Ilyas Zhansugurov", "Magzhan Zhumabayev"]}
+  },
+  {
+    "id": "medical-20",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Құлагер» поэмасының авторы кім?",
+    "answers": ["Ілияс Жансүгіров", "Сәкен Сейфуллин", "Бейімбет Майлин", "Сұлтанмахмұт Торайғыров"],
+    "correct": "Ілияс Жансүгіров",
+    "en": {"question": "Who wrote the poem 'Kulager'?", "answers": ["Ilyas Zhansugurov", "Saken Seifullin", "Beimbet Mailin", "Sultanmakhmut Toraigyrov"]}
+  },
+  {
+    "id": "medical-21",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Қазақ тіліне мемлекеттік тіл мәртебесін берген «Тіл туралы» заң алғаш қай жылы қабылданды?",
+    "answers": ["1989 ж.", "1991 ж.", "1995 ж.", "1997 ж."],
+    "correct": "1989 ж.",
+    "en": {"question": "In which year was the first Language Law giving Kazakh the status of state language adopted?", "answers": ["1989", "1991", "1995", "1997"]}
+  },
+  {
+    "id": "medical-22",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "«Ұлыстың ұлы күні» қай күні тойланады?",
+    "answers": ["22 наурыз", "1 мамыр", "16 желтоқсан", "30 тамыз"],
+    "correct": "22 наурыз",
+    "en": {"question": "On which day is the 'Great Day of the Nation' (Nauryz) celebrated?", "answers": ["22 March", "1 May", "16 December", "30 August"]}
+  },
+  {
+    "id": "medical-23",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Батыр Баян» поэмасының авторы кім?",
+    "answers": ["Мағжан Жұмабаев", "Сәкен Сейфуллин", "Ілияс Жансүгіров", "Міржақып Дулатұлы"],
+    "correct": "Мағжан Жұмабаев",
+    "en": {"question": "Who wrote the poem 'Batyr Bayan'?", "answers": ["Magzhan Zhumabayev", "Saken Seifullin", "Ilyas Zhansugurov", "Mirzhakyp Dulatuly"]}
+  },
+  {
+    "id": "medical-24",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Айша бибі кесенесі қай қала маңында орналасқан?",
+    "answers": ["Тараз", "Түркістан", "Шымкент", "Қызылорда"],
+    "correct": "Тараз",
+    "en": {"question": "Near which city is the Aisha Bibi mausoleum?", "answers": ["Taraz", "Turkistan", "Shymkent", "Kyzylorda"]}
+  },
+  {
+    "id": "medical-25",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Бекет ата жер асты мешіті қай облыста орналасқан?",
+    "answers": ["Маңғыстау облысы", "Атырау облысы", "Ақтөбе облысы", "Батыс Қазақстан облысы"],
+    "correct": "Маңғыстау облысы",
+    "en": {"question": "In which region is the underground mosque of Beket Ata?", "answers": ["Mangystau Region", "Atyrau Region", "Aktobe Region", "West Kazakhstan Region"]}
+  },
+  {
+    "id": "medical-26",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Шоқан Уәлихановтың шын есімі қандай?",
+    "answers": ["Мұхаммед-Қанафия", "Мұхаммед-Хайдар", "Әбілмансұр", "Ибраһим"],
+    "correct": "Мұхаммед-Қанафия",
+    "en": {"question": "What was Shokan Ualikhanov's real name?", "answers": ["Muhammad-Hanafiya", "Muhammad-Haidar", "Abilmansur", "Ibrahim"]}
+  },
+  {
+    "id": "medical-27",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Ұшқан ұя» шығармасының авторы кім?",
+    "answers": ["Бауыржан Момышұлы", "Мұхтар Әуезов", "Ғабит Мүсірепов", "Ілияс Есенберлин"],
+    "correct": "Бауыржан Момышұлы",
+    "en": {"question": "Who wrote the book 'Ushqan uya' (The Flown Nest)?", "answers": ["Baurzhan Momyshuly", "Mukhtar Auezov", "Gabit Musrepov", "Ilyas Yesenberlin"]}
+  },
+  {
+    "id": "medical-28",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Көшпенділер» тарихи трилогиясының авторы кім?",
+    "answers": ["Ілияс Есенберлин", "Мұхтар Әуезов", "Ғабит Мүсірепов", "Әбдіжәміл Нұрпейісов"],
+    "correct": "Ілияс Есенберлин",
+    "en": {"question": "Who wrote the historical trilogy 'The Nomads'?", "answers": ["Ilyas Yesenberlin", "Mukhtar Auezov", "Gabit Musrepov", "Abdizhamil Nurpeisov"]}
+  },
+  {
+    "id": "medical-29",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "«Қан мен тер» трилогиясының авторы кім?",
+    "answers": ["Әбдіжәміл Нұрпейісов", "Ілияс Есенберлин", "Ғабит Мүсірепов", "Тахауи Ахтанов"],
+    "correct": "Әбдіжәміл Нұрпейісов",
+    "en": {"question": "Who wrote the trilogy 'Blood and Sweat'?", "answers": ["Abdizhamil Nurpeisov", "Ilyas Yesenberlin", "Gabit Musrepov", "Takhaui Akhtanov"]}
+  },
+  {
+    "id": "medical-30",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "«Ұлпан» романының авторы кім?",
+    "answers": ["Ғабит Мүсірепов", "Ілияс Есенберлин", "Мұхтар Әуезов", "Сәбит Мұқанов"],
+    "correct": "Ғабит Мүсірепов",
+    "en": {"question": "Who wrote the novel 'Ulpan'?", "answers": ["Gabit Musrepov", "Ilyas Yesenberlin", "Mukhtar Auezov", "Sabit Mukanov"]}
+  },
+  {
+    "id": "medical-31",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Ұлы Отан соғысы жылдары «Ленинградтық өренім» өлеңін шығарған ақын кім?",
+    "answers": ["Жамбыл Жабаев", "Кенен Әзірбаев", "Нұрпейіс Байғанин", "Иса Байзақов"],
+    "correct": "Жамбыл Жабаев",
+    "en": {"question": "Which poet composed 'Leningraders, my children' during the Second World War?", "answers": ["Zhambyl Zhabayev", "Kenen Azirbayev", "Nurpeis Baiganin", "Isa Baizakov"]}
+  },
+  {
+    "id": "medical-32",
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Сырдария мен Әмудария қай теңізге құяды?",
+    "answers": ["Арал теңізі", "Каспий теңізі", "Балқаш көлі", "Алакөл"],
+    "correct": "Арал теңізі",
+    "en": {"question": "Which sea do the Syr Darya and Amu Darya flow into?", "answers": ["The Aral Sea", "The Caspian Sea", "Lake Balkhash", "Lake Alakol"]}
+  },
+  {
+    "id": "medical-33",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Ұлы Отан соғысында Кеңес Одағының Батыры атағын екі рет алған қазақ ұшқышы кім?",
+    "answers": ["Талғат Бигелдинов", "Нүркен Әбдіров", "Сағадат Нұрмағамбетов", "Леонид Беда"],
+    "correct": "Талғат Бигелдинов",
+    "en": {"question": "Which Kazakh pilot was twice made a Hero of the Soviet Union in the Second World War?", "answers": ["Talgat Bigeldinov", "Nurken Abdirov", "Sagadat Nurmagambetov", "Leonid Beda"]}
+  },
+  {
+    "id": "medical-34",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "1942 жылы Сталинград түбінде жанып бара жатқан ұшағын жау техникасына бағыттаған қазақ ұшқышы кім?",
+    "answers": ["Нүркен Әбдіров", "Талғат Бигелдинов", "Хиуаз Доспанова", "Сергей Луганский"],
+    "correct": "Нүркен Әбдіров",
+    "en": {"question": "Which Kazakh pilot steered his burning plane into enemy vehicles near Stalingrad in 1942?", "answers": ["Nurken Abdirov", "Talgat Bigeldinov", "Khiuaz Dospanova", "Sergei Lugansky"]}
+  },
+  {
+    "id": "medical-35",
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Кенесары Қасымұлымен бірге соғысып, онымен бірге қаза тапқан інісі кім?",
+    "answers": ["Наурызбай", "Ағыбай", "Иман", "Жанқожа"],
+    "correct": "Наурызбай",
+    "en": {"question": "Which younger brother fought beside Kenesary Kasymuly and died with him?", "answers": ["Nauryzbai", "Agybai", "Iman", "Zhankozha"]}
+  }
+]

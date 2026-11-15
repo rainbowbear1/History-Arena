@@ -90,9 +90,11 @@ level, the best score, best stars, whether it was passed and the number of attem
   counts when it beats that level's best and farming one level cannot inflate it (online, the same
   sum is the leaderboard total). A level opens when the total reaches its `unlock_score` and then
   stays open (saved in `unlocked`; levels opened under the old pass-the-previous-level rule stay
-  open). Proposed thresholds, levels 1–10: 0, 900, 1600, 2500, 3300, 4100, 4900, 5800, 6700, 7700 —
+  open). Proposed thresholds (provisional, awaiting playtest approval), levels 1–10: 0, 750, 1500, 2350,
+  3200, 4050, 4900, 5750, 6650, 7600 (lowered by up to 150 after the November question overhaul changed
+  the task counts) —
   each is at or below the sum of the pass marks of all earlier levels (so passing every level at its
-  pass mark is enough), and from level 3 on above what any single level gives (max 1500). They are
+  pass mark is enough), and from level 3 on above what any single earlier level gives. They are
   computed without the "double score" ability (+100–200 per level), which only gets there sooner.
   Settings →
   "Демо режимі" opens every level that has questions (for presentations); "Прогресті тазалау"
@@ -149,6 +151,19 @@ A question file is a JSON array. Every entry has:
 | `type` | no | One of the six types below. Missing means `single_choice`. |
 | `id` | no (recommended) | Unique text id within the file, e.g. `"saka-01"`. Used for statistics later. |
 | `explanation` | no | Short fact shown after answering. |
+| `difficulty` | no (expected) | 1 introductory, 2 moderate, 3 demanding. The audit checks that the average rises from levels 1–3 to 4–6, 7–9 and 10, that levels 4–6 have at most a fifth level-1 tasks and levels 7–10 none. |
+| `en` | no (expected) | English version: the same fields (`question`, `answers`, `extra_answers`, `pairs`, `items`, and `locations` as a list of names) **in the same order**, so the correct answer is found by position. Ids and answer mapping are shared by both languages. |
+
+**Content rules** (checked by `question_audit.gd`, report: `godot --headless --path . --script
+res://tools/audit_questions.gd`). A run asks every task of a level, so within a level:
+- no two prompts are near duplicates (60 % shared word stems);
+- no two choice tasks have the same correct answer;
+- no prompt, matching pair or chronology event states another task's answer (its year, or all
+  significant words of it); wrong options may repeat freely;
+- no prompt contains its own answer, unless a wrong option shares the same words.
+Words are compared by their first five letters so Kazakh endings do not hide a repeat.
+Distractors should come from the same era and region: rulers of the same century, real
+neighbouring states, close dates.
 
 Examples of every type: `tests/fixtures/all_types.json`.
 
@@ -166,7 +181,7 @@ question: rulers beside rulers, rivers beside rivers. Leave it out when no sensi
 `items`: 3–5 unique texts **in the correct order**. The game shuffles them.
 
 ### 4. `map` — find a place on the map of Kazakhstan
-`locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, at least 0.08 apart, where x/y are positions
+`locations`: exactly 4 objects `{ "name": ..., "x": 0–1, "y": 0–1 }`, at least 0.05 apart, where x/y are positions
 on the map image (0,0 = top-left, 1,1 = bottom-right). `correct`: one of the names.
 Pins show numbers 1–4, not names. The board shows `assets/maps/kazakhstan.svg` (Natural Earth).
 Get x/y with `python tools/build_map.py --point <lat> <lon>` and keep `lat`/`lon` in the entry

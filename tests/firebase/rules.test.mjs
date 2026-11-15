@@ -25,7 +25,7 @@ const alice = () => db("alice", "Alice A");
 const bob = () => db("bob", "Bob B");
 
 function attempt(level, score, extra = {}) {
-  const max = { 1: 1500, 2: 1300, 3: 1400 }[level] ?? 1300;
+  const max = { 1: 1300, 2: 1300, 3: 1400, 4: 1400, 10: 1500 }[level] ?? 1300;
   return {
     level, character: "tomyris", score, max_score: max, correct: score / 100, wrong: 1, playtime_sec: 300,
     stars: score >= max * 0.95 ? 3 : score >= max * 0.6 ? 1 : 0, completed: true, revivals_used: 0,
@@ -161,5 +161,5 @@ test("at most one result every 5 seconds", async () => {
 });
 
 test("double-score bonus fits within the limit", async () => {
-  await assertSucceeds(submit(alice(), "alice", "Alice A", attempt(1, 1700, { stars: 3 })));
+  await assertSucceeds(submit(alice(), "alice", "Alice A", attempt(1, 1500, { stars: 3 })));
 });

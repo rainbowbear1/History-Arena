@@ -2,109 +2,135 @@
   {
     "id": "golden_horde-01",
     "type": "single_choice",
-    "question": "Алтын Орданың негізін қалаған хан кім?",
-    "answers": ["Бату", "Тоқтамыс", "Өзбек", "Керей"],
+    "difficulty": 1,
+    "question": "Батыс жорығынан кейін Алтын Орданың негізін қалаған хан кім?",
+    "answers": ["Бату", "Берке", "Сартақ", "Шайбан"],
     "correct": "Бату",
-    "extra_answers": ["Берке", "Едіге"]
+    "extra_answers": ["Тоқа-Темір"],
+    "en": {"question": "Which khan founded the Golden Horde after the Western Campaign?", "answers": ["Batu", "Berke", "Sartaq", "Shiban"], "extra_answers": ["Toqa-Temür"]}
   },
   {
     "id": "golden_horde-02",
     "type": "single_choice",
-    "question": "Бату хан кімнің немересі?",
-    "answers": ["Шыңғыс ханның", "Абылай ханның", "Әмір Темірдің", "Бумын қағанның"],
-    "correct": "Шыңғыс ханның",
-    "extra_answers": ["Құбылай ханның", "Керей ханның"]
+    "difficulty": 2,
+    "question": "Алтын Орда мемлекеті қай жылы құрылды?",
+    "answers": ["1243 ж.", "1236 ж.", "1227 ж.", "1256 ж."],
+    "correct": "1243 ж.",
+    "extra_answers": ["1240 ж."],
+    "en": {"question": "In which year was the Golden Horde founded?", "answers": ["1243", "1236", "1227", "1256"], "extra_answers": ["1240"]}
   },
   {
     "id": "golden_horde-03",
     "type": "single_choice",
-    "question": "Алтын Орданың астанасы қалай аталды?",
-    "answers": ["Сарай", "Отырар", "Қарақорым", "Түркістан"],
-    "correct": "Сарай",
-    "extra_answers": ["Самарқанд", "Бұхара"]
+    "difficulty": 2,
+    "question": "Алтын Орданың астанасы Сарай қай өзеннің төменгі ағысында салынды?",
+    "answers": ["Еділ", "Дон", "Жайық", "Днепр"],
+    "correct": "Еділ",
+    "extra_answers": ["Кама"],
+    "en": {"question": "On the lower course of which river was Sarai, the capital of the Golden Horde, built?", "answers": ["Volga", "Don", "Ural (Zhaiyk)", "Dnieper"], "extra_answers": ["Kama"]}
   },
   {
     "id": "golden_horde-04",
     "type": "single_choice",
-    "question": "Алтын Орда Шыңғыс хан ұлдарының қайсысының ұлысы негізінде құрылды?",
-    "answers": ["Жошы", "Шағатай", "Үгедей", "Төле"],
-    "correct": "Жошы",
-    "extra_answers": ["Бату", "Құбылай"]
+    "difficulty": 1,
+    "question": "Өзбек хан тұсында Алтын Ордада қай дін мемлекеттік дінге айналды?",
+    "answers": ["Ислам", "Христиан діні", "Буддизм", "Тәңіршілдік"],
+    "correct": "Ислам",
+    "extra_answers": ["Иудаизм"],
+    "en": {"question": "Which religion became the state religion of the Golden Horde under Özbeg Khan?", "answers": ["Islam", "Christianity", "Buddhism", "Tengrism"], "extra_answers": ["Judaism"]}
   },
   {
     "id": "golden_horde-05",
     "type": "single_choice",
-    "question": "Өзбек хан тұсында Алтын Ордада қай дін мемлекеттік дінге айналды?",
-    "answers": ["Ислам", "Буддизм", "Христиан діні", "Тәңіршілдік"],
-    "correct": "Ислам",
-    "extra_answers": ["Зороастризм", "Иудаизм"]
+    "difficulty": 3,
+    "question": "Алтын Орданың шығыс қанаты — Ақ Орданың негізін қалаған кім?",
+    "answers": ["Орда Ежен", "Шайбан", "Тоқа-Темір", "Ноғай"],
+    "correct": "Орда Ежен",
+    "extra_answers": ["Берке"],
+    "en": {"question": "Who founded the White Horde (Ak Orda), the eastern wing of the Golden Horde?", "answers": ["Orda Ichen", "Shiban", "Toqa-Temür", "Nogai"], "extra_answers": ["Berke"]}
   },
   {
     "id": "golden_horde-06",
-    "type": "fill_blank",
-    "question": "Алтын Орданың ірі қаласы Сарайшық ___ өзенінің бойында орналасқан.",
-    "answers": ["Жайық", "Сырдария", "Ертіс", "Іле"],
-    "correct": "Жайық",
-    "extra_answers": ["Еділ", "Есіл"]
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "1395 жылы Терек өзеніндегі шайқаста Тоқтамыс ханды жеңген әмірші кім?",
+    "answers": ["Әмір Темір", "Едіге", "Мамай", "Ұрыс хан"],
+    "correct": "Әмір Темір",
+    "extra_answers": ["Ұлықбек"],
+    "en": {"question": "Who defeated Tokhtamysh Khan at the Battle of the Terek River in 1395?", "answers": ["Timur", "Edigu", "Mamai", "Urus Khan"], "extra_answers": ["Ulugh Beg"]}
   },
   {
     "id": "golden_horde-07",
-    "type": "single_choice",
-    "question": "Алтын Орда ханы Тоқтамыс қай әміршімен соғысты?",
-    "answers": ["Әмір Темір", "Шыңғыс хан", "Бату хан", "Әбілқайыр хан"],
-    "correct": "Әмір Темір",
-    "extra_answers": ["Өзбек хан", "Керей хан"]
+    "type": "fill_blank",
+    "difficulty": 2,
+    "question": "1380 жылы Куликово шайқасында Алтын Орда әмірі ___ жеңіліс тапты.",
+    "answers": ["Мамай", "Едіге", "Ноғай", "Тоқтамыс"],
+    "correct": "Мамай",
+    "extra_answers": ["Ұрыс"],
+    "en": {"question": "In 1380, at the Battle of Kulikovo, the Golden Horde emir ___ was defeated.", "answers": ["Mamai", "Edigu", "Nogai", "Tokhtamysh"], "extra_answers": ["Urus"]}
   },
   {
     "id": "golden_horde-08",
     "type": "single_choice",
-    "question": "Алтын Орда әлсірегеннен кейін Қазақстан аумағында құрылған мемлекеттердің бірі қайсы?",
-    "answers": ["Әбілқайыр хандығы", "Түрік қағанаты", "Қарахан мемлекеті", "Жоңғар хандығы"],
-    "correct": "Әбілқайыр хандығы",
-    "extra_answers": ["Ғұн мемлекеті", "Түргеш қағанаты"]
+    "difficulty": 3,
+    "question": "Моңғолдардың батыс жорығы кезінде 1241 жылы Мохи шайқасында қай елдің әскері талқандалды?",
+    "answers": ["Венгрия", "Польша", "Болгария", "Византия"],
+    "correct": "Венгрия",
+    "extra_answers": ["Чехия"],
+    "en": {"question": "During the Mongols' Western Campaign, the army of which country was crushed at the Battle of Mohi in 1241?", "answers": ["Hungary", "Poland", "Bulgaria", "Byzantium"], "extra_answers": ["Bohemia"]}
   },
   {
     "id": "golden_horde-09",
     "type": "single_choice",
-    "question": "Алтын Орда қай ғасырда құрылды?",
-    "answers": ["XIII ғасырда", "VI ғасырда", "XV ғасырда", "XVIII ғасырда"],
-    "correct": "XIII ғасырда",
-    "extra_answers": ["XI ғасырда", "XIV ғасырда"]
+    "difficulty": 2,
+    "question": "Орыс князьдері билік құқығын растау үшін хан ордасынан алған жазбаша рұқсат қалай аталды?",
+    "answers": ["Жарлық", "Пайза", "Яса", "Бітік"],
+    "correct": "Жарлық",
+    "en": {"question": "What was the written permit that Russian princes received from the khan to confirm their rule?", "answers": ["Yarlyk", "Paiza", "Yasa", "Bitik"]}
   },
   {
     "id": "golden_horde-10",
     "type": "matching",
-    "question": "Билеушіні оның ісімен сәйкестендіріңіз",
+    "difficulty": 2,
+    "question": "Алтын Орда атауларын мағынасымен сәйкестендіріңіз",
     "pairs": [
-      {"left": "Бату", "right": "Алтын Орданың негізін қалады"},
-      {"left": "Өзбек хан", "right": "Исламды мемлекеттік дін етті"},
-      {"left": "Тоқтамыс", "right": "Әмір Темірмен соғысты"}
-    ]
+      {"left": "Ұлыс", "right": "Хан ұрпағына берілген иелік"},
+      {"left": "Беклербек", "right": "Әскерді басқарған бас әмір"},
+      {"left": "Даруға", "right": "Хан атынан алым жинаған шенеунік"},
+      {"left": "Тамға", "right": "Сауда алымы және таңба"}
+    ],
+    "en": {"question": "Match the Golden Horde terms with their meanings", "pairs": [{"left": "Ulus", "right": "Domain granted to a prince"}, {"left": "Beklerbek", "right": "Chief emir in command of the army"}, {"left": "Darugha", "right": "Official collecting tribute for the khan"}, {"left": "Tamga", "right": "Trade duty and seal"}]}
   },
   {
     "id": "golden_horde-11",
     "type": "chronology",
+    "difficulty": 2,
     "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Шыңғыс ханның Отырарды алуы", "Алтын Орданың құрылуы", "Әмір Темір мен Тоқтамыстың соғысы", "Қазақ хандығының құрылуы"]
+    "items": ["Мохи шайқасы", "Өзбек ханның таққа отыруы", "Куликово шайқасы", "Терек шайқасы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Battle of Mohi", "Özbeg Khan takes the throne", "Battle of Kulikovo", "Battle of the Terek"]}
   },
   {
     "id": "golden_horde-12",
     "type": "map",
+    "difficulty": 2,
     "question": "Алтын Орданың ірі қаласы Сарайшықтың орны картада қай жерде?",
     "correct": "Сарайшық",
     "locations": [
-      {"name": "Сарайшық", "x": 0.21, "y": 0.513, "lat": 47.53, "lon": 51.73},
-      {"name": "Түркістан", "x": 0.526, "y": 0.754, "lat": 43.3, "lon": 68.27},
-      {"name": "Астана", "x": 0.587, "y": 0.305, "lat": 51.17, "lon": 71.45},
-      {"name": "Семей", "x": 0.755, "y": 0.348, "lat": 50.41, "lon": 80.25}
-    ]
+      {"name": "Сарайшық", "x": 0.21, "y": 0.513, "lat": 47.52, "lon": 51.75},
+      {"name": "Құлсары", "x": 0.254, "y": 0.546, "lat": 46.95, "lon": 54.01},
+      {"name": "Бейнеу", "x": 0.276, "y": 0.639, "lat": 45.32, "lon": 55.2},
+      {"name": "Орал", "x": 0.203, "y": 0.301, "lat": 51.23, "lon": 51.37}
+    ],
+    "en": {"question": "Where is the site of Saraishyk, a major Golden Horde city, on the map?", "locations": ["Saraishyk", "Kulsary", "Beyneu", "Oral"]}
   },
   {
     "id": "golden_horde-13",
     "type": "image",
+    "difficulty": 2,
     "question": "Суреттегі Ұлытау өңіріндегі кесене кімге арналған деп есептеледі?",
     "image": "res://assets/images/jochi_mausoleum.jpg",
-    "answers": ["Жошы хан", "Бату хан", "Тоқтамыс хан", "Өзбек хан"],
-    "correct": "Жошы хан"
+    "answers": ["Жошы хан", "Алаша хан", "Домбауыл", "Бату хан"],
+    "correct": "Жошы хан",
+    "en": {"question": "The mausoleum in the picture stands in the Ulytau area. To whom is it traditionally attributed?", "answers": ["Jochi Khan", "Alasha Khan", "Dombauyl", "Batu Khan"]}
   }
 ]

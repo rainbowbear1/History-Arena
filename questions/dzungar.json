@@ -2,97 +2,121 @@
   {
     "id": "dzungar-01",
     "type": "single_choice",
-    "question": "«Ақтабан шұбырынды, Алқакөл сұлама» апаты қай жылы басталды?",
-    "answers": ["1723 ж.", "1643 ж.", "1729 ж.", "1771 ж."],
+    "difficulty": 3,
+    "question": "«Ақтабан шұбырынды, Алқакөл сұлама» нәубеті қай жылы басталды?",
+    "answers": ["1723 ж.", "1718 ж.", "1720 ж.", "1725 ж."],
     "correct": "1723 ж.",
-    "extra_answers": ["1635 ж.", "1756 ж."]
+    "extra_answers": ["1717 ж.", "1722 ж."],
+    "en": {"question": "In which year did the disaster known as 'Aktaban shubyryndy, Alkakol sulama' begin?", "answers": ["1723", "1718", "1720", "1725"], "extra_answers": ["1717", "1722"]}
   },
   {
     "id": "dzungar-02",
     "type": "single_choice",
-    "question": "1643 жылғы Орбұлақ шайқасында қазақ әскерін басқарған хан кім?",
-    "answers": ["Жәңгір", "Абылай", "Кенесары", "Бату"],
+    "difficulty": 2,
+    "question": "1643 жылғы Орбұлақ шайқасында қазақ жасағын басқарған хан кім?",
+    "answers": ["Жәңгір", "Есім", "Тәуке", "Тәуекел"],
     "correct": "Жәңгір",
-    "extra_answers": ["Есім", "Тәуке"]
+    "extra_answers": ["Тұрсын", "Хақназар"],
+    "en": {"question": "Which khan led the Kazakh force at the Battle of Orbulak in 1643?", "answers": ["Zhangir", "Esim", "Tauke", "Tauekel"], "extra_answers": ["Tursyn", "Haqnazar"]}
   },
   {
     "id": "dzungar-03",
     "type": "fill_blank",
-    "question": "1643 жылы Жәңгір хан жоңғарларды ___ шайқасында жеңді.",
-    "answers": ["Орбұлақ", "Талас", "Бұланты", "Отырар"],
-    "correct": "Орбұлақ",
-    "extra_answers": ["Аңырақай", "Аягөз"]
+    "difficulty": 2,
+    "question": "1726 жылы үш жүздің өкілдері жоңғарларға қарсы бірігу үшін ___ деген жерде бас қосты.",
+    "answers": ["Ордабасы", "Күлтөбе", "Ұлытау", "Хантау"],
+    "correct": "Ордабасы",
+    "extra_answers": ["Қарақұм", "Қазығұрт"],
+    "en": {"question": "In 1726 representatives of the three zhuzes met at ___ to unite against the Dzungars.", "answers": ["Ordabasy", "Kultobe", "Ulytau", "Khantau"], "extra_answers": ["Karakum", "Kazygurt"]}
   },
   {
     "id": "dzungar-04",
     "type": "single_choice",
-    "question": "Жоңғарларға қарсы Аңырақай шайқасында қазақ жасағын кім басқарды?",
-    "answers": ["Әбілқайыр хан", "Керей хан", "Бату хан", "Қасым хан"],
+    "difficulty": 2,
+    "question": "Аңырақай шайқасында біріккен қазақ жасағын кім басқарды?",
+    "answers": ["Әбілқайыр хан", "Болат хан", "Сәмеке хан", "Әбілмәмбет хан"],
     "correct": "Әбілқайыр хан",
-    "extra_answers": ["Жәңгір хан", "Тәуке хан"]
+    "extra_answers": ["Барақ сұлтан", "Абылай сұлтан"],
+    "en": {"question": "Who led the united Kazakh force at the Battle of Anyrakay?", "answers": ["Abulkhair Khan", "Bolat Khan", "Sameke Khan", "Abilmambet Khan"], "extra_answers": ["Sultan Barak", "Sultan Abylai"]}
   },
   {
     "id": "dzungar-05",
     "type": "single_choice",
+    "difficulty": 2,
     "question": "Бұланты өзені бойындағы жеңістен кейін шайқас болған жер қалай аталып кетті?",
-    "answers": ["Қалмаққырылған", "Ақтабан", "Алқакөл", "Орбұлақ"],
+    "answers": ["Қалмаққырылған", "Аңырақай", "Итішпес", "Шұбартау"],
     "correct": "Қалмаққырылған",
-    "extra_answers": ["Аңырақай", "Шұбартау"]
+    "extra_answers": ["Қарасиыр", "Ақтабан"],
+    "en": {"question": "After the victory on the Bulanty river, what name did the battlefield receive?", "answers": ["Kalmakkyrylgan", "Anyrakay", "Itishpes", "Shubartau"], "extra_answers": ["Karasiyr", "Aktaban"]}
   },
   {
     "id": "dzungar-06",
     "type": "single_choice",
-    "question": "Абылай хан ресми түрде хан болып қай жылы сайланды?",
-    "answers": ["1771 ж.", "1723 ж.", "1643 ж.", "1822 ж."],
-    "correct": "1771 ж.",
-    "extra_answers": ["1731 ж.", "1756 ж."]
+    "difficulty": 2,
+    "question": "1755–1758 жылдары Жоңғар хандығын талқандаған мемлекет қайсы?",
+    "answers": ["Цин империясы", "Ресей империясы", "Қоқан хандығы", "Бұхар хандығы"],
+    "correct": "Цин империясы",
+    "extra_answers": ["Хиуа хандығы", "Осман империясы"],
+    "en": {"question": "Which state destroyed the Dzungar Khanate in 1755–1758?", "answers": ["The Qing Empire", "The Russian Empire", "The Kokand Khanate", "The Bukhara Khanate"], "extra_answers": ["The Khiva Khanate", "The Ottoman Empire"]}
   },
   {
     "id": "dzungar-07",
     "type": "single_choice",
-    "question": "XVIII ғасырдың ортасында Жоңғар хандығын қай мемлекет талқандады?",
-    "answers": ["Цин империясы", "Ресей империясы", "Қоқан хандығы", "Осман империясы"],
-    "correct": "Цин империясы",
-    "extra_answers": ["Бұхар хандығы", "Хиуа хандығы"]
+    "difficulty": 3,
+    "question": "«Елім-ай» әнінің авторы ретінде дәстүрлі түрде кім аталады?",
+    "answers": ["Қожаберген жырау", "Бұқар жырау", "Ақтамберді жырау", "Үмбетей жырау"],
+    "correct": "Қожаберген жырау",
+    "extra_answers": ["Тәттіқара ақын"],
+    "en": {"question": "Who is traditionally named as the author of the song 'Elim-ai'?", "answers": ["Kozhabergen Zhyrau", "Bukhar Zhyrau", "Aktamberdi Zhyrau", "Umbetei Zhyrau"], "extra_answers": ["Tattikara Akyn"]}
   },
   {
     "id": "dzungar-08",
     "type": "single_choice",
-    "question": "«Елім-ай» әні қай тарихи оқиғаға байланысты шыққан?",
-    "answers": ["Ақтабан шұбырынды", "Тың игеру", "Желтоқсан оқиғасы", "Отырар қоршауы"],
-    "correct": "Ақтабан шұбырынды",
-    "extra_answers": ["Аңырақай шайқасы", "Орбұлақ шайқасы"]
+    "difficulty": 2,
+    "question": "Жоңғарларға қарсы соғыста «Дарабоз» атанған батыр кім?",
+    "answers": ["Қабанбай", "Бөгенбай", "Наурызбай", "Райымбек"],
+    "correct": "Қабанбай",
+    "extra_answers": ["Малайсары", "Есет"],
+    "en": {"question": "Which batyr of the wars against the Dzungars was called 'Daraboz'?", "answers": ["Kabanbay", "Bogenbay", "Nauryzbay", "Raiymbek"], "extra_answers": ["Malaisary", "Eset"]}
   },
   {
     "id": "dzungar-09",
-    "type": "matching",
-    "question": "Билеушіні оқиғамен сәйкестендіріңіз",
-    "pairs": [
-      {"left": "Жәңгір хан", "right": "Орбұлақ шайқасы"},
-      {"left": "Әбілқайыр хан", "right": "Аңырақай шайқасы"},
-      {"left": "Абылай хан", "right": "1771 жылы хан сайланды"}
-    ]
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "1740–1741 жылдары жоңғарлардың тұтқынында болған қазақ сұлтаны кім?",
+    "answers": ["Абылай", "Әбілмәмбет", "Барақ", "Сәмеке"],
+    "correct": "Абылай",
+    "extra_answers": ["Нұралы"],
+    "en": {"question": "Which Kazakh sultan was held captive by the Dzungars in 1740–1741?", "answers": ["Abylai", "Abilmambet", "Barak", "Sameke"], "extra_answers": ["Nurali"]}
   },
   {
     "id": "dzungar-10",
-    "type": "chronology",
-    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Орбұлақ шайқасы", "Ақтабан шұбырынды", "Аңырақай шайқасы", "Абылайдың хан сайлануы"]
+    "type": "matching",
+    "difficulty": 3,
+    "question": "Жоңғар билеушілерін сипаттамасымен сәйкестендіріңіз",
+    "pairs": [
+      {"left": "Батур қонтайшы", "right": "Жоңғар хандығының негізін қалады"},
+      {"left": "Цеван-Рабдан", "right": "Ақтабан шұбырынды кезінде билік құрды"},
+      {"left": "Галдан Церен", "right": "1727–1745 жылдары билік құрды"}
+    ],
+    "en": {"question": "Match the Dzungar rulers with their descriptions", "pairs": [{"left": "Erdeni Batur", "right": "Founded the Dzungar Khanate"}, {"left": "Tsewang Rabtan", "right": "Ruled during Aktaban shubyryndy"}, {"left": "Galdan Tseren", "right": "Ruled in 1727–1745"}]}
   },
   {
     "id": "dzungar-11",
-    "type": "single_choice",
-    "question": "Орбұлақ шайқасында Жәңгір ханға көмекке келген батыр кім?",
-    "answers": ["Жалаңтөс", "Қабанбай", "Бөгенбай", "Наурызбай"],
-    "correct": "Жалаңтөс",
-    "extra_answers": ["Райымбек", "Есет"]
+    "type": "chronology",
+    "difficulty": 3,
+    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
+    "items": ["Орбұлақ шайқасы", "Ақтабан шұбырынды", "Аңырақай шайқасы", "Жоңғар хандығының құлауы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Battle of Orbulak", "Aktaban shubyryndy", "Battle of Anyrakay", "Fall of the Dzungar Khanate"]}
   },
   {
     "id": "dzungar-12",
     "type": "single_choice",
-    "question": "Қабанбай, Бөгенбай, Наурызбай батырлар кімдерге қарсы соғысты?",
-    "answers": ["Жоңғарларға", "Парсыларға", "Ғұндарға", "Византияға"],
-    "correct": "Жоңғарларға",
-    "extra_answers": ["Арабтарға", "Римдіктерге"]
+    "difficulty": 2,
+    "question": "Жоңғарлар қай дінді ұстанды?",
+    "answers": ["Тибет буддизмі", "Сунниттік ислам", "Тәңіршілдік", "Манихейлік"],
+    "correct": "Тибет буддизмі",
+    "extra_answers": ["Несториандық"],
+    "en": {"question": "Which religion did the Dzungars follow?", "answers": ["Tibetan Buddhism", "Sunni Islam", "Tengrism", "Manichaeism"], "extra_answers": ["Nestorian Christianity"]}
   }
 ]

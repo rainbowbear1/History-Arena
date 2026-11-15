@@ -2,105 +2,135 @@
   {
     "id": "kazakh_khanate-01",
     "type": "single_choice",
-    "question": "Керей мен Жәнібек бастаған рулар қай мемлекеттен бөлініп шығып, Қазақ хандығының негізін қалады?",
-    "answers": ["Әбілқайыр хандығы", "Түрік қағанаты", "Ресей империясы", "Цин империясы"],
-    "correct": "Әбілқайыр хандығы",
-    "extra_answers": ["Моғолстан", "Жоңғар хандығы"]
+    "difficulty": 2,
+    "question": "Қазақ хандығының негізін қалаушылар Әбілқайыр хандығынан бөлініп, қай мемлекеттің батыс шебіне қоныстанды?",
+    "answers": ["Моғолстан", "Темір әулетінің мемлекеті", "Ноғай Ордасы", "Ойрат одағы"],
+    "correct": "Моғолстан",
+    "extra_answers": ["Шайбани мемлекеті"],
+    "en": {"question": "After leaving the Abulkhair Khanate, the founders of the Kazakh Khanate settled on the western edge of which state?", "answers": ["Moghulistan", "The Timurid state", "The Nogai Horde", "The Oirat confederation"], "extra_answers": ["The Shaybanid state"]}
   },
   {
     "id": "kazakh_khanate-02",
-    "type": "single_choice",
-    "question": "Қазақ хандығының негізін қалағандар кімдер?",
-    "answers": ["Керей мен Жәнібек", "Бату мен Берке", "Абылай мен Кенесары", "Тәуке мен Есім"],
-    "correct": "Керей мен Жәнібек",
-    "extra_answers": ["Қасым мен Хақназар", "Сырым мен Исатай"]
+    "type": "fill_blank",
+    "difficulty": 2,
+    "question": "Қазақ хандығы ___ жылы құрылды.",
+    "answers": ["1465", "1428", "1511", "1480"],
+    "correct": "1465",
+    "extra_answers": ["1500"],
+    "en": {"question": "The Kazakh Khanate was founded in ___.", "answers": ["1465", "1428", "1511", "1480"], "extra_answers": ["1500"]}
   },
   {
     "id": "kazakh_khanate-03",
     "type": "single_choice",
-    "question": "Қасым хан заңдары қалай аталды?",
-    "answers": ["«Қасым ханның қасқа жолы»", "«Жеті жарғы»", "«Есім ханның ескі жолы»", "«Ұлы Яса»"],
-    "correct": "«Қасым ханның қасқа жолы»"
+    "difficulty": 2,
+    "question": "Қасым хан тұсында қалыптасқан заңдар жиынтығы қалай аталады?",
+    "answers": ["«Қасқа жол»", "«Ескі жол»", "«Жеті жарғы»", "«Ұлы Яса»"],
+    "correct": "«Қасқа жол»",
+    "extra_answers": ["«Шариғат»"],
+    "en": {"question": "What is the body of laws formed under Qasym Khan called?", "answers": ["'Qasqa Zhol' (Bright Path)", "'Eski Zhol' (Old Path)", "'Zheti Zhargy' (Seven Charters)", "'Great Yasa'"], "extra_answers": ["'Sharia'"]}
   },
   {
     "id": "kazakh_khanate-04",
-    "type": "single_choice",
-    "question": "Тәуке хан тұсында қабылданған заңдар жинағы қалай аталады?",
-    "answers": ["«Жеті жарғы»", "«Қасым ханның қасқа жолы»", "«Ұлы Яса»", "«Құтадғу біліг»"],
-    "correct": "«Жеті жарғы»"
-  },
-  {
-    "id": "kazakh_khanate-05",
-    "type": "fill_blank",
-    "question": "Қазақ хандығы ___ жылы құрылды.",
-    "answers": ["1465", "1456", "1505", "1511"],
-    "correct": "1465",
-    "extra_answers": ["1428", "1480"]
-  },
-  {
-    "id": "kazakh_khanate-06",
-    "type": "single_choice",
-    "question": "Есім хан заңдары қалай аталды?",
-    "answers": ["«Есім ханның ескі жолы»", "«Жеті жарғы»", "«Ұлы Яса»", "«Қасым ханның қасқа жолы»"],
-    "correct": "«Есім ханның ескі жолы»"
-  },
-  {
-    "id": "kazakh_khanate-07",
     "type": "matching",
+    "difficulty": 2,
     "question": "Биді өзі өкілі болған жүзбен сәйкестендіріңіз",
     "pairs": [
       {"left": "Төле би", "right": "Ұлы жүз"},
       {"left": "Қазыбек би", "right": "Орта жүз"},
       {"left": "Әйтеке би", "right": "Кіші жүз"}
-    ]
+    ],
+    "en": {"question": "Match each biy with the zhuz he represented", "pairs": [{"left": "Tole Biy", "right": "Senior Zhuz"}, {"left": "Kazybek Biy", "right": "Middle Zhuz"}, {"left": "Aiteke Biy", "right": "Junior Zhuz"}]}
+  },
+  {
+    "id": "kazakh_khanate-05",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "1538–1580 жылдары билік құрып, хандықтың бірлігін қалпына келтірген хан кім?",
+    "answers": ["Хақназар", "Тахир", "Шығай", "Тәуекел"],
+    "correct": "Хақназар",
+    "extra_answers": ["Бұйдаш"],
+    "en": {"question": "Which khan ruled in 1538–1580 and restored the unity of the khanate?", "answers": ["Haqnazar", "Tahir", "Shigai", "Tauekel"], "extra_answers": ["Buidash"]}
+  },
+  {
+    "id": "kazakh_khanate-06",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Қазақ хандығының құрылуы туралы маңызды мәлімет қалдырған «Тарих-и Рашиди» еңбегінің авторы кім?",
+    "answers": ["Мұхаммед Хайдар Дулати", "Қадырғали Жалайыри", "Заһириддин Бабыр", "Рашид ад-Дин"],
+    "correct": "Мұхаммед Хайдар Дулати",
+    "extra_answers": ["Мұхаммед Шайбани"],
+    "en": {"question": "Who wrote the 'Tarikh-i Rashidi', a key source on the founding of the Kazakh Khanate?", "answers": ["Muhammad Haidar Dulati", "Kadyrgali Zhalairi", "Zahir ud-Din Babur", "Rashid al-Din"], "extra_answers": ["Muhammad Shaybani"]}
+  },
+  {
+    "id": "kazakh_khanate-07",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Қасым хан тұсында Қазақ хандығымен алғаш дипломатиялық байланыс орнатқан еуропалық мемлекет қайсы?",
+    "answers": ["Мәскеу мемлекеті", "Литва княздігі", "Польша корольдігі", "Венеция республикасы"],
+    "correct": "Мәскеу мемлекеті",
+    "extra_answers": ["Швеция корольдігі"],
+    "en": {"question": "Which European state first set up diplomatic contacts with the Kazakh Khanate under Qasym Khan?", "answers": ["The Grand Duchy of Moscow", "The Grand Duchy of Lithuania", "The Kingdom of Poland", "The Republic of Venice"], "extra_answers": ["The Kingdom of Sweden"]}
   },
   {
     "id": "kazakh_khanate-08",
-    "type": "single_choice",
-    "question": "Қазақ халқы дәстүрлі түрде неше жүзге бөлінеді?",
-    "answers": ["Үш", "Екі", "Төрт", "Бес"],
-    "correct": "Үш"
+    "type": "chronology",
+    "difficulty": 2,
+    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
+    "items": ["Қазақ хандығының құрылуы", "Қасым ханның билігі", "Тәуекел ханның Ташкентті алуы", "Тәуке ханның билігі"],
+    "en": {"question": "Put the events in chronological order", "items": ["Founding of the Kazakh Khanate", "Reign of Qasym Khan", "Tauekel Khan takes Tashkent", "Reign of Tauke Khan"]}
   },
   {
     "id": "kazakh_khanate-09",
-    "type": "chronology",
-    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Қазақ хандығының құрылуы", "Қасым ханның билігі", "Тәуке ханның билігі", "Абылай ханның билігі"]
-  },
-  {
-    "id": "kazakh_khanate-10",
-    "type": "single_choice",
-    "question": "Қожа Ахмет Ясауи кесенесі қай қалада орналасқан?",
-    "answers": ["Түркістан", "Тараз", "Отырар", "Сарайшық"],
-    "correct": "Түркістан",
-    "extra_answers": ["Сауран", "Сайрам"]
-  },
-  {
-    "id": "kazakh_khanate-11",
     "type": "map",
-    "question": "Түркістан қаласы картада қай жерде?",
+    "difficulty": 2,
+    "question": "Қазақ хандығының астанасы болған Түркістан қаласы картада қай жерде?",
     "correct": "Түркістан",
     "locations": [
       {"name": "Түркістан", "x": 0.526, "y": 0.754, "lat": 43.3, "lon": 68.27},
-      {"name": "Павлодар", "x": 0.693, "y": 0.241, "lat": 52.29, "lon": 76.97},
-      {"name": "Атырау", "x": 0.213, "y": 0.537, "lat": 47.11, "lon": 51.88},
-      {"name": "Ақтөбе", "x": 0.315, "y": 0.355, "lat": 50.28, "lon": 57.21}
-    ]
+      {"name": "Шымкент", "x": 0.551, "y": 0.81, "lat": 42.32, "lon": 69.59},
+      {"name": "Қызылорда", "x": 0.473, "y": 0.666, "lat": 44.85, "lon": 65.51},
+      {"name": "Ташкент", "x": 0.546, "y": 0.868, "lat": 41.31, "lon": 69.28}
+    ],
+    "en": {"question": "Where on the map is Turkistan, once the capital of the Kazakh Khanate?", "locations": ["Turkistan", "Shymkent", "Kyzylorda", "Tashkent"]}
+  },
+  {
+    "id": "kazakh_khanate-10",
+    "type": "image",
+    "difficulty": 2,
+    "question": "Суреттегі кесене маңында қазақ хандары мен батырлары жерленген. Кесенені салдыруға кім бұйрық берді?",
+    "image": "res://assets/images/yasawi_mausoleum.jpg",
+    "answers": ["Әмір Темір", "Ұлықбек", "Әбілқайыр хан", "Мұхаммед Шайбани"],
+    "correct": "Әмір Темір",
+    "en": {"question": "Kazakh khans and heroes are buried near the mausoleum in the picture. Who ordered it to be built?", "answers": ["Timur", "Ulugh Beg", "Abulkhair Khan", "Muhammad Shaybani"]}
+  },
+  {
+    "id": "kazakh_khanate-11",
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Тәуке хан тұсында билер кеңесі жиналатын Түркістан маңындағы төбе қалай аталды?",
+    "answers": ["Күлтөбе", "Ордабасы", "Ұлытау", "Хантау"],
+    "correct": "Күлтөбе",
+    "extra_answers": ["Қазығұрт"],
+    "en": {"question": "What was the hill near Turkistan where the council of biys met under Tauke Khan?", "answers": ["Kultobe", "Ordabasy", "Ulytau", "Khantau"], "extra_answers": ["Kazygurt"]}
   },
   {
     "id": "kazakh_khanate-12",
-    "type": "image",
-    "question": "Суреттегі Қожа Ахмет Ясауи кесенесін салдыруды кім бұйырды?",
-    "image": "res://assets/images/yasawi_mausoleum.jpg",
-    "answers": ["Әмір Темір", "Шыңғыс хан", "Абылай хан", "Бату хан"],
-    "correct": "Әмір Темір"
+    "type": "single_choice",
+    "difficulty": 1,
+    "question": "Қазақ дәстүрінде жаңа сайланған ханды қалай таққа отырғызды?",
+    "answers": ["Ақ киізге көтеріп", "Басына тәж кигізіп", "Қолына қылыш ұстатып", "Ақ туды ұстатып"],
+    "correct": "Ақ киізге көтеріп",
+    "extra_answers": ["Алтын тақ сыйлап"],
+    "en": {"question": "In Kazakh tradition, how was a newly elected khan enthroned?", "answers": ["Raised on a white felt", "Crowned with a crown", "Handed a sword", "Handed a white banner"], "extra_answers": ["Given a golden throne"]}
   },
   {
     "id": "kazakh_khanate-13",
     "type": "single_choice",
-    "question": "Төле, Қазыбек, Әйтеке билер қай ханның тұсында танымал болды?",
-    "answers": ["Тәуке", "Керей", "Бату", "Кенесары"],
-    "correct": "Тәуке",
-    "extra_answers": ["Хақназар", "Қасым"]
+    "difficulty": 3,
+    "question": "1457 жылы Сығанақ түбінде Әбілқайыр ханды жеңген көшпелі халық кім?",
+    "answers": ["Ойраттар", "Ноғайлар", "Моғолдар", "Қырғыздар"],
+    "correct": "Ойраттар",
+    "extra_answers": ["Башқұрттар"],
+    "en": {"question": "Which nomadic people defeated Abulkhair Khan near Sygnak in 1457?", "answers": ["The Oirats", "The Nogais", "The Moghuls", "The Kyrgyz"], "extra_answers": ["The Bashkirs"]}
   }
 ]

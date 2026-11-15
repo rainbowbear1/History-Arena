@@ -2,109 +2,136 @@
   {
     "id": "xx_century-01",
     "type": "single_choice",
-    "question": "Амангелді Иманов басшылардың бірі болған ұлт-азаттық көтеріліс қай жылы болды?",
-    "answers": ["1916 ж.", "1905 ж.", "1917 ж.", "1921 ж."],
-    "correct": "1916 ж.",
-    "extra_answers": ["1918 ж.", "1930 ж."]
+    "difficulty": 2,
+    "question": "1916 жылғы көтеріліске себеп болған патшаның 25 маусымдағы жарлығы не туралы еді?",
+    "answers": ["Майдан маңындағы қара жұмысқа адам алу", "Әскерге шақырып, майданға жіберу", "Жерді қоныс аударушыларға беру", "Салықты екі есе көбейту"],
+    "correct": "Майдан маңындағы қара жұмысқа адам алу",
+    "extra_answers": ["Мешіттерді жабу"],
+    "en": {"question": "What did the tsar's decree of 25 June that sparked the 1916 uprising order?", "answers": ["Drafting men for labour behind the front", "Conscripting men to fight at the front", "Giving land to settlers", "Doubling the taxes"], "extra_answers": ["Closing the mosques"]}
   },
   {
     "id": "xx_century-02",
     "type": "single_choice",
-    "question": "Алаш Орда үкіметін кім басқарды?",
-    "answers": ["Әлихан Бөкейхан", "Амангелді Иманов", "Бауыржан Момышұлы", "Шоқан Уәлиханов"],
-    "correct": "Әлихан Бөкейхан",
-    "extra_answers": ["Ахмет Байтұрсынұлы", "Міржақып Дулатұлы"]
+    "difficulty": 3,
+    "question": "1916 жылы Торғай көтерілісшілері хан етіп сайлаған кім?",
+    "answers": ["Әбдіғаппар Жанбосынұлы", "Амангелді Иманов", "Бекболат Әшекеев", "Тоқаш Бокин"],
+    "correct": "Әбдіғаппар Жанбосынұлы",
+    "extra_answers": ["Ұзақ Саурықов"],
+    "en": {"question": "Whom did the Torgai rebels elect as khan in 1916?", "answers": ["Abdighappar Zhanbosynuly", "Amangeldy Imanov", "Bekbolat Ashekeev", "Tokash Bokin"], "extra_answers": ["Uzak Saurykov"]}
   },
   {
     "id": "xx_century-03",
     "type": "single_choice",
-    "question": "Ахмет Байтұрсынұлы ең алдымен қай салада еңбек етті?",
-    "answers": ["Қазақ тілі мен әліпбиі", "Ғарыш ғылымы", "Әскери іс", "Медицина"],
-    "correct": "Қазақ тілі мен әліпбиі",
-    "extra_answers": ["Химия", "Сәулет өнері"]
+    "difficulty": 2,
+    "question": "1917 жылы құрылған Алаш Орда үкіметінің төрағасы кім?",
+    "answers": ["Әлихан Бөкейхан", "Ахмет Байтұрсынұлы", "Міржақып Дулатұлы", "Мұхамеджан Тынышпаев"],
+    "correct": "Әлихан Бөкейхан",
+    "extra_answers": ["Халел Досмұхамедұлы"],
+    "en": {"question": "Who chaired the Alash Orda government formed in 1917?", "answers": ["Alikhan Bokeikhan", "Akhmet Baitursynuly", "Mirzhakyp Dulatuly", "Mukhamedzhan Tynyshpaev"], "extra_answers": ["Khalel Dosmukhameduly"]}
   },
   {
     "id": "xx_century-04",
-    "type": "single_choice",
-    "question": "Қазақ КСР қай жылы одақтас республика болды?",
-    "answers": ["1936 ж.", "1920 ж.", "1991 ж.", "1954 ж."],
-    "correct": "1936 ж.",
-    "extra_answers": ["1925 ж.", "1946 ж."]
+    "type": "fill_blank",
+    "difficulty": 2,
+    "question": "1925 жылы Қазақ АКСР-інің астанасы Орынбордан ___ қаласына көшірілді.",
+    "answers": ["Қызылорда", "Алматы", "Семей", "Ақмола"],
+    "correct": "Қызылорда",
+    "extra_answers": ["Шымкент"],
+    "en": {"question": "In 1925 the capital of the Kazakh ASSR moved from Orenburg to ___.", "answers": ["Kyzylorda", "Almaty", "Semey", "Akmola"], "extra_answers": ["Shymkent"]}
   },
   {
     "id": "xx_century-05",
-    "type": "fill_blank",
-    "question": "Желтоқсан оқиғасы ___ жылы болды.",
-    "answers": ["1986", "1916", "1954", "1936"],
-    "correct": "1986",
-    "extra_answers": ["1989", "1979"]
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "1925–1933 жылдары Қазақ өлкелік партия комитетін басқарып, «Кіші Қазан» саясатын жүргізген кім?",
+    "answers": ["Филипп Голощекин", "Левон Мирзоян", "Жұмабай Шаяхметов", "Пантелеймон Пономаренко"],
+    "correct": "Филипп Голощекин",
+    "extra_answers": ["Нығмет Нұрмақов"],
+    "en": {"question": "Who led the Kazakh regional party committee in 1925–1933 and pursued the 'Little October' policy?", "answers": ["Filipp Goloshchyokin", "Levon Mirzoyan", "Zhumabai Shayakhmetov", "Panteleimon Ponomarenko"], "extra_answers": ["Nygmet Nurmakov"]}
   },
   {
     "id": "xx_century-06",
     "type": "single_choice",
-    "question": "Тың және тыңайған жерлерді игеру қай жылы басталды?",
-    "answers": ["1954 ж.", "1916 ж.", "1986 ж.", "1936 ж."],
-    "correct": "1954 ж.",
-    "extra_answers": ["1949", "1961"]
+    "difficulty": 3,
+    "question": "Тың игеру кезінде Қазақстан Компартиясының бірінші хатшысы болған, кейін КСРО басшысы болған кім?",
+    "answers": ["Леонид Брежнев", "Никита Хрущев", "Юрий Андропов", "Константин Черненко"],
+    "correct": "Леонид Брежнев",
+    "extra_answers": ["Михаил Горбачев"],
+    "en": {"question": "Who led the Communist Party of Kazakhstan during the Virgin Lands campaign and later led the USSR?", "answers": ["Leonid Brezhnev", "Nikita Khrushchev", "Yuri Andropov", "Konstantin Chernenko"], "extra_answers": ["Mikhail Gorbachev"]}
   },
   {
     "id": "xx_century-07",
     "type": "single_choice",
-    "question": "Семей ядролық сынақ полигоны қай жылы жабылды?",
-    "answers": ["1991 ж.", "1949 ж.", "1961 ж.", "1954 ж."],
-    "correct": "1991 ж.",
-    "extra_answers": ["1989 ж.", "1986 ж."]
+    "difficulty": 2,
+    "question": "1986 жылы желтоқсанда Қазақстан Компартиясының бірінші хатшысы болып тағайындалып, жастар наразылығына себеп болған кім?",
+    "answers": ["Геннадий Колбин", "Нұрсұлтан Назарбаев", "Динмұхамед Қонаев", "Егор Лигачев"],
+    "correct": "Геннадий Колбин",
+    "extra_answers": ["Михаил Соломенцев"],
+    "en": {"question": "Whose appointment as First Secretary of the Communist Party of Kazakhstan in December 1986 set off the youth protests?", "answers": ["Gennady Kolbin", "Nursultan Nazarbayev", "Dinmukhamed Kunaev", "Yegor Ligachev"], "extra_answers": ["Mikhail Solomentsev"]}
   },
   {
     "id": "xx_century-08",
-    "type": "matching",
-    "question": "Тұлғаны сипаттамасымен сәйкестендіріңіз",
-    "pairs": [
-      {"left": "Әлихан Бөкейхан", "right": "Алаш Орда үкіметінің төрағасы"},
-      {"left": "Бауыржан Момышұлы", "right": "Мәскеу түбіндегі шайқастардың батыры"},
-      {"left": "Әлия Молдағұлова", "right": "Ұлы Отан соғысындағы мерген"}
-    ]
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "1989 жылы құрылған «Невада – Семей» қозғалысын бастаған ақын кім?",
+    "answers": ["Олжас Сүлейменов", "Мұхтар Шаханов", "Қадыр Мырза Әли", "Тұманбай Молдағалиев"],
+    "correct": "Олжас Сүлейменов",
+    "extra_answers": ["Мұқағали Мақатаев"],
+    "en": {"question": "Which poet founded the Nevada–Semipalatinsk movement in 1989?", "answers": ["Olzhas Suleimenov", "Mukhtar Shakhanov", "Kadyr Myrza Ali", "Tumanbai Moldagaliev"], "extra_answers": ["Mukagali Makatayev"]}
   },
   {
     "id": "xx_century-09",
-    "type": "chronology",
-    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["1916 жылғы көтеріліс", "Алаш Орда үкіметінің құрылуы", "Тың игерудің басталуы", "Желтоқсан оқиғасы"]
+    "type": "matching",
+    "difficulty": 2,
+    "question": "Тұлғаны сипаттамасымен сәйкестендіріңіз",
+    "pairs": [
+      {"left": "Бауыржан Момышұлы", "right": "Мәскеу түбінде батальон басқарды"},
+      {"left": "Қаныш Сәтбаев", "right": "Ғылым академиясының тұңғыш президенті"},
+      {"left": "Мұхтар Әуезов", "right": "«Абай жолы» эпопеясының авторы"},
+      {"left": "Динмұхамед Қонаев", "right": "Компартияны 1964–1986 жылдары басқарды"}
+    ],
+    "en": {"question": "Match each figure with the description", "pairs": [{"left": "Baurzhan Momyshuly", "right": "Commanded a battalion near Moscow"}, {"left": "Kanysh Satbayev", "right": "First president of the Academy of Sciences"}, {"left": "Mukhtar Auezov", "right": "Author of the epic novel 'The Path of Abai'"}, {"left": "Dinmukhamed Kunaev", "right": "Led the Communist Party in 1964–1986"}]}
   },
   {
     "id": "xx_century-10",
-    "type": "single_choice",
-    "question": "1931–1933 жылдары Қазақстанда қандай қасірет болды?",
-    "answers": ["Ашаршылық", "Тың игеру", "Желтоқсан оқиғасы", "Жоңғар шапқыншылығы"],
-    "correct": "Ашаршылық",
-    "extra_answers": ["Алаш Орданың құрылуы", "Ұлы Отан соғысы"]
+    "type": "chronology",
+    "difficulty": 2,
+    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
+    "items": ["Қазақ АКСР-інің құрылуы", "Қазақ КСР-інің одақтас республика болуы", "Тың игерудің басталуы", "Семей полигонының жабылуы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Founding of the Kazakh ASSR", "Kazakh SSR becomes a union republic", "Start of the Virgin Lands campaign", "Closure of the Semipalatinsk test site"]}
   },
   {
     "id": "xx_century-11",
     "type": "map",
+    "difficulty": 2,
     "question": "Байқоңыр ғарыш айлағы картада қай жерде?",
     "correct": "Байқоңыр",
     "locations": [
       {"name": "Байқоңыр", "x": 0.431, "y": 0.622, "lat": 45.62, "lon": 63.31},
-      {"name": "Павлодар", "x": 0.693, "y": 0.241, "lat": 52.29, "lon": 76.97},
-      {"name": "Орал", "x": 0.203, "y": 0.301, "lat": 51.23, "lon": 51.37},
-      {"name": "Алматы", "x": 0.691, "y": 0.758, "lat": 43.24, "lon": 76.89}
-    ]
+      {"name": "Қызылорда", "x": 0.473, "y": 0.666, "lat": 44.85, "lon": 65.51},
+      {"name": "Арал", "x": 0.4, "y": 0.554, "lat": 46.8, "lon": 61.67},
+      {"name": "Жезқазған", "x": 0.515, "y": 0.497, "lat": 47.8, "lon": 67.71}
+    ],
+    "en": {"question": "Where is the Baikonur Cosmodrome on the map?", "locations": ["Baikonur", "Kyzylorda", "Aral", "Zhezkazgan"]}
   },
   {
     "id": "xx_century-12",
     "type": "image",
-    "question": "Суретте Байқоңырдан зымыранның ұшырылуы көрсетілген. 1961 жылы Байқоңырдан ғарышқа ұшқан әлемдегі алғашқы адам кім?",
+    "difficulty": 2,
+    "question": "Суретте Байқоңырдан зымыранның ұшырылуы. 1961 жылы 12 сәуірде осы айлақтан «Восток-1» кемесімен ұшқан ғарышкер кім?",
     "image": "res://assets/images/baikonur_launch.jpg",
-    "answers": ["Юрий Гагарин", "Тоқтар Әубәкіров", "Нил Армстронг", "Талғат Мұсабаев"],
-    "correct": "Юрий Гагарин"
+    "answers": ["Юрий Гагарин", "Герман Титов", "Алексей Леонов", "Валентина Терешкова"],
+    "correct": "Юрий Гагарин",
+    "en": {"question": "The picture shows a launch from Baikonur. Who flew from this cosmodrome aboard Vostok 1 on 12 April 1961?", "answers": ["Yuri Gagarin", "Gherman Titov", "Alexei Leonov", "Valentina Tereshkova"]}
   },
   {
     "id": "xx_century-13",
     "type": "single_choice",
-    "question": "Ұлы Отан соғысында пулеметші болған, Кеңес Одағының Батыры атағын алған қазақ қызы кім?",
-    "answers": ["Мәншүк Мәметова", "Әлия Молдағұлова", "Хиуаз Доспанова", "Бибігүл Төлегенова"],
-    "correct": "Мәншүк Мәметова",
-    "extra_answers": ["Шара Жиенқұлова", "Күләш Байсейітова"]
+    "difficulty": 2,
+    "question": "Ұлы Отан соғысында түнгі бомбалаушы авиаполкте ұшқыш-штурман болған қазақ қызы кім?",
+    "answers": ["Хиуаз Доспанова", "Мәншүк Мәметова", "Әлия Молдағұлова", "Шара Жиенқұлова"],
+    "correct": "Хиуаз Доспанова",
+    "extra_answers": ["Күләш Байсейітова"],
+    "en": {"question": "Which Kazakh woman served as a pilot-navigator in a night bomber regiment in the Second World War?", "answers": ["Khiuaz Dospanova", "Manshuk Mametova", "Aliya Moldagulova", "Shara Zhienkulova"], "extra_answers": ["Kulash Baiseitova"]}
   }
 ]

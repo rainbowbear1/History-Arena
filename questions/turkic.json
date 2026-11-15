@@ -2,102 +2,131 @@
   {
     "id": "turkic-01",
     "type": "single_choice",
+    "difficulty": 2,
     "question": "Түрік қағанаты қай жылы құрылды?",
-    "answers": ["552 ж.", "603 ж.", "704 ж.", "751 ж."],
-    "correct": "552 ж."
+    "answers": ["552 ж.", "546 ж.", "581 ж.", "630 ж."],
+    "correct": "552 ж.",
+    "en": {"question": "In which year was the Turkic Khaganate founded?", "answers": ["552", "546", "581", "630"]}
   },
   {
     "id": "turkic-02",
     "type": "single_choice",
-    "question": "Түрік қағанатының негізін қалаған кім?",
-    "answers": ["Бумын қаған", "Мөде шаньюй", "Керей хан", "Аттила"],
-    "correct": "Бумын қаған"
+    "difficulty": 1,
+    "question": "Түрік қағанатының негізін қалаған билеуші кім?",
+    "answers": ["Бумын", "Мұқан", "Тарду", "Елтеріс"],
+    "correct": "Бумын",
+    "en": {"question": "Who founded the Turkic Khaganate?", "answers": ["Bumin", "Muqan", "Tardu", "Ilterish"]}
   },
   {
     "id": "turkic-03",
     "type": "single_choice",
-    "question": "Түрік қағанатының билеушісі қалай аталды?",
-    "answers": ["Қаған", "Шаньюй", "Ханзада", "Би"],
-    "correct": "Қаған"
-  },
-  {
-    "id": "turkic-11",
-    "type": "fill_blank",
-    "question": "Талас шайқасы ___ жылы болды.",
-    "answers": ["751", "552", "603", "840"],
-    "correct": "751"
+    "difficulty": 2,
+    "question": "Түрік қағанатының батыстағы иеліктерін басқарған ябғу кім?",
+    "answers": ["Істемі", "Мұқан", "Шегуй", "Қапаған"],
+    "correct": "Істемі",
+    "en": {"question": "Which yabgu governed the western lands of the Turkic Khaganate?", "answers": ["Istemi", "Muqan", "Shegui", "Qapaghan"]}
   },
   {
     "id": "turkic-04",
     "type": "single_choice",
-    "question": "Түрік қағанатының билеуші әулеті қалай аталды?",
-    "answers": ["Ашина", "Шыңғыс", "Жошы", "Қарахан"],
-    "correct": "Ашина"
+    "difficulty": 2,
+    "question": "Түрік қағанаты қай жылы Шығыс және Батыс қағанаттарына бөлінді?",
+    "answers": ["603 ж.", "581 ж.", "657 ж.", "682 ж."],
+    "correct": "603 ж.",
+    "en": {"question": "In which year did the Turkic Khaganate split into the Eastern and Western khaganates?", "answers": ["603", "581", "657", "682"]}
   },
   {
     "id": "turkic-05",
     "type": "single_choice",
-    "question": "Түрік қағанаты қай жылы Шығыс және Батыс болып бөлінді?",
-    "answers": ["603 ж.", "552 ж.", "682 ж.", "840 ж."],
-    "correct": "603 ж."
+    "difficulty": 2,
+    "question": "Батыс Түрік қағанатының астанасы болған Жетісудағы қала қайсы?",
+    "answers": ["Суяб", "Баласағұн", "Испиджаб", "Тараз"],
+    "correct": "Суяб",
+    "en": {"question": "Which city in Zhetysu was the capital of the Western Turkic Khaganate?", "answers": ["Suyab", "Balasagun", "Isfijab", "Taraz"]}
   },
   {
     "id": "turkic-06",
     "type": "single_choice",
-    "question": "Батыс Түрік қағанатының негізгі орталықтарының бірі қай қала болды?",
-    "answers": ["Суяб", "Отырар", "Сарай-Бату", "Сығанақ"],
-    "correct": "Суяб"
+    "difficulty": 2,
+    "question": "751 жылы Талас өзенінің бойында Аббасидтер халифатының әскері қай империяның әскерін жеңді?",
+    "answers": ["Тан", "Суй", "Сун", "Хань"],
+    "correct": "Тан",
+    "en": {"question": "In 751, on the Talas river, the army of the Abbasid Caliphate defeated the army of which empire?", "answers": ["Tang", "Sui", "Song", "Han"]}
   },
   {
     "id": "turkic-07",
-    "type": "single_choice",
-    "question": "Түрік қағанатының маңызды сауда жолы қандай болды?",
-    "answers": ["Ұлы Жібек жолы", "Транссібір теміржолы", "Теңіз жолы", "Солтүстік теңіз жолы"],
-    "correct": "Ұлы Жібек жолы"
-  },
-  {
-    "id": "turkic-12",
-    "type": "matching",
-    "question": "Тұлғаны сипаттамасымен сәйкестендіріңіз",
-    "pairs": [
-      {"left": "Бумын қаған", "right": "Түрік қағанатының негізін қалады"},
-      {"left": "Күлтегін", "right": "Атақты түркі қолбасшысы"},
-      {"left": "Тоныкөк", "right": "Қағандардың дана кеңесшісі"}
-    ]
+    "type": "fill_blank",
+    "difficulty": 2,
+    "question": "Екінші Шығыс Түрік қағанатының үш қағанына кеңесші болған дана — ___.",
+    "answers": ["Тоныкөк", "Күлтегін", "Йоллығ тегін", "Білге"],
+    "correct": "Тоныкөк",
+    "en": {"question": "The sage who advised three khagans of the Second Eastern Turkic Khaganate was ___.", "answers": ["Tonyukuk", "Kul Tegin", "Yollig Tegin", "Bilge"]}
   },
   {
     "id": "turkic-08",
     "type": "single_choice",
-    "question": "Көне түркі жазба ескерткіштері қандай жазумен жазылған?",
-    "answers": ["Орхон-Енисей жазуымен", "Латын жазуымен", "Араб жазуымен", "Кирилл жазуымен"],
-    "correct": "Орхон-Енисей жазуымен"
+    "difficulty": 3,
+    "question": "Орхон-Енисей жазуын 1893 жылы алғаш оқыған ғалым кім?",
+    "answers": ["Вильгельм Томсен", "Василий Радлов", "Николай Ядринцев", "Сергей Малов"],
+    "correct": "Вильгельм Томсен",
+    "en": {"question": "Which scholar first deciphered the Orkhon-Yenisei script in 1893?", "answers": ["Vilhelm Thomsen", "Vasily Radlov", "Nikolai Yadrintsev", "Sergei Malov"]}
   },
   {
     "id": "turkic-09",
     "type": "single_choice",
-    "question": "Күлтегін ескерткіші кімге арналған?",
-    "answers": ["Түркі қолбасшысы Күлтегінге", "Бумын қағанға", "Аттилаға", "Шыңғыс ханға"],
-    "correct": "Түркі қолбасшысы Күлтегінге"
+    "difficulty": 3,
+    "question": "Арабтар «Әбу Мұзахим» (сүзеген) деп атаған, араб жаулаушыларына қарсы күрескен түргеш қағаны кім?",
+    "answers": ["Сұлу", "Үшлік", "Сақал", "Істемі"],
+    "correct": "Сұлу",
+    "en": {"question": "Which Türgesh khagan, called 'Abu Muzahim' (the butting one) by the Arabs, fought the Arab conquest?", "answers": ["Suluk", "Ushlik", "Saqal", "Istemi"]}
   },
   {
     "id": "turkic-10",
     "type": "single_choice",
-    "question": "Ежелгі түркілердің дәстүрлі дүниетанымында қандай құдай ерекше орын алды?",
-    "answers": ["Тәңірі", "Зевс", "Один", "Ра"],
-    "correct": "Тәңірі"
+    "difficulty": 2,
+    "question": "Екінші Шығыс Түрік қағанатын қалпына келтірген қаған кім?",
+    "answers": ["Елтеріс", "Білге", "Қапаған", "Мұқан"],
+    "correct": "Елтеріс",
+    "en": {"question": "Which khagan restored the Eastern Turkic Khaganate (the Second Khaganate)?", "answers": ["Ilterish", "Bilge", "Qapaghan", "Muqan"]}
+  },
+  {
+    "id": "turkic-11",
+    "type": "matching",
+    "difficulty": 2,
+    "question": "Көне түркі атауларын мағынасымен сәйкестендіріңіз",
+    "pairs": [
+      {"left": "Ябғу", "right": "Батыс иеліктерді басқарған билеуші"},
+      {"left": "Тегін", "right": "Қаған әулетінің ханзадасы"},
+      {"left": "Балбал", "right": "Жеңілген жауды бейнелейтін тас"},
+      {"left": "Тархан", "right": "Ерекше артықшылығы бар лауазым"}
+    ],
+    "en": {"question": "Match the Old Turkic terms with their meanings", "pairs": [{"left": "Yabgu", "right": "Ruler of the western lands"}, {"left": "Tegin", "right": "Prince of the ruling dynasty"}, {"left": "Balbal", "right": "Stone standing for a defeated enemy"}, {"left": "Tarkhan", "right": "Title with special privileges"}]}
+  },
+  {
+    "id": "turkic-12",
+    "type": "chronology",
+    "difficulty": 2,
+    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
+    "items": ["Түрік қағанатының құрылуы", "Қағанаттың екіге бөлінуі", "Екінші Шығыс Түрік қағанатының құрылуы", "Талас шайқасы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Founding of the Turkic Khaganate", "Split of the khaganate", "Founding of the Second Eastern Khaganate", "Battle of Talas"]}
   },
   {
     "id": "turkic-13",
-    "type": "chronology",
-    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Түрік қағанатының құрылуы", "Қағанаттың Шығыс және Батыс болып бөлінуі", "Талас шайқасы", "Қарахан мемлекетінің құрылуы"]
+    "type": "single_choice",
+    "difficulty": 2,
+    "question": "Түркілер өз қағанатын құру үшін қай көшпелі державаның билігін құлатты?",
+    "answers": ["Жужан қағанаты", "Эфталиттер", "Тоба Вэй", "Сасанидтер"],
+    "correct": "Жужан қағанаты",
+    "en": {"question": "Whose rule did the Turks overthrow in order to found their khaganate?", "answers": ["The Rouran Khaganate", "The Hephthalites", "The Tuoba Wei", "The Sasanians"]}
   },
   {
     "id": "turkic-14",
     "type": "image",
-    "question": "Суреттегі көне түркі жазуы бар ескерткіш қай мемлекет кезеңіне жатады?",
+    "difficulty": 3,
+    "question": "Суреттегі ескерткіштің көне түркі мәтінін қашап жазған, есімі жазудың соңында аталатын кім?",
     "image": "res://assets/images/kultegin_monument.jpg",
-    "answers": ["Түрік қағанаты", "Ғұн мемлекеті", "Алтын Орда", "Қазақ хандығы"],
-    "correct": "Түрік қағанаты"
+    "answers": ["Йоллығ тегін", "Тоныкөк", "Білге қаған", "Қапаған қаған"],
+    "correct": "Йоллығ тегін",
+    "en": {"question": "Who carved the Old Turkic text of the monument in the picture and named himself at its end?", "answers": ["Yollig Tegin", "Tonyukuk", "Bilge Khagan", "Qapaghan Khagan"]}
   }
 ]

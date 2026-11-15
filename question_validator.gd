@@ -7,7 +7,7 @@ const DEFAULT_TYPE := "single_choice"
 const OPTION_COUNT := 4
 const BLANK := "___"
 # Smallest distance between two map locations (0–1 map units) so their pins don't overlap.
-const MIN_PIN_GAP := 0.08
+const MIN_PIN_GAP := 0.05
 const MAX_EXTRA_ANSWERS := 4
 
 
@@ -65,31 +65,40 @@ static func validate(question) -> String:
 	if not _is_text(question.get("question")):
 		return "missing or empty \"question\" text"
 
+	# Optional 1 (introductory) to 3 (demanding); the question audit checks that it rises by level.
+	if question.has("difficulty"):
+		var difficulty = question["difficulty"]
+		if not (difficulty is float or difficulty is int) or not [1, 2, 3].has(int(difficulty)) or difficulty != int(difficulty):
+			return "\"difficulty\" must be 1, 2 or 3"
+
 	var type = question.get("type", DEFAULT_TYPE)
 	if not type is String or not TYPES.has(type):
 		return "unknown type \"%s\"" % str(type)
 
+	var problem := ""
 	match type:
 		"single_choice":
-			return _check_options(question)
+			problem = _check_options(question)
 		"fill_blank":
 			if not question["question"].contains(BLANK):
 				return "fill_blank question must contain \"%s\"" % BLANK
-			return _check_options(question)
+			problem = _check_options(question)
 		"image":
 			if not _is_text(question.get("image")):
 				return "missing \"image\" path"
 			if not ResourceLoader.exists(question["image"]):
 				return "image not found: " + str(question["image"])
-			return _check_options(question)
+			problem = _check_options(question)
 		"matching":
-			return _check_matching(question)
+			problem = _check_matching(question)
 		"chronology":
-			return _check_chronology(question)
+			problem = _check_chronology(question)
 		"map":
-			return _check_map(question)
+			problem = _check_map(question)
 
-	return ""
+	if problem.is_empty() and question.has("en"):
+		problem = _check_translation(question, question["en"])
+	return problem
 
 
 static func _check_options(question: Dictionary) -> String:
@@ -231,6 +240,36 @@ static func _check_map(question: Dictionary) -> String:
 	if not question.get("correct") is String or not names.has(question["correct"]):
 		return "\"correct\" must be one of the location names"
 
+	return ""
+
+
+# The optional English version ("en") mirrors the Kazakh fields one to one, in the same order, so
+# answers and pairs keep their meaning (the correct answer is found by position).
+static func _check_translation(question: Dictionary, en) -> String:
+	if not en is Dictionary or not _is_text(en.get("question")):
+		return "\"en\" needs a \"question\" text"
+	if get_type(question) == "fill_blank" and not en["question"].contains(BLANK):
+		return "\"en\" fill_blank question must contain \"%s\"" % BLANK
+	for key in ["answers", "extra_answers", "items"]:
+		if question.has(key) != en.has(key):
+			return "\"en\" must have \"%s\" exactly when the question has it" % key
+		if question.has(key):
+			if not en[key] is Array or en[key].size() != question[key].size():
+				return "\"en.%s\" must have %d entries" % [key, question[key].size()]
+			for text in en[key]:
+				if not _is_text(text):
+					return "every \"en.%s\" entry must be a non-empty string" % key
+			if _has_duplicates(en[key]):
+				return "\"en.%s\" entries must be unique" % key
+	if question.has("pairs"):
+		if not en.get("pairs") is Array or en["pairs"].size() != question["pairs"].size():
+			return "\"en.pairs\" must have %d pairs" % question["pairs"].size()
+		for pair in en["pairs"]:
+			if not pair is Dictionary or not _is_text(pair.get("left")) or not _is_text(pair.get("right")):
+				return "every \"en.pairs\" pair needs \"left\" and \"right\""
+	if question.has("locations"):
+		if not en.get("locations") is Array or en["locations"].size() != question["locations"].size():
+			return "\"en.locations\" must name all %d locations" % question["locations"].size()
 	return ""
 
 

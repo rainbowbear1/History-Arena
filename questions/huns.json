@@ -2,94 +2,120 @@
   {
     "id": "huns-01",
     "type": "single_choice",
-    "question": "Ғұн мемлекетінің әйгілі билеушісі кім?",
-    "answers": ["Мөде", "Томирис", "Білге қаған", "Керей хан"],
-    "correct": "Мөде"
+    "difficulty": 1,
+    "question": "Ғұн тайпаларын біріктіріп, Ұлы даладағы алғашқы ірі көшпелі державаны құрған билеуші кім?",
+    "answers": ["Мөде", "Түмен", "Лаушаң", "Хуханье"],
+    "correct": "Мөде",
+    "en": {"question": "Which ruler united the Xiongnu tribes and created the first great nomadic empire of the steppe?", "answers": ["Modu", "Touman", "Laoshang", "Huhanye"]}
   },
   {
     "id": "huns-02",
     "type": "single_choice",
-    "question": "Мөде шаньюй билікке қай жылы келді?",
-    "answers": ["Б.з.б. 209 ж.", "Б.з.б. 330 ж.", "Б.з.б. 121 ж.", "Б.з. 48 ж."],
-    "correct": "Б.з.б. 209 ж."
+    "difficulty": 2,
+    "question": "Аңыз бойынша ысқырма жебе ойлап тауып, жасағын соған бағындырған ғұн ханзадасы кімді өлтіріп, билікке келді?",
+    "answers": ["Әкесі Түменді", "Інісі Лаушаңды", "Хань императорын", "Үйсін күнбиін"],
+    "correct": "Әкесі Түменді",
+    "en": {"question": "In the legend, a Xiongnu prince trained his guard with whistling arrows. Whom did he kill to take power?", "answers": ["His father Touman", "His brother Laoshang", "The Han emperor", "The Wusun kunmo"]}
   },
   {
     "id": "huns-03",
     "type": "single_choice",
-    "question": "Ғұн билеушісінің лауазымы қалай аталды?",
-    "answers": ["Шаньюй", "Қаған", "Сұлтан", "Би"],
-    "correct": "Шаньюй"
-  },
-  {
-    "id": "huns-11",
-    "type": "fill_blank",
-    "question": "Ғұн мемлекетінің негізін қалаған билеуші — ___.",
-    "answers": ["Мөде", "Аттила", "Бумын", "Истеми"],
-    "correct": "Мөде"
+    "difficulty": 2,
+    "question": "Ғұн державасының жоғарғы билеушісі қандай лауазыммен аталды?",
+    "answers": ["Шаньюй", "Қаған", "Күнби", "Ябғу"],
+    "correct": "Шаньюй",
+    "en": {"question": "What title did the supreme ruler of the Xiongnu carry?", "answers": ["Shanyu", "Khagan", "Kunmo", "Yabgu"]}
   },
   {
     "id": "huns-04",
     "type": "single_choice",
-    "question": "Ғұндардың негізгі шаруашылығы қандай болды?",
-    "answers": ["Көшпелі мал шаруашылығы", "Теңіз саудасы", "Күріш өсіру", "Кеме жасау"],
-    "correct": "Көшпелі мал шаруашылығы"
+    "difficulty": 2,
+    "question": "Б.з.б. 200 жылы Байдэн түбінде ғұн әскері қоршауға алған Хань әулетінің негізін салушы кім?",
+    "answers": ["Лю Бан", "У-ди", "Цинь Шихуанди", "Вэнь-ди"],
+    "correct": "Лю Бан",
+    "en": {"question": "In 200 BC the Xiongnu army surrounded the founder of the Han dynasty at Baideng. Who was he?", "answers": ["Liu Bang", "Emperor Wu", "Qin Shi Huang", "Emperor Wen"]}
   },
   {
     "id": "huns-05",
     "type": "single_choice",
-    "question": "Ғұндармен күресу үшін Қытайда қандай қорғаныс құрылысы салынды?",
-    "answers": ["Ұлы Қытай қорғаны", "Адриан қорғаны", "Отырар қамалы", "Ақыртас"],
-    "correct": "Ұлы Қытай қорғаны"
+    "difficulty": 2,
+    "question": "Ғұн державасы б.з. 48 жылы қандай екі бөлікке бөлінді?",
+    "answers": ["Солтүстік және Оңтүстік", "Шығыс және Батыс", "Ішкі және Сыртқы", "Жоғарғы және Төменгі"],
+    "correct": "Солтүстік және Оңтүстік",
+    "en": {"question": "Into which two parts did the Xiongnu state split in AD 48?", "answers": ["Northern and Southern", "Eastern and Western", "Inner and Outer", "Upper and Lower"]}
   },
   {
     "id": "huns-06",
     "type": "single_choice",
-    "question": "Ғұн әскері көбінесе қандай жауынгерлерден тұрды?",
-    "answers": ["Атты әскер", "Теңізшілер", "Жаяу найзашылар", "Зеңбірекшілер"],
-    "correct": "Атты әскер"
+    "difficulty": 3,
+    "question": "У-ди императордың тапсырмасымен батысқа аттанып, ғұндардың тұтқынында он жылдай болған қытай елшісі кім?",
+    "answers": ["Чжан Цянь", "Сыма Цянь", "Бань Чао", "Хо Цюйбин"],
+    "correct": "Чжан Цянь",
+    "en": {"question": "Which Chinese envoy, sent west by Emperor Wu, spent about ten years as a captive of the Xiongnu?", "answers": ["Zhang Qian", "Sima Qian", "Ban Chao", "Huo Qubing"]}
   },
   {
     "id": "huns-07",
     "type": "single_choice",
-    "question": "Еуропадағы ғұндардың әйгілі көсемі кім?",
-    "answers": ["Аттила", "Шыңғыс хан", "Александр Македонский", "Юлий Цезарь"],
-    "correct": "Аттила"
-  },
-  {
-    "id": "huns-12",
-    "type": "matching",
-    "question": "Тұлғаны немесе нысанды сипаттамасымен сәйкестендіріңіз",
-    "pairs": [
-      {"left": "Мөде", "right": "Ғұн мемлекетінің негізін қалады"},
-      {"left": "Аттила", "right": "Еуропадағы ғұндардың көсемі"},
-      {"left": "Ұлы Қытай қорғаны", "right": "Көшпелілерден қорғану үшін салынды"}
-    ]
+    "difficulty": 2,
+    "question": "Ғұндар туралы маңызды мәлімет қамтитын «Тарихи жазбалар» (Шицзи) еңбегінің авторы кім?",
+    "answers": ["Сыма Цянь", "Бань Гу", "Фань Е", "Конфуций"],
+    "correct": "Сыма Цянь",
+    "en": {"question": "Who wrote the 'Records of the Grand Historian' (Shiji), a key source on the Xiongnu?", "answers": ["Sima Qian", "Ban Gu", "Fan Ye", "Confucius"]}
   },
   {
     "id": "huns-08",
     "type": "single_choice",
-    "question": "Аттила қай ғасырда өмір сүрді?",
-    "answers": ["V ғасырда", "I ғасырда", "IX ғасырда", "XIII ғасырда"],
-    "correct": "V ғасырда"
+    "difficulty": 1,
+    "question": "IV ғасырдың соңында ғұндардың батысқа жылжуы қандай ірі тарихи үдерісті бастады?",
+    "answers": ["Халықтардың ұлы қоныс аударуы", "Эллинистік дәуір", "Ұлы Жібек жолының ашылуы", "Түркі қағанаттарының құрылуы"],
+    "correct": "Халықтардың ұлы қоныс аударуы",
+    "en": {"question": "Which major historical process did the westward movement of the Huns start in the late 4th century?", "answers": ["The Great Migration of Peoples", "The Hellenistic age", "The opening of the Silk Road", "The rise of the Turkic khaganates"]}
   },
   {
     "id": "huns-09",
     "type": "single_choice",
-    "question": "Ғұндар тарихта қандай ірі үдеріспен байланысты?",
-    "answers": ["Халықтардың ұлы қоныс аударуы", "Өнеркәсіптік революция", "Қайта өрлеу дәуірі", "Ғарышты игеру"],
-    "correct": "Халықтардың ұлы қоныс аударуы"
+    "difficulty": 3,
+    "question": "451 жылы Каталаун алқабындағы шайқаста Аттилаға қарсы Рим әскерін басқарған қолбасшы кім?",
+    "answers": ["Аэций", "Стилихон", "Велизарий", "Одоакр"],
+    "correct": "Аэций",
+    "en": {"question": "Who commanded the Roman army against Attila at the Battle of the Catalaunian Plains in 451?", "answers": ["Aetius", "Stilicho", "Belisarius", "Odoacer"]}
   },
   {
     "id": "huns-10",
-    "type": "single_choice",
-    "question": "Ғұндардың дәстүрлі қаруының бірі қандай?",
-    "answers": ["Садақ", "Арбалет", "Катапульта", "Бумеранг"],
-    "correct": "Садақ"
+    "type": "fill_blank",
+    "difficulty": 2,
+    "question": "Еуропадағы ғұндардың орталығы ___ даласы (қазіргі Венгрия) болды.",
+    "answers": ["Паннония", "Галлия", "Фракия", "Дакия"],
+    "correct": "Паннония",
+    "en": {"question": "The centre of the Huns in Europe was the ___ plain (present-day Hungary).", "answers": ["Pannonia", "Gaul", "Thrace", "Dacia"]}
+  },
+  {
+    "id": "huns-11",
+    "type": "matching",
+    "difficulty": 2,
+    "question": "Ежелгі халықтарды олар мекендеген өңірмен сәйкестендіріңіз",
+    "pairs": [
+      {"left": "Үйсіндер", "right": "Жетісу және Ыстықкөл өңірі"},
+      {"left": "Қаңлылар", "right": "Сырдарияның орта ағысы"},
+      {"left": "Ғұндар", "right": "Моңғол даласы"}
+    ],
+    "en": {"question": "Match the ancient peoples with the regions they lived in", "pairs": [{"left": "Wusun", "right": "Zhetysu and Issyk-Kul"}, {"left": "Kangju", "right": "The middle Syr Darya"}, {"left": "Xiongnu", "right": "The Mongolian steppe"}]}
+  },
+  {
+    "id": "huns-12",
+    "type": "chronology",
+    "difficulty": 2,
+    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
+    "items": ["Байдэн шайқасы", "Ғұн державасының екіге бөлінуі", "Ғұндардың остготтарды талқандауы", "Каталаун шайқасы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Battle of Baideng", "Split of the Xiongnu state", "Huns defeat the Ostrogoths", "Battle of the Catalaunian Plains"]}
   },
   {
     "id": "huns-13",
-    "type": "chronology",
-    "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Мөденің билікке келуі", "Ғұндардың Еуропаға қоныс аударуы", "Аттиланың билігі", "Түрік қағанатының құрылуы"]
+    "type": "single_choice",
+    "difficulty": 3,
+    "question": "Ғұн ақсүйектерінің жерленген орны ретінде әйгілі қорым қайсы?",
+    "answers": ["Ноин-Ула", "Пазырық", "Берел", "Есік"],
+    "correct": "Ноин-Ула",
+    "en": {"question": "Which burial ground is famous for its tombs of the Xiongnu nobility?", "answers": ["Noin-Ula", "Pazyryk", "Berel", "Issyk"]}
   }
 ]
