@@ -33,8 +33,14 @@ All fields drive the gameplay (`pass_percent` decides passing and stars, see Sav
   counts as a wrong answer (−10 HP, correct answer revealed). The timer stops between tasks and
   while paused.
 - **Targets:** sway speed is multiplied by `target_speed`.
-- **Decoys:** up to `extra_decoys` extra wrong answers are added on the top row for
-  `single_choice` and `fill_blank` tasks (image tasks need the top row for the picture). They come
+- **Answer formation:** up to four answers stand in one row on the ground, 3.6 m apart, labels above
+  the heads. Five or six use the ground row (three, labels hanging below the feet) and the rampart
+  behind (the rest, labels above the heads); matching puts the left items on the rampart and the
+  right items on the ground. A label is never wider than the gap to its neighbours (long text wraps),
+  labels of a row never overlap and stay on screen, and aiming at a label counts as aiming at its
+  soldier (tested at 800x600 to 1920x1080 with long Kazakh and English answers).
+- **Decoys:** up to `extra_decoys` extra wrong answers join the formation for `single_choice` and
+  `fill_blank` tasks (not for image tasks). They come
   **only from that task's own `extra_answers`**, never from other questions; a task with fewer (or
   no) extra answers simply shows fewer targets. Levels: 0 extra on 1–4, 1 on 5–6, 2 on 7–10 (at most
   six answers on screen; the assignment's table, p. 9, is marked "to be refined in testing").

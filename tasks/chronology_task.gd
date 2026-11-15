@@ -15,10 +15,10 @@ func _build() -> void:
 	progress_name = "Ретімен қойылды"
 	total = items.size()
 	items.shuffle()
-	var positions: Array = quiz.row_positions(items.size(), quiz.CHOICE_ROW_Y)
+	var spots: Array = quiz.answer_layout(items.size())
 
 	for i in range(items.size()):
-		quiz.spawn_target(items[i], positions[i])
+		quiz.spawn_target(items[i], spots[i]["at"], true, 1.0, spots[i]["placement"])
 
 
 func on_target_hit(target) -> Outcome:

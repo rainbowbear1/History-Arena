@@ -18,17 +18,18 @@ func _build() -> void:
 	total = pairs.size()
 	var order := range(pairs.size())
 
+	var layout: Dictionary = quiz.matching_layout(pairs.size())
 	order.shuffle()
-	var top_positions: Array = quiz.row_positions(pairs.size(), quiz.TOP_ROW_Y)
 	for i in range(order.size()):
-		var target = quiz.spawn_target(pairs[order[i]]["left"], top_positions[i])
+		var spot: Dictionary = layout["top"][i]
+		var target = quiz.spawn_target(pairs[order[i]]["left"], spot["at"], true, 1.0, spot["placement"])
 		pair_of[target] = order[i]
 		top_row[target] = true
 
 	order.shuffle()
-	var bottom_positions: Array = quiz.row_positions(pairs.size(), quiz.CHOICE_ROW_Y)
 	for i in range(order.size()):
-		var target = quiz.spawn_target(pairs[order[i]]["right"], bottom_positions[i])
+		var spot: Dictionary = layout["bottom"][i]
+		var target = quiz.spawn_target(pairs[order[i]]["right"], spot["at"], true, 1.0, spot["placement"])
 		pair_of[target] = order[i]
 
 

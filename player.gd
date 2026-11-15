@@ -85,14 +85,18 @@ func shoot() -> void:
 
 	play_recoil()
 	shoot_ray.force_raycast_update()
+	var target = shoot_ray.get_collider() if shoot_ray.is_colliding() else null
 
-	if shoot_ray.is_colliding():
-		var target = shoot_ray.get_collider()
-
-		if target.has_method("take_hit"):
-			target.take_hit(weapon["damage"])
-		elif target.has_method("hit"):
-			target.hit()
+	# Enemies first; otherwise an answer label under the crosshair counts as a hit on its target,
+	# so a player aiming at the text is never punished for missing the soldier.
+	if target and target.has_method("take_hit"):
+		target.take_hit(weapon["damage"])
+		return
+	var labelled = quiz_manager.label_target_at(get_viewport().get_visible_rect().size / 2.0)
+	if labelled:
+		labelled.hit()
+	elif target and target.has_method("hit"):
+		target.hit()
 
 @onready var weapon_holder: Node3D = $Camera3D/WeaponHolder
 

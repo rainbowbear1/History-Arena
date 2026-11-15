@@ -24,6 +24,7 @@ var style := "board"
 var soldier: Node3D = null
 var range_rim: MeshInstance3D = null
 var head_height := 1.1
+var feet_height := -1.0
 var flashing := false
 
 var state: State = State.NORMAL
@@ -75,10 +76,12 @@ func apply_style(new_style: String, look: Dictionary, _placard_color: Color, fee
 		shape.size = Vector3(1.0, SOLDIER_HEIGHT, 0.8)
 		collision.position.y = feet_y + SOLDIER_HEIGHT / 2.0
 		head_height = feet_y + SOLDIER_HEIGHT + 0.15
+		feet_height = feet_y
 	else:
 		_build_range_target(feet_y)
 		shape.size = Vector3(RANGE_RADIUS * 2.0, RANGE_RADIUS * 2.0, 0.4)
 		head_height = RANGE_RADIUS + 0.1
+		feet_height = -RANGE_RADIUS - 0.1
 	collision.shape = shape
 	_set_color(null)
 
@@ -120,6 +123,11 @@ static func _flat(color: Color) -> StandardMaterial3D:
 # Where the floating label points: just above the soldier's head or the target's rim.
 func label_anchor() -> Vector3:
 	return target_visual.global_transform * Vector3(0, head_height, 0)
+
+
+# Where a label hung below the target points: the soldier's feet or the bottom of the rings.
+func foot_anchor() -> Vector3:
+	return target_visual.global_transform * Vector3(0, feet_height, 0)
 
 
 func uses_screen_label() -> bool:

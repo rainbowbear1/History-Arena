@@ -1,18 +1,27 @@
 extends Control
 
-# Screen-space answer labels for soldier and shooting-range targets. Each label floats above its
-# target's head with a pointer down to it, keeps the same text size at any distance, is hidden when
-# the target is behind the camera, off screen or behind an obstacle, and is pushed clear of the
-# other labels so they never overlap.
+# Screen-space answer labels for soldier and shooting-range targets. Each label keeps the same text
+# size at any distance, is hidden when its target is behind the camera, off screen or behind an
+# obstacle, and has a pointer to its target. Labels of one row share a band: "above" floats over
+# the heads, "below" hangs under the feet, so a front row and a rampart row behind it never mix.
+# Within a band a label is never wider than the gap to its neighbours (long answers wrap onto
+# more lines instead) and labels are pushed sideways until none overlap.
 
 const FONT_SIZE := 18
 const MAX_TEXT_WIDTH := 260.0
-# Gap between the label and the target's head, filled by the pointer.
+const MIN_TEXT_WIDTH := 110.0
+# Gap between the label and the target, filled by the pointer.
 const POINTER_GAP := 22.0
-const LABEL_SPACING := 6.0
+const LABEL_SPACING := 8.0
 const SCREEN_MARGIN := 8.0
+# Room left free at the bottom of the screen for the character and ability line.
+const BOTTOM_MARGIN := 64.0
+# Panel border and margins around the text.
+const PANEL_PADDING := 24.0
 
-var entries: Array = []  # [{target, panel, label, style, anchor, visible}]
+var entries: Array = []  # [{target, panel, label, style, placement, anchor, foot, visible}]
+# Extra screen area the labels must keep clear of (the photo panel of image tasks).
+var blocked_top: float = 0.0
 var _font: Font
 
 
@@ -20,7 +29,7 @@ func _ready() -> void:
 	_font = get_theme_default_font()
 
 
-func track(target) -> void:
+func track(target, placement: String = "above") -> void:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
@@ -39,7 +48,8 @@ func track(target) -> void:
 	panel.add_child(label)
 	panel.hide()
 	add_child(panel)
-	entries.append({"target": target, "panel": panel, "label": label, "style": style, "anchor": Vector2.ZERO, "visible": false})
+	entries.append({"target": target, "panel": panel, "label": label, "style": style, "placement": placement,
+		"anchor": Vector2.ZERO, "foot": Vector2.ZERO, "visible": false})
 
 
 func clear() -> void:
@@ -56,6 +66,15 @@ func label_for(target) -> PanelContainer:
 	return null
 
 
+# The target whose label covers `point` (the crosshair), so shooting a label counts as shooting
+# its target.
+func target_at(point: Vector2):
+	for entry in entries:
+		if entry["visible"] and Rect2(entry["panel"].position, entry["panel"].size).has_point(point):
+			return entry["target"]
+	return null
+
+
 func _process(_delta: float) -> void:
 	entries = entries.filter(func(e):
 		if is_instance_valid(e["target"]) and e["target"].is_inside_tree():
@@ -66,7 +85,6 @@ func _process(_delta: float) -> void:
 	if camera == null:
 		return
 	var screen := get_viewport_rect().size
-	var placed: Array[Rect2] = []
 
 	for entry in entries:
 		_update_text(entry)
@@ -79,22 +97,15 @@ func _process(_delta: float) -> void:
 		if point.x < 0.0 or point.x > screen.x or point.y < 0.0 or point.y > screen.y:
 			continue
 		entry["anchor"] = point
+		entry["foot"] = camera.unproject_position(target.foot_anchor()) if entry["placement"] == "below" else point
 		entry["visible"] = true
 
-	# Labels nearest the bottom of the screen are placed first. A label that would overlap one
-	# already placed slides sideways if that clears it, otherwise moves up above it; it never
-	# covers the HUD's top bar.
-	var top := top_limit()
-	var shown := entries.filter(func(e): return e["visible"])
-	shown.sort_custom(func(a, b): return a["anchor"].y > b["anchor"].y)
-	for entry in shown:
-		var panel: PanelContainer = entry["panel"]
-		var size := panel.get_combined_minimum_size()
-		var rect := _place(entry["anchor"], size, placed, top, screen)
-		placed.append(rect)
-		panel.position = rect.position
-		panel.size = size
-		panel.show()
+	var placed: Array[Rect2] = []
+	for placement in ["below", "above"]:
+		var row := entries.filter(func(e): return e["visible"] and e["placement"] == placement)
+		row.sort_custom(func(a, b): return a["anchor"].x < b["anchor"].x)
+		_fit_widths(row)
+		_place_row(row, placement, placed, screen)
 
 	for entry in entries:
 		if not entry["visible"]:
@@ -102,41 +113,63 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
-# Lowest point of the HUD's top bar (question, score, timer); labels stay below it.
+# Each label may be as wide as the gap to its nearest neighbour in the band (never narrower than
+# MIN_TEXT_WIDTH); longer text wraps onto more lines.
+func _fit_widths(row: Array) -> void:
+	for i in range(row.size()):
+		var room := MAX_TEXT_WIDTH
+		for j in [i - 1, i + 1]:
+			if j >= 0 and j < row.size():
+				room = minf(room, absf(row[j]["anchor"].x - row[i]["anchor"].x) - LABEL_SPACING - PANEL_PADDING)
+		var label: Label = row[i]["label"]
+		var text_width := _font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x + 2.0
+		var width := minf(text_width, maxf(room, MIN_TEXT_WIDTH))
+		if absf(label.custom_minimum_size.x - width) > 0.5:
+			label.custom_minimum_size.x = width
+			row[i]["panel"].reset_size()
+
+
+# Places one band left to right: each label centred on its target and pushed right past the
+# previous one if they would touch; then the band is pulled back inside the screen.
+func _place_row(row: Array, placement: String, placed: Array[Rect2], screen: Vector2) -> void:
+	var rects: Array[Rect2] = []
+	var top := top_limit()
+	for entry in row:
+		var size: Vector2 = entry["panel"].get_combined_minimum_size()
+		var y: float = entry["anchor"].y - size.y - POINTER_GAP if placement == "above" else entry["foot"].y + POINTER_GAP
+		y = clampf(y, top, maxf(top, screen.y - BOTTOM_MARGIN - size.y))
+		var rect := Rect2(Vector2(entry["anchor"].x - size.x / 2.0, y), size)
+		if not rects.is_empty():
+			rect.position.x = maxf(rect.position.x, rects[-1].end.x + LABEL_SPACING)
+		rects.append(rect)
+	if rects.is_empty():
+		return
+	# Right edge first, then each label keeps clear of its left neighbour and of the left edge.
+	var limit := screen.x - SCREEN_MARGIN
+	for i in range(rects.size() - 1, -1, -1):
+		rects[i].position.x = minf(rects[i].position.x, limit - rects[i].size.x)
+		limit = rects[i].position.x - LABEL_SPACING
+	for i in range(rects.size()):
+		var left := SCREEN_MARGIN if i == 0 else rects[i - 1].end.x + LABEL_SPACING
+		rects[i].position.x = maxf(rects[i].position.x, left)
+		# A band never covers another one: "above" labels step up, "below" labels step down.
+		for other in placed:
+			if rects[i].grow(LABEL_SPACING / 2.0).intersects(other):
+				if placement == "above":
+					rects[i].position.y = maxf(top, other.position.y - rects[i].size.y - LABEL_SPACING)
+				else:
+					rects[i].position.y = other.end.y + LABEL_SPACING
+		var panel: PanelContainer = row[i]["panel"]
+		panel.position = rects[i].position
+		panel.size = rects[i].size
+		panel.show()
+	placed.append_array(rects)
+
+
+# Lowest point of the HUD's top bar (question, score, timer) or of the photo panel; labels stay below.
 func top_limit() -> float:
 	var bar := get_node_or_null("../TopBar") as Control
-	return (bar.get_global_rect().end.y if bar else 0.0) + SCREEN_MARGIN
-
-
-func _place(anchor: Vector2, size: Vector2, placed: Array[Rect2], top: float, screen: Vector2) -> Rect2:
-	var start := Rect2(anchor - Vector2(size.x / 2.0, size.y + POINTER_GAP), size)
-	var candidates: Array[Rect2] = [start]
-	# Sideways: just past each neighbour, as long as the pointer still lands under the label.
-	for other in placed:
-		for x in [other.end.x + LABEL_SPACING, other.position.x - size.x - LABEL_SPACING]:
-			if absf(x + size.x / 2.0 - anchor.x) < size.x / 2.0 - 10.0:
-				candidates.append(Rect2(Vector2(x, start.position.y), size))
-	# Upwards: stacked above whatever is in the way.
-	var up := start
-	for i in range(placed.size()):
-		var blocker = _first_overlap(up, placed)
-		if blocker == null:
-			break
-		up.position.y = blocker.position.y - size.y - LABEL_SPACING
-		candidates.append(up)
-	for rect in candidates:
-		rect.position.x = clampf(rect.position.x, SCREEN_MARGIN, screen.x - size.x - SCREEN_MARGIN)
-		if rect.position.y >= top and _first_overlap(rect, placed) == null:
-			return rect
-	start.position.y = maxf(start.position.y, top)
-	return start
-
-
-func _first_overlap(rect: Rect2, placed: Array[Rect2]):
-	for other in placed:
-		if rect.grow(LABEL_SPACING / 2.0).intersects(other.grow(LABEL_SPACING / 2.0)):
-			return other
-	return null
+	return maxf(bar.get_global_rect().end.y if bar else 0.0, blocked_top) + SCREEN_MARGIN
 
 
 func _draw() -> void:
@@ -145,11 +178,16 @@ func _draw() -> void:
 			continue
 		var panel: PanelContainer = entry["panel"]
 		var color: Color = entry["style"].border_color
-		var from := Vector2(panel.position.x + panel.size.x / 2.0, panel.position.y + panel.size.y)
-		var tip: Vector2 = entry["anchor"]
-		draw_line(from, tip - Vector2(0, 8), Color(0, 0, 0, 0.7), 5.0)
-		draw_line(from, tip - Vector2(0, 8), color, 3.0)
-		draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-8, -12), tip + Vector2(8, -12)]), color)
+		var below: bool = entry["placement"] == "below"
+		# The pointer runs from the label's edge nearest the target to the head (or the feet).
+		var tip: Vector2 = entry["foot"] if below else entry["anchor"]
+		var x := clampf(tip.x, panel.position.x + 10.0, panel.position.x + panel.size.x - 10.0)
+		var from := Vector2(x, panel.position.y if below else panel.position.y + panel.size.y)
+		var head := 12.0 if below else -12.0
+		var stem_end := tip + Vector2(0, head * 0.6)
+		draw_line(from, stem_end, Color(0, 0, 0, 0.7), 5.0)
+		draw_line(from, stem_end, color, 3.0)
+		draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-8, head), tip + Vector2(8, head)]), color)
 
 
 func _update_text(entry: Dictionary) -> void:
@@ -158,8 +196,6 @@ func _update_text(entry: Dictionary) -> void:
 	var text: String = target.answer_label.text
 	if label.text != text:
 		label.text = text
-		var width := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
-		label.custom_minimum_size.x = minf(width + 2.0, MAX_TEXT_WIDTH)
 	var accent: Color = target.accent_color()
 	entry["style"].border_color = accent
 	entry["style"].bg_color = Color(0.07, 0.07, 0.09, 0.88) if target.state == target.State.NORMAL and not target.flashing else accent.darkened(0.55)

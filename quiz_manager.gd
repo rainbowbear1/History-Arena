@@ -17,6 +17,13 @@ const TASK_SCRIPTS := {
 # Arena layout for spawned targets.
 const TARGET_Z := -8.0
 const ROW_SPACING := 3.0
+# Answer formation (answer_layout): up to MAX_FRONT_ROW answers stand in one row on the ground;
+# more use the ground row and the rampart. Spacing keeps every label at least ~190 px wide at
+# 1280x720, so long Kazakh or English answers wrap instead of overlapping.
+const MAX_FRONT_ROW := 4
+const FRONT_SPACING := 3.6
+const WIDE_FRONT_SPACING := 4.4
+const BACK_SPACING := 4.6
 # Answer placards: the bottom row is held by soldiers on the ground, the top row by soldiers
 # standing on the rampart behind them (see environment_builder.gd).
 const CHOICE_ROW_Y := 2.6
@@ -532,7 +539,8 @@ func update_hud() -> void:
 	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, "  · Қалқан белсенді" if shield_active else ""]
 
 
-func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1.0):
+# `placement` is where its screen label goes: "above" the head or "below" the feet (answer_labels.gd).
+func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1.0, placement: String = "above"):
 	var target = TARGET_SCENE.instantiate()
 	target.answer_text = text
 	target.is_correct = false
@@ -551,10 +559,42 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 		var feet_y := (LEDGE_TOP if on_ledge else GROUND_Y) - at.y
 		target.apply_style(theme.get("target_style", "board"), theme.get("enemy_look", {}), Color.html(theme.get("placard", "#f2e6c4")), feet_y)
 		if target.uses_screen_label():
-			answer_labels.track(target)
+			answer_labels.track(target, placement)
 
 	targets.append(target)
 	return target
+
+
+# Where `count` answers stand: [{"at": Vector3, "placement": "above"/"below"}], left to right per
+# row. Up to four answers share the ground row with their labels above the heads. Five or six use
+# the ground row (three, labels hanging below the feet) and the rampart behind it (the rest,
+# labels above the heads, standing in the gaps of the front row), so the two rows' labels never
+# meet and no soldier hides another.
+func answer_layout(count: int) -> Array:
+	if is_range():
+		return row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "above"})
+	if count <= MAX_FRONT_ROW:
+		return _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "above")
+	var front := ceili(count / 2.0)
+	return _row(front, WIDE_FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below") \
+		+ _row(count - front, BACK_SPACING, TOP_ROW_Y, TOP_ROW_Z, "above")
+
+
+# The two rows of a matching task: left items on the rampart (labels above), right items on the
+# ground (labels below).
+func matching_layout(count: int) -> Dictionary:
+	if is_range():
+		return {"top": row_positions(count, TOP_ROW_Y).map(func(at): return {"at": at, "placement": "above"}),
+			"bottom": row_positions(count, CHOICE_ROW_Y).map(func(at): return {"at": at, "placement": "below"})}
+	return {"top": _row(count, BACK_SPACING if count < 4 else FRONT_SPACING + 0.4, TOP_ROW_Y, TOP_ROW_Z, "above"),
+		"bottom": _row(count, FRONT_SPACING, CHOICE_ROW_Y, TARGET_Z, "below")}
+
+
+func _row(count: int, spacing: float, y: float, z: float, placement: String) -> Array:
+	var spots := []
+	for i in range(count):
+		spots.append({"at": Vector3((i - (count - 1) / 2.0) * spacing, y, z), "placement": placement})
+	return spots
 
 
 # Evenly spaced positions for a row of targets centred in front of the player.
@@ -568,6 +608,11 @@ func row_positions(count: int, y: float) -> Array:
 	for i in range(count):
 		positions.append(Vector3((i - (count - 1) / 2.0) * spacing, y, z))
 	return positions
+
+
+# The answer target whose label is under `point` (the crosshair), if any.
+func label_target_at(point: Vector2):
+	return answer_labels.target_at(point) if accepting_answers else null
 
 
 # The peaceful shooting range uses round targets in one wide row instead of soldiers on two rows.

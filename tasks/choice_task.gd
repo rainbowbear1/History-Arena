@@ -16,26 +16,17 @@ func _build() -> void:
 	if question.get("type") == "image":
 		quiz.show_image(question["image"])
 
+	# Harder levels add the task's own extra answers; every answer, real or extra, can stand
+	# anywhere in the formation.
 	var answers: Array = question["answers"].duplicate()
-	var decoys: Array = []
 	if quiz.DECOY_TYPES.has(question.get("type", "single_choice")) and quiz.extra_decoys() > 0:
-		decoys = quiz.decoy_answers(question, quiz.extra_decoys())
-	# On the shooting range the decoys join the one row; elsewhere they stand on the top row.
-	if quiz.is_range():
-		answers += decoys
-		decoys = []
+		answers += quiz.decoy_answers(question, quiz.extra_decoys())
 	answers.shuffle()
-	var positions: Array = quiz.row_positions(answers.size(), quiz.CHOICE_ROW_Y)
+	var spots: Array = quiz.answer_layout(answers.size())
 
 	for i in range(answers.size()):
-		var target = quiz.spawn_target(answers[i], positions[i])
+		var target = quiz.spawn_target(answers[i], spots[i]["at"], true, 1.0, spots[i]["placement"])
 		target.is_correct = answers[i] == question["correct"]
-
-	# Harder levels add fake answers on the top row.
-	if not decoys.is_empty():
-		var decoy_positions: Array = quiz.row_positions(decoys.size(), quiz.TOP_ROW_Y)
-		for i in range(decoys.size()):
-			quiz.spawn_target(decoys[i], decoy_positions[i])
 
 
 func remove_wrong(count: int) -> bool:

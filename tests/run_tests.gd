@@ -311,7 +311,7 @@ func test_arena() -> void:
 	check(quiz.targets.size() == 4, "first question spawns 4 targets")
 	var xs: Array = quiz.targets.map(func(t): return t.starting_position.x)
 	xs.sort()
-	check(xs == [-4.5, -1.5, 1.5, 4.5], "targets keep the original row positions")
+	check(xs.map(func(x): return snappedf(x, 0.01)) == [-5.4, -1.8, 1.8, 5.4], "four answers stand in one row, 3.6 m apart")
 	var correct_targets: Array = quiz.targets.filter(func(t): return t.is_correct)
 	check(correct_targets.size() == 1, "exactly one correct target")
 
@@ -355,6 +355,7 @@ func test_arena() -> void:
 	await test_difficulty()
 	await test_quiz_integrity()
 	await test_hud_and_labels()
+	await test_answer_layout()
 	await test_shooting_range()
 	test_total_score_unlocks()
 	await test_progress()
@@ -927,6 +928,68 @@ func test_quiz_integrity() -> void:
 	await process_frame
 
 
+# Answer formations for 3-6 answers and 2-4 matching pairs, in several window shapes, with long
+# Kazakh and English answers: every label is shown, inside the screen and below the top bar, and
+# no two labels touch, also while the soldiers sway.
+func test_answer_layout() -> void:
+	print("== Answer layout: 3-6 answers, matching rows, window shapes, long text")
+	game_state.selected_character = ""
+	game_state.selected_level = 7
+	var long := ["Азиядағы өзара іс-қимыл және сенім шаралары кеңесі", "Conference on Interaction and Confidence-Building Measures in Asia",
+		"Майдан маңындағы қара жұмысқа адам алу", "Drafting men for labour behind the front", "Мұхаммед Хайдар Дулати",
+		"Ядролық сынақтарға қарсы іс-қимыл күні", "Single-chamber parliament of the first years of independence", "Жанқожа Нұрмұхамедұлы"]
+	var tasks := [
+		{"type": "chronology", "question": "Q", "items": long.slice(0, 3)},
+		{"type": "single_choice", "question": "Q", "answers": long.slice(0, 4), "correct": long[0]},
+		{"type": "chronology", "question": "Q", "items": long.slice(0, 5)},
+		{"type": "single_choice", "question": "Q", "answers": long.slice(0, 4), "correct": long[0], "extra_answers": long.slice(4, 6)},
+		{"type": "matching", "question": "Q", "pairs": [{"left": long[4], "right": long[1]}, {"left": long[7], "right": long[6]}]},
+		{"type": "matching", "question": "Q", "pairs": [{"left": long[4], "right": long[1]}, {"left": long[7], "right": long[6]}, {"left": long[5], "right": long[3]}]},
+		{"type": "matching", "question": "Q", "pairs": [{"left": long[4], "right": long[1]}, {"left": long[7], "right": long[6]}, {"left": long[5], "right": long[3]}, {"left": long[0], "right": long[2]}]},
+	]
+	var names := ["3 events", "4 answers", "5 events", "6 answers", "2 pairs", "3 pairs", "4 pairs"]
+	for window_size in [Vector2i(1280, 720), Vector2i(1024, 768), Vector2i(1366, 768), Vector2i(1920, 1080), Vector2i(800, 600)]:
+		root.size = window_size
+		var arena := await _load_arena()
+		var quiz = arena.get_node("QuizManager")
+		var screen: Rect2 = arena.get_viewport().get_visible_rect()
+		var bad := []
+		for t in range(tasks.size()):
+			quiz.questions = [tasks[t]]
+			quiz.question_index = 0
+			quiz.load_question()
+			var gaps := []
+			for i in range(quiz.targets.size()):
+				for j in range(i + 1, quiz.targets.size()):
+					gaps.append(quiz.targets[i].starting_position.distance_to(quiz.targets[j].starting_position))
+			if gaps.min() < 3.0:
+				bad.append("%s: soldiers %.1f m apart" % [names[t], gaps.min()])
+			# Several moments of the sway.
+			for sample in range(4):
+				for f in range(8 if sample > 0 else 3):
+					await process_frame
+				var panels: Array = quiz.targets.map(func(x): return quiz.answer_labels.label_for(x))
+				if not panels.all(func(p): return p != null and p.visible):
+					bad.append("%s: a label is hidden" % names[t])
+					break
+				var rects: Array = panels.map(func(p): return p.get_global_rect())
+				if not rects.all(func(r): return screen.encloses(r) and r.position.y >= quiz.answer_labels.top_limit() - 8.5):
+					bad.append("%s: a label leaves the screen or covers the top bar" % names[t])
+					break
+				var touching := 0
+				for i in range(rects.size()):
+					for j in range(i + 1, rects.size()):
+						if rects[i].intersects(rects[j]):
+							touching += 1
+				if touching > 0:
+					bad.append("%s: %d overlapping labels" % [names[t], touching])
+					break
+		check(bad.is_empty(), "%dx%d: all formations readable %s" % [window_size.x, window_size.y, str(bad)])
+		arena.queue_free()
+		await process_frame
+	root.size = Vector2i(1152, 648)
+
+
 func test_hud_and_labels() -> void:
 	print("== HUD layout and answer labels")
 	game_state.selected_character = ""
@@ -971,7 +1034,11 @@ func test_hud_and_labels() -> void:
 				overlaps += 1
 	check(overlaps == 0, "answer labels never overlap (%d overlaps)" % overlaps)
 	var camera: Camera3D = arena.get_viewport().get_camera_3d()
-	check(quiz.targets.all(func(t): return labels.label_for(t).get_global_rect().end.y <= camera.unproject_position(t.label_anchor()).y), "each label sits above its soldier with the pointer below")
+	check(quiz.targets.all(func(t):
+		var rect: Rect2 = labels.label_for(t).get_global_rect()
+		var below: bool = is_equal_approx(t.starting_position.y, quiz.CHOICE_ROW_Y)
+		return rect.position.y >= camera.unproject_position(t.foot_anchor()).y if below else rect.end.y <= camera.unproject_position(t.label_anchor()).y),
+		"front-row labels hang below the feet, rampart labels float above the heads")
 	var parts: Array = quiz.targets[0].soldier.find_children("*", "MeshInstance3D", true, false)
 	check(parts.all(func(p): return p.material_overlay != null and p.material_overlay.get_shader_parameter("color") == quiz.targets[0].OUTLINE_COLOR), "answer soldiers have a red outline")
 	var correct = quiz.targets.filter(func(t): return t.is_correct)[0]
@@ -1112,7 +1179,8 @@ func test_difficulty() -> void:
 	check(question.has("extra_answers") and quiz.targets.size() == 6, "level 7 adds two decoy targets (got %d)" % quiz.targets.size())
 	var decoys: Array = quiz.targets.filter(func(t): return not question["answers"].has(t.answer_text))
 	check(decoys.size() == 2 and decoys.all(func(t): return question["extra_answers"].has(t.answer_text) and not t.is_correct), "decoys are the question's own extra answers")
-	check(decoys.all(func(t): return is_equal_approx(t.starting_position.y, quiz.TOP_ROW_Y)), "decoys sit on the top row")
+	var front: Array = quiz.targets.filter(func(t): return is_equal_approx(t.starting_position.y, quiz.CHOICE_ROW_Y))
+	check(front.size() == 3 and quiz.targets.size() - front.size() == 3, "six answers stand three on the ground and three on the rampart")
 	check(quiz.targets.filter(func(t): return t.is_correct).size() == 1, "still exactly one correct target")
 	check(quiz.decoy_answers({"answers": ["a", "b", "c", "d"], "correct": "a"}, 2).is_empty(), "a question without extra answers gets no decoys")
 	check(quiz.decoy_answers(_with(question, "extra_answers", ["x"]), 2) == ["x"], "fewer extra answers give fewer decoys")

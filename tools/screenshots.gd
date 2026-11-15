@@ -1,7 +1,7 @@
 extends SceneTree
 
 # Renders each level's first task and saves a PNG, for checking the look without playing.
-#   godot --path . --script res://tools/screenshots.gd -- [levels=1,2,...] [size=1280x720] [out=build/shots] [frames=40] [long]
+#   godot --path . --script res://tools/screenshots.gd -- [levels=1,2,...] [size=1280x720] [out=build/shots] [frames=40] [long] [task=id]
 # Needs a real window (not --headless). "long" swaps in a very long question to check wrapping;
 # "select" renders the level-select screen with sample progress instead.
 
@@ -10,6 +10,7 @@ var size := Vector2i(1280, 720)
 var out := "build/shots"
 var long_question := false
 var frames := 40
+var task_id := ""  # Show this task (by id) instead of the level's first one.
 
 
 func _initialize() -> void:
@@ -23,6 +24,8 @@ func _initialize() -> void:
 			out = arg.trim_prefix("out=")
 		elif arg.begins_with("frames="):
 			frames = int(arg.trim_prefix("frames="))
+		elif arg.begins_with("task="):
+			task_id = arg.trim_prefix("task=")
 		elif arg == "long":
 			long_question = true
 	run.call_deferred()
@@ -57,12 +60,17 @@ func run() -> void:
 		root.add_child(arena)
 		current_scene = arena
 		var quiz = arena.get_node("QuizManager")
+		if not task_id.is_empty():
+			for i in range(quiz.questions.size()):
+				if quiz.questions[i].get("id") == task_id:
+					quiz.question_index = i
+					quiz.load_question()
 		if long_question:
 			quiz.set_question("Ұзын сұрақтың үлгісі: " + "Қазақ хандығының тарихындағы маңызды оқиғаларды еске түсіріп, дұрыс жауапты таңдаңыз. ".repeat(2))
 		for i in range(frames):
 			await process_frame
 		var image := root.get_texture().get_image()
-		var path := "res://%s/level_%02d%s_%dx%d.png" % [out, level, "_long" if long_question else "", size.x, size.y]
+		var path := "res://%s/level_%02d%s%s_%dx%d.png" % [out, level, "_long" if long_question else "", "_" + task_id if task_id else "", size.x, size.y]
 		image.save_png(ProjectSettings.globalize_path(path))
 		print("saved ", path)
 		arena.queue_free()
