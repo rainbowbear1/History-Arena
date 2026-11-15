@@ -89,6 +89,13 @@ static func validate_character(character) -> String:
 	if not _is_number(ability.get("uses")) or ability["uses"] != floor(ability["uses"]) or ability["uses"] < 1:
 		return "\"ability.uses\" must be a whole number of at least 1"
 
+	# Optional unlock rule: {"level": N} opens with level N, {"passed": N} after passing level N.
+	if character.has("unlock"):
+		var unlock = character["unlock"]
+		if not unlock is Dictionary or unlock.size() != 1 or not (unlock.has("level") or unlock.has("passed")) \
+				or not _is_number(unlock.values()[0]) or unlock.values()[0] < 1 or unlock.values()[0] > 10:
+			return "\"unlock\" must be {\"level\": 1-10} or {\"passed\": 1-10}"
+
 	return ""
 
 

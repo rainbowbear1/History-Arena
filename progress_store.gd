@@ -148,6 +148,18 @@ func is_unlocked(id: int) -> bool:
 	return demo_unlock_all or id <= 1 or unlocked.has(id) or total_score() >= unlock_score(id)
 
 
+# Characters open with the era they belong to (data/characters.json "unlock"): {"level": N} when
+# level N is open, {"passed": N} once level N has been passed. A character without a rule, and
+# every character in demo mode, is open.
+func is_character_unlocked(character: Dictionary) -> bool:
+	var rule: Dictionary = character.get("unlock", {})
+	if demo_unlock_all or rule.is_empty():
+		return true
+	if rule.has("passed"):
+		return level_result(int(rule["passed"]))["passed"]
+	return is_unlocked(int(rule["level"]))
+
+
 # The LevelDatabase autoload (looked up at run time, so this script also compiles on its own).
 func _levels() -> Node:
 	return (Engine.get_main_loop() as SceneTree).root.get_node("LevelDatabase")

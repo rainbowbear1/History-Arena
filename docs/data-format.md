@@ -153,6 +153,7 @@ helmet/turban/cap/steel_helmet/kalpak, `headgear_color`, `weapon` = none/bow/spe
 | `weapon.auto` | true/false | Optional. Hold the mouse button to keep firing. |
 | `ability.id` | see below | Special ability on the E key. |
 | `ability.uses` | whole number ≥ 1 | Uses per level. |
+| `unlock` | `{"level": N}` or `{"passed": N}` | Optional. The character opens when level N opens, or once level N has been passed. Schedule (approved 16 Nov 2026): Томирис 1, Мөде 2, Күлтегін 3, Қайырхан 4, Керей 5, Қасым 6, Қабанбай 7, Абылай 8, Әлия 9, Мәншүк after passing 9. Locked characters are greyed out, say how they open and cannot be started with; demo mode opens all. |
 
 Abilities (`abilities.gd`): `fifty_fifty` (removes two wrong answers; single-answer and map tasks),
 `slow_time` (targets and enemies slowed for 8 s), `extra_time` (+10 s on the task timer),

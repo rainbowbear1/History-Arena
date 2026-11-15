@@ -28,6 +28,7 @@ const CREDITS := """Ойын: Тарих Аренасы — Godot Engine 4.7 (MI
 Абай Құнанбайұлы — public domain
 Байқоңыр, «Союз» ұшырылуы — NASA, public domain
 «Бәйтерек» — Quarot, CC0
+Қаріптер: Fira Sans (Mozilla), PT Serif (ParaType) — SIL OFL 1.1
 Лицензиялар: creativecommons.org/licenses"""
 
 var reset_armed: bool = false

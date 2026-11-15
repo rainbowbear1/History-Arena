@@ -448,6 +448,7 @@ func test_arena() -> void:
 	await test_answer_layout()
 	await test_shooting_range()
 	test_total_score_unlocks()
+	await test_character_unlocks()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -1600,6 +1601,54 @@ func test_total_score_unlocks() -> void:
 	progress.set_demo_unlock(was_demo)
 
 
+# Era-based character unlocks: one character per era level, Aliya with level 9, Manshuk after
+# passing level 9; locked characters are greyed out, explain how they open and cannot be chosen.
+func test_character_unlocks() -> void:
+	print("== Character unlocks")
+	var was_demo: bool = progress.demo_unlock_all
+	progress.reset()
+	var open_ids := func(): return char_db.characters.filter(func(c): return progress.is_character_unlocked(c)).map(func(c): return c["id"])
+	check(open_ids.call() == ["tomyris"], "a new player starts with Tomyris only")
+	var schedule := ["tomyris", "mode", "kultegin", "kaiyrkhan", "kerey", "kasym", "kabanbay", "abylai", "aliya"]
+	var right := true
+	for i in range(schedule.size()):
+		progress.unlocked.assign(range(1, i + 2))
+		var open: Array = open_ids.call()
+		var expected: Array = schedule.slice(0, i + 1)
+		open.sort()
+		expected.sort()
+		right = right and open == expected
+	check(right, "each era level that opens brings its character (Aliya with level 9)")
+	check(not open_ids.call().has("manshuk"), "Manshuk stays locked while level 9 is only open")
+	progress.record_attempt({"level": 9, "score": 1300, "stars": 1, "passed": true, "completed": true})
+	check(open_ids.call().has("manshuk"), "passing level 9 opens Manshuk")
+	var protagonists_ok: bool = level_db.levels.all(func(l):
+		progress.unlocked.assign(range(1, int(l["id"]) + 1))
+		return l["protagonist"] == "" or progress.is_character_unlocked(char_db.get_character(l["protagonist"])))
+	check(protagonists_ok, "every level's hero is open by the time the level is")
+
+	progress.reset()
+	game_state.selected_level = 1
+	game_state.selected_character = "manshuk"
+	var screen: Control = load("res://character_select.tscn").instantiate()
+	root.add_child(screen)
+	await process_frame
+	var locked: Button = screen.buttons["manshuk"]
+	check(locked.disabled and locked.text.ends_with("(жабық)") and not screen.buttons["tomyris"].disabled, "locked characters are greyed out and marked")
+	check(screen.selected_id == "tomyris", "a locked earlier choice falls back to an open character")
+	screen._show("aliya")
+	check(screen.title_label.text == "Жабық: 9-деңгей ашылғанда ашылады" and screen.description_label.modulate.a < 1.0, "the card explains how a locked character opens")
+	screen._show("manshuk")
+	check(screen.title_label.text == "Жабық: 9-деңгейді өткенде ашылады", "Manshuk's card says to pass level 9")
+	screen._select("manshuk")
+	check(screen.choose_button.disabled, "a locked character cannot be started with")
+	screen.queue_free()
+	await process_frame
+	progress.set_demo_unlock(was_demo)
+	check(progress.is_character_unlocked(char_db.get_character("manshuk")), "demo mode opens every character")
+	game_state.selected_character = ""
+
+
 func test_progress() -> void:
 	print("== Progress, stars and results")
 	var S = ProgressStoreScript
@@ -1681,6 +1730,7 @@ func test_progress() -> void:
 	check(not quiz.next_button.visible and quiz.results_label.text.contains("Жалпы ұпай: 100"), "results show the total; level 2 stays closed below 900")
 	await wait(0.7)
 	check(quiz.fade_rect.modulate.a < 0.05, "fade clears to show the results")
+	progress.unlocked.append(2)  # As if level 2 had opened, so its hero Modu is available too.
 	quiz.next_button.pressed.emit()
 	await process_frame
 	await process_frame

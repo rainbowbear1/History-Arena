@@ -32,6 +32,7 @@ grow_vertical = 2
 layout_mode = 2
 
 [node name="TitleLabel" type="Label" parent="CenterContainer/VBoxContainer" unique_id=657302805]
+theme_type_variation = &"Heading"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
 text = "Деңгейді таңдаңыз"

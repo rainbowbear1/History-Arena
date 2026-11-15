@@ -13,6 +13,15 @@ unchanged. Files under CC BY-SA remain under CC BY-SA.
   (equirectangular projection, fixed view). Borders are as in Natural Earth and are shown only to
   locate places for the quiz.
 
+## Fonts — `assets/fonts/`
+| File | Font | Author | Licence |
+|---|---|---|---|
+| `FiraSans-Regular.ttf`, `FiraSans-SemiBold.ttf` | Fira Sans (interface text, buttons) | The Mozilla Foundation and Telefonica S.A. | SIL Open Font License 1.1 (`OFL-FiraSans.txt`) |
+| `PTSerif-Bold.ttf` | PT Serif Bold (headings) | ParaType Ltd. | SIL Open Font License 1.1 (`OFL-PTSerif.txt`) |
+
+Downloaded unchanged from https://github.com/google/fonts (`ofl/firasans`, `ofl/ptserif`) on
+16 November 2026. All three cover the full Kazakh Cyrillic alphabet (checked in Godot).
+
 ## Images — `assets/images/`
 | File | Shows | Author | Licence | Source |
 |---|---|---|---|---|

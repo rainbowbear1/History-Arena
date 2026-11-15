@@ -37,6 +37,7 @@ custom_minimum_size = Vector2(340, 0)
 theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="MenuCenter/MenuVBox" unique_id=1410652208]
+theme_type_variation = &"Heading"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
 theme_override_font_sizes/font_size = 48
@@ -94,6 +95,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="SettingsTitle" type="Label" parent="SettingsContainer/SettingsPanel/SettingsMargin/SettingsVBox"]
+theme_type_variation = &"Heading"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
 theme_override_font_sizes/font_size = 28
@@ -147,6 +149,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="CreditsTitle" type="Label" parent="CreditsContainer/CreditsPanel/CreditsMargin/CreditsVBox"]
+theme_type_variation = &"Heading"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.6784314, 0.3764706, 1)
 theme_override_font_sizes/font_size = 28

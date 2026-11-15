@@ -10,6 +10,7 @@ const STAT_ROWS := [
 ]
 
 var selected_id: String = ""
+var buttons := {}
 var stat_bars := {}
 var stat_values := {}
 
@@ -35,6 +36,12 @@ func _ready() -> void:
 		button.custom_minimum_size = Vector2(220, 52)
 		button.toggle_mode = true
 		button.button_group = group
+		if not ProgressStore.is_character_unlocked(character):
+			# Locked: greyed out with a lock mark; hovering still shows the card and how to open it.
+			button.disabled = true
+			button.text = tr(character["name"]) + tr(" (жабық)")
+			button.focus_mode = Control.FOCUS_NONE
+		buttons[character["id"]] = button
 		button.pressed.connect(_select.bind(character["id"]))
 		button.focus_entered.connect(_show.bind(character["id"]))
 		button.mouse_entered.connect(_show.bind(character["id"]))
@@ -48,6 +55,8 @@ func _ready() -> void:
 	var level := LevelDatabase.get_level(GameState.selected_level)
 	var protagonist: String = level.get("protagonist", "")
 	var start_id := protagonist if not protagonist.is_empty() else GameState.selected_character
+	if not ProgressStore.is_character_unlocked(CharacterDatabase.get_character(start_id)):
+		start_id = CharacterDatabase.characters.filter(func(c): return ProgressStore.is_character_unlocked(c))[0]["id"]
 	level_label.text = "%d. %s" % [level.get("id", 0), tr(level.get("title", ""))]
 	if not protagonist.is_empty():
 		level_label.text += tr(" · Деңгей кейіпкері: ") + tr(CharacterDatabase.get_character(protagonist)["name"])
@@ -84,6 +93,20 @@ func _show(id: String) -> void:
 	var ability: Dictionary = character["ability"]
 	var info: Dictionary = Abilities.INFO[ability["id"]]
 	ability_label.text = tr("Қабілет [E]: %s ×%d — %s") % [tr(info["name"]), ability["uses"], tr(info["description"])]
+	if not ProgressStore.is_character_unlocked(character):
+		title_label.text = unlock_hint(character)
+	var locked_view := not ProgressStore.is_character_unlocked(character)
+	for label in [name_label, description_label, weapon_label, ability_label]:
+		label.modulate.a = 0.55 if locked_view else 1.0
+	choose_button.disabled = not ProgressStore.is_character_unlocked(CharacterDatabase.get_character(selected_id))
+
+
+# How a locked character opens, e.g. "Жабық: 5-деңгей ашылғанда ашылады".
+func unlock_hint(character: Dictionary) -> String:
+	var rule: Dictionary = character.get("unlock", {})
+	if rule.has("passed"):
+		return tr("Жабық: %d-деңгейді өткенде ашылады") % int(rule["passed"])
+	return tr("Жабық: %d-деңгей ашылғанда ашылады") % int(rule.get("level", 1))
 
 
 func _on_choose_pressed() -> void:

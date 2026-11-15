@@ -8,7 +8,8 @@
       "description": "Даланың еркіндігін қорғаған әйгілі билеуші.",
       "hp": 100, "speed": 6.5, "defense": 10,
       "weapon": { "name": "Садақ", "model": "bow", "cooldown": 0.45, "damage": 1 },
-      "ability": { "id": "slow_time", "uses": 2 }
+      "ability": { "id": "slow_time", "uses": 2 },
+      "unlock": { "level": 1 }
     },
     {
       "id": "mode",
@@ -17,7 +18,8 @@
       "description": "Жауынгерлерін қатаң тәртіпке баулыған қаһарлы көсем.",
       "hp": 110, "speed": 6.0, "defense": 15,
       "weapon": { "name": "Ысқырма жебе", "model": "bow", "cooldown": 0.4, "damage": 1 },
-      "ability": { "id": "shield", "uses": 2 }
+      "ability": { "id": "shield", "uses": 2 },
+      "unlock": { "level": 2 }
     },
     {
       "id": "kultegin",
@@ -26,7 +28,8 @@
       "description": "Ағасымен бірге қағанатты қайта нығайтқан батыр.",
       "hp": 105, "speed": 7.0, "defense": 10,
       "weapon": { "name": "Құрама садақ", "model": "bow", "cooldown": 0.6, "damage": 2 },
-      "ability": { "id": "double_score", "uses": 2 }
+      "ability": { "id": "double_score", "uses": 2 },
+      "unlock": { "level": 3 }
     },
     {
       "id": "kaiyrkhan",
@@ -35,7 +38,8 @@
       "description": "Сырдария бойындағы бай сауда қаласының әміршісі.",
       "hp": 110, "speed": 5.8, "defense": 25,
       "weapon": { "name": "Садақ", "model": "bow", "cooldown": 0.45, "damage": 1 },
-      "ability": { "id": "fifty_fifty", "uses": 3 }
+      "ability": { "id": "fifty_fifty", "uses": 3 },
+      "unlock": { "level": 4 }
     },
     {
       "id": "kerey",
@@ -44,7 +48,8 @@
       "description": "Көшпелі руларды соңынан ерткен батыл хан.",
       "hp": 120, "speed": 5.5, "defense": 25,
       "weapon": { "name": "Құрама садақ", "model": "bow", "cooldown": 0.6, "damage": 2 },
-      "ability": { "id": "shield", "uses": 2 }
+      "ability": { "id": "shield", "uses": 2 },
+      "unlock": { "level": 5 }
     },
     {
       "id": "kasym",
@@ -53,7 +58,8 @@
       "description": "Хандықтың шекарасын кеңейткен қуатты хан.",
       "hp": 110, "speed": 6.2, "defense": 20,
       "weapon": { "name": "Құрама садақ", "model": "bow", "cooldown": 0.6, "damage": 2 },
-      "ability": { "id": "extra_time", "uses": 3 }
+      "ability": { "id": "extra_time", "uses": 3 },
+      "unlock": { "level": 6 }
     },
     {
       "id": "abylai",
@@ -62,7 +68,8 @@
       "description": "Жоңғар шапқыншылығына қарсы күрестің басшысы.",
       "hp": 115, "speed": 6.5, "defense": 20,
       "weapon": { "name": "Мылтық", "model": "musket", "cooldown": 1.1, "damage": 3 },
-      "ability": { "id": "slow_time", "uses": 2 }
+      "ability": { "id": "slow_time", "uses": 2 },
+      "unlock": { "level": 8 }
     },
     {
       "id": "kabanbay",
@@ -71,7 +78,8 @@
       "description": "Жоңғар шапқыншылығы кезіндегі атақты қолбасшы.",
       "hp": 130, "speed": 5.5, "defense": 30,
       "weapon": { "name": "Мылтық", "model": "musket", "cooldown": 1.1, "damage": 3 },
-      "ability": { "id": "heal", "uses": 2 }
+      "ability": { "id": "heal", "uses": 2 },
+      "unlock": { "level": 7 }
     },
     {
       "id": "aliya",
@@ -80,7 +88,8 @@
       "description": "Ұлы Отан соғысындағы атақты мерген.",
       "hp": 90, "speed": 6.8, "defense": 10,
       "weapon": { "name": "Мергендік мылтық", "model": "rifle", "cooldown": 1.4, "damage": 4 },
-      "ability": { "id": "fifty_fifty", "uses": 2 }
+      "ability": { "id": "fifty_fifty", "uses": 2 },
+      "unlock": { "level": 9 }
     },
     {
       "id": "manshuk",
@@ -89,7 +98,8 @@
       "description": "Ұлы Отан соғысындағы пулеметші, Кеңес Одағының Батыры атағын алған.",
       "hp": 95, "speed": 6.2, "defense": 15,
       "weapon": { "name": "Пулемет", "model": "mg", "cooldown": 0.15, "damage": 1, "auto": true },
-      "ability": { "id": "heal", "uses": 2 }
+      "ability": { "id": "heal", "uses": 2 },
+      "unlock": { "passed": 9 }
     }
   ]
 }
