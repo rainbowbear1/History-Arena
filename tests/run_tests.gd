@@ -1662,6 +1662,14 @@ func test_weapon_effects() -> void:
 		var model: String = player.weapon["model"]
 		var rods: Array = player._model.find_children("*", "MeshInstance3D", true, false).filter(func(m): return m.mesh is CylinderMesh)
 		check(player._muzzle != null and player._muzzle.position.z < -0.6 and (model == "bow" or rods.size() >= 3), "%s: round barrel parts and a muzzle at the far end" % model)
+		if model == "bow":
+			# The arrow points where the crosshair points: its line passes close to a spot far ahead.
+			var cam: Camera3D = player.get_node("Camera3D")
+			var tip: Vector3 = player._muzzle.global_position
+			var arrow_dir: Vector3 = -player._model.global_basis.z.normalized()
+			var ahead: Vector3 = cam.global_position - cam.global_basis.z * 30.0
+			var miss: float = (tip + arrow_dir * tip.distance_to(ahead)).distance_to(ahead)
+			check(miss < 1.0, "bow: the arrow points at the crosshair (%.2f m off at 30 m)" % miss)
 		player.rotation = Vector3.ZERO
 		player.get_node("Camera3D").rotation = Vector3(0.3, 0, 0)  # Aim at the sky: no target hit.
 		var before: int = arena.get_children().size()

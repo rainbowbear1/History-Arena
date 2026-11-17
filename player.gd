@@ -230,6 +230,9 @@ const Projectile := preload("res://projectile.gd")
 const WOOD := Color(0.45, 0.28, 0.14)
 const BOW_SEGMENTS := 10
 const BOW_DRAW_DISTANCE := 0.22
+const BOW_OFFSET := Vector3(-0.17, 0.08, 0.0)  # From the weapon holder (right, below the view).
+const BOW_AIM_DISTANCE := 30.0
+const BOW_CANT := -10.0  # Degrees of tilt around the arrow (top of the bow leans right).
 const METAL := Color(0.32, 0.33, 0.36)
 const BRASS := Color(0.72, 0.56, 0.25)
 const ARROW_SPEED := 70.0
@@ -248,8 +251,14 @@ func _build_weapon(model: String) -> void:
 		old.queue_free()
 	_model = Node3D.new()
 	_model.scale = Vector3.ONE * (0.4 if model == "bow" else 0.6)
-	# The bow is turned a little so its curve shows, and tilted like a held bow.
-	_model.rotation_degrees = Vector3(0, 28, -14) if model == "bow" else Vector3.ZERO
+	if model == "bow":
+		# Held a little nearer the middle of the view; its arrow points at the crosshair (a point far
+		# down the camera's line of sight) and the bow is canted a few degrees, as archers hold it.
+		_model.position = BOW_OFFSET
+		var aim_from: Vector3 = weapon_holder.position + BOW_OFFSET
+		var forward := (Vector3(0, 0, -BOW_AIM_DISTANCE) - aim_from).normalized()
+		var facing := Basis.looking_at(forward, Vector3.UP)
+		_model.basis = (Basis(forward, deg_to_rad(BOW_CANT)) * facing).scaled(Vector3.ONE * 0.4)
 	weapon_holder.add_child(_model)
 	_muzzle = Node3D.new()
 	_model.add_child(_muzzle)
