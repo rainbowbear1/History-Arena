@@ -16,6 +16,8 @@ const OUTBOX_PATH := "user://outbox.json"
 const MAX_OUTBOX := 100
 const OFFLINE_MESSAGE := "Онлайн режим бапталмаған: Google арқылы кіру жұмыс істемейді"
 const WebBridgeTransport := preload("res://web_bridge_transport.gd")
+const POPUP_CLOSED := "кіру терезесі жабылды"  # Bridge message when the player closes the Google window.
+const LOAD_ERROR := "Firebase жүктелмеді: "
 
 var user: Dictionary = {}  # {"uid", "name"} or {"guest": true, "name": ...}
 var outbox: Array = []
@@ -74,7 +76,12 @@ func sign_in_with_google() -> String:
 		return last_error
 	var result: Dictionary = await transport.sign_in()
 	if not _valid_user(result):
-		last_error = tr("Кіру сәтсіз аяқталды: ") + str(result.get("error", tr("белгісіз қате")))
+		var reason := str(result.get("error", "белгісіз қате"))
+		# Closing the Google window is a choice, not a failure.
+		if reason == POPUP_CLOSED:
+			last_error = tr("Кіру тоқтатылды. Қайта көріңіз немесе қонақ ретінде ойнаңыз.")
+		else:
+			last_error = tr("Кіру сәтсіз аяқталды: ") + bridge_message(reason)
 		return last_error
 	_set_user(result)
 	await _after_sign_in()
@@ -146,8 +153,16 @@ func fetch_leaderboard(limit: int = 20) -> Dictionary:
 		return {"error": tr("Рейтингті көру үшін Google арқылы кіріңіз")}
 	var result: Dictionary = await transport.leaderboard(limit)
 	if result.get("ok") != true:
-		return {"error": tr("Рейтинг жүктелмеді: ") + str(result.get("error", tr("белгісіз қате")))}
+		return {"error": tr("Рейтинг жүктелмеді: ") + bridge_message(str(result.get("error", "белгісіз қате")))}
 	return result
+
+
+# The bridge reports problems in Kazakh (web/firebase-bridge.js); they are keys in locale/en.json.
+# A Firebase loading error carries the browser's own detail after the prefix.
+func bridge_message(text: String) -> String:
+	if text.begins_with(LOAD_ERROR):
+		return tr(LOAD_ERROR) + text.trim_prefix(LOAD_ERROR)
+	return tr(text)
 
 
 # Brings best scores saved online (e.g. on another computer) into this device's progress.

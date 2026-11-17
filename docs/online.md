@@ -25,6 +25,11 @@ of this page.)
 - `progress_store.gd`: each Google account has its own progress file on the device
   (`user://progress_<uid>.json`); after sign-in, best scores saved online are merged in, so progress
   follows the player to another computer.
+- **Progress is never silently overwritten.** Guest progress stays in the guest file on the device
+  and is not changed by signing in; each Google account starts from its own file. Merging online
+  results only ever raises a level's best score or stars, never lowers it.
+- **Sign-in messages:** closing the Google window says "sign-in cancelled"; a blocked pop-up, an
+  unauthorised domain or a network error is named (in Kazakh or English).
 - `web_bridge_transport.gd`: calls the bridge and waits for each Promise separately (30 s timeout).
 - `web/firebase-bridge.js`: the only code that talks to Firebase. Firebase keeps the session in the
   browser (IndexedDB), so reloading the page keeps the player signed in.

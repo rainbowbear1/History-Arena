@@ -5,27 +5,30 @@ enemy soldier marked with the right answer (a red outline and a floating label a
 to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3.
 
 > **Online features:** Google sign-in (Firebase Authentication) and the online leaderboard (Cloud
-> Firestore) are implemented and tested against the Firebase emulators. They go live once
-> `web/firebase-config.js` holds the project's web config and the build is on GitHub Pages
-> (`docs/deploy.md`). Until then the game runs offline with guest play. See `docs/online.md`.
+> Firestore) are implemented with the real Firebase SDK; there is no mock login. They were verified
+> in the browser against the Firebase emulators (session restore, results saved under the player's
+> UID, leaderboard, server-side checks, sign-out) and by 9 security-rule tests. They go live once
+> `web/firebase-config.js` holds your Firebase project's web config and the build is on GitHub
+> Pages (`docs/deploy.md`). Until then the game runs offline with guest play. See `docs/online.md`.
 
 ## What the game does
 | Assignment requirement | In the game |
 |---|---|
-| 10 arenas, rising difficulty, level 10 BOSS | Saka → Huns → Turkic Khaganate → Otyrar → Golden Horde → Kazakh Khanate → Dzungar wars → 18th–19th c. → 20th c. → Independence (shooting gallery + boss panel) |
-| 10 characters with HP, speed, weapon, ability, defense | Character screen; each level preselects its historical protagonist, free choice kept |
+| 10 arenas, rising difficulty, level 10 BOSS | Saka → Huns → Turkic Khaganate → Otyrar → Golden Horde → Kazakh Khanate → Dzungar wars → 18th–19th c. → 20th c. → Independence (arcade shooting gallery with moving plaques and tin ducks) |
+| 10 characters with HP, speed, weapon, ability, defense | Character screen; each character opens with their era's level (Manshuk after passing level 9); each level preselects its historical protagonist |
 | Shoot the correct answer: +100, wrong −10 HP | Answer soldiers are outlined in red with a floating answer label; a wrong answer shows an enemy landing a shot |
 | 6 task types | single choice, fill-in-the-blank, matching, chronology, map (Natural Earth map), image (licensed photos) |
-| Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 10 s, sway speed ×1.0 → ×2.5, up to 2 hand-written decoys per task, tasks in a new random order every attempt, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
+| Difficulty: faster targets, less time, more decoys, enemies, fewer resources | Timer 30 s → 12 s (16 s in the moving gallery), sway speed ×1.0 → ×2.2, up to 2 hand-written decoys per task, tasks in a new random order every attempt, enemy soldiers that aim and fire dodgeable shots, fewer ability uses and medical help |
 | "Жан біткенде" medical help | At 0 HP: one history question; correct → +50/40/30 HP and retry the task, wrong → restart |
 | Results saved (score, level, correct, wrong, playtime) | Saved per account on the device (stars, unlocks) and in Cloud Firestore under the player's Google account |
 | Google login, leaderboard | Firebase Authentication (Google); **Рейтинг** screen with top 20, own best total and rank; Firestore security rules |
+| Languages | Kazakh (default) and English, switch in the main menu (questions, menus, results) |
 
 ## Run, test, build
 ```
 godot --path .                                   # open/run (Godot 4.7.2)
 godot --headless --path . --import               # first time, or after adding assets
-godot --headless --path . --script res://tests/run_tests.gd   # 668 checks; exit code = failures
+godot --headless --path . --script res://tests/run_tests.gd   # 888 checks; exit code = failures
 (cd tests/firebase && npm install && npm test)   # Firestore security rules (emulator; Node 20+, Java 21+)
 tools/export_web.sh <path-to-godot> build/web    # web build + Firebase bridge
 tools/publish_pages.sh                           # build -> local gh-pages branch (no push)

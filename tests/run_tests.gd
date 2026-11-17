@@ -2042,7 +2042,15 @@ func test_backend() -> void:
 	fake.sign_in_result = {"error": "кіру терезесі жабылды"}
 	backend.sign_out()
 	error = await backend.sign_in_with_google()
-	check(error.contains("терезесі жабылды") and not backend.is_signed_in(), "failed sign-in reported, nobody signed in")
+	check(error == "Кіру тоқтатылды. Қайта көріңіз немесе қонақ ретінде ойнаңыз." and not backend.is_signed_in(), "closing the Google window is reported as cancelled, nobody signed in")
+	fake.sign_in_result = {"error": "браузер кіру терезесін бұғаттады, қалқымалы терезелерге рұқсат беріңіз"}
+	error = await backend.sign_in_with_google()
+	check(error.begins_with("Кіру сәтсіз аяқталды: браузер") and not backend.is_signed_in(), "a blocked pop-up is reported, nobody signed in")
+	locale.set_language("en")
+	error = await backend.sign_in_with_google()
+	check(error == "Sign-in failed: the browser blocked the sign-in window; allow pop-ups for this site", "sign-in errors are translated")
+	check(backend.bridge_message("Firebase жүктелмеді: blocked by client") == "Firebase did not load: blocked by client", "a Firebase loading error keeps its detail")
+	locale.set_language("kk")
 
 	# Screens: offline login, guest -> menu shows the player, sign out returns to login.
 	backend.transport = null

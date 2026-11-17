@@ -37,6 +37,10 @@ tools/export_web.sh <path-to-godot-4.7.2> build/web
    `gh-pages` / `(root)`** → Save. After a minute the game is at `https://<user>.github.io/<repo>/`.
 
 ## 4. Check the deployed site
+Already verified locally (17 Nov 2026) against the Firebase emulators in a browser: session restore
+after reload, a result stored under the player's UID, best score and total read back, the
+leaderboard screen showing the stored row, a second write within 5 s refused by the rules, and
+sign-out surviving a reload. The Google pop-up itself can only be checked on the real project:
 - [ ] Opens in Chrome and Edge over HTTPS; the login screen shows an active **Google арқылы кіру**.
 - [ ] Sign in with a real Google account; the menu shows your Google name.
 - [ ] Reload the page (F5): you go straight to the menu, still signed in.
@@ -44,7 +48,7 @@ tools/export_web.sh <path-to-godot-4.7.2> build/web
 - [ ] **Рейтинг** lists you with your total and rank; Firestore → `players` has your row.
 - [ ] Sign in with a second Google account (other browser or a private window): both appear in the
       leaderboard; each sees only their own progress.
-- [ ] **Шығу**, reload: the login screen appears; guest play works and is not uploaded.
+- [ ] **Шығу** (Sign out), reload: the login screen appears; guest play works and is not uploaded.
 - [ ] If sign-in says the domain is not authorised, re-check step 1.3. If the popup is blocked,
       allow pop-ups for the site.
 - [ ] Hard-refresh (Ctrl+F5) after every new release so the old `.pck` is not cached.
