@@ -57,6 +57,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	cooldown_left = maxf(cooldown_left - delta, 0.0)
+	_update_shot_effects(delta)
 	if _nocked_arrow and cooldown_left == 0.0 and not _nocked_arrow.visible:
 		_nocked_arrow.show()
 	if weapon["auto"] and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -141,45 +142,67 @@ func _shot_effect(to: Vector3) -> void:
 		scene.add_child(arrow)
 		arrow.launch(from, to, ARROW_SPEED, "arrow", func(_point): pass)
 		return
-	if _muzzle == null:
+	if _flash == null:
 		return
-	var flash := MeshInstance3D.new()
-	flash.mesh = _flash_mesh()
-	flash.material_override = _glow(Color(1.0, 0.75, 0.3))
-	flash.scale = Vector3.ONE * randf_range(0.8, 1.2)
-	_muzzle.add_child(flash)
-	get_tree().create_timer(FLASH_TIME, false).timeout.connect(flash.queue_free)
+	# The flash and a few tracers are built once and reused: a machine gun fires about seven times a
+	# second, and new meshes and materials on every shot made the game stutter.
+	_flash.scale = Vector3.ONE * randf_range(0.8, 1.2)
+	_flash.show()
+	_flash_left = FLASH_TIME
 	var length := from.distance_to(to)
 	if length < 0.5:
 		return
-	var tracer := MeshInstance3D.new()
+	var tracer: MeshInstance3D = _tracers[_next_tracer]
+	_next_tracer = (_next_tracer + 1) % _tracers.size()
+	var up := Vector3.UP if absf((to - from).normalized().y) < 0.99 else Vector3.RIGHT
+	tracer.look_at_from_position((from + to) / 2.0, to, up)
+	tracer.rotate_object_local(Vector3.RIGHT, PI / 2.0)
+	tracer.scale = Vector3(1, length, 1)
+	tracer.set_meta("left", TRACER_TIME)
+	tracer.show()
+
+
+# Muzzle flash and a small pool of tracers for the guns, made once when the weapon is built.
+func _build_shot_effects() -> void:
+	_flash = MeshInstance3D.new()
+	var ball := SphereMesh.new()
+	ball.radius = 0.07
+	ball.height = 0.11
+	ball.radial_segments = 6
+	ball.rings = 3
+	_flash.mesh = ball
+	_flash.material_override = _glow(Color(1.0, 0.75, 0.3))
+	_flash.hide()
+	_muzzle.add_child(_flash)
 	var rod := CylinderMesh.new()
 	rod.top_radius = 0.012
 	rod.bottom_radius = 0.012
 	rod.height = 1.0
 	rod.radial_segments = 4
 	rod.rings = 1
-	tracer.mesh = rod
 	var glow := _glow(Color(1.0, 0.9, 0.55))
-	glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tracer.material_override = glow
-	scene.add_child(tracer)
-	var up := Vector3.UP if absf((to - from).normalized().y) < 0.99 else Vector3.RIGHT
-	tracer.look_at_from_position((from + to) / 2.0, to, up)
-	tracer.rotate_object_local(Vector3.RIGHT, PI / 2.0)
-	tracer.scale = Vector3(1, length, 1)
-	var fade := tracer.create_tween()
-	fade.tween_property(glow, "albedo_color:a", 0.0, TRACER_TIME)
-	fade.tween_callback(tracer.queue_free)
+	for i in range(TRACER_POOL):
+		var tracer := MeshInstance3D.new()
+		tracer.mesh = rod
+		tracer.material_override = glow
+		tracer.top_level = true  # Placed in world space, not following the weapon.
+		tracer.hide()
+		add_child(tracer)
+		_tracers.append(tracer)
 
 
-static func _flash_mesh() -> SphereMesh:
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.07
-	mesh.height = 0.11
-	mesh.radial_segments = 6
-	mesh.rings = 3
-	return mesh
+# Hides the flash and tracers when their moment is over.
+func _update_shot_effects(delta: float) -> void:
+	if _flash and _flash.visible:
+		_flash_left -= delta
+		if _flash_left <= 0.0:
+			_flash.hide()
+	for tracer in _tracers:
+		if tracer.visible:
+			var left: float = tracer.get_meta("left") - delta
+			tracer.set_meta("left", left)
+			if left <= 0.0:
+				tracer.hide()
 
 
 static func _glow(color: Color) -> StandardMaterial3D:
@@ -197,6 +220,11 @@ var _nocked_arrow: Node3D
 var _drawing := false
 # Seconds the bow is drawn before the arrow leaves (tests set 0 to shoot at once).
 var bow_draw_time := 0.12
+var _flash: MeshInstance3D
+var _flash_left := 0.0
+var _tracers: Array = []
+var _next_tracer := 0
+const TRACER_POOL := 4
 
 const Projectile := preload("res://projectile.gd")
 const WOOD := Color(0.45, 0.28, 0.14)
@@ -299,6 +327,8 @@ func _build_weapon(model: String) -> void:
 			_weapon_part(Vector3(0.045, 0.11, 0.05), Vector3(0, -0.1, 0.12), WOOD, Vector3(0.35, 0, 0))
 			_weapon_part(Vector3(0.07, 0.13, 0.28), Vector3(0, -0.04, 0.33), WOOD, Vector3(0.12, 0, 0))
 			_muzzle.position = Vector3(0, 0.0, -0.86)
+	if model != "bow":
+		_build_shot_effects()
 
 
 # A box, or a round rod (`round`: x is the diameter, y the length, and a z above 0 the diameter

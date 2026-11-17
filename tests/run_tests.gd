@@ -1671,9 +1671,16 @@ func test_weapon_effects() -> void:
 		if model == "bow":
 			check(added.any(func(n): return n is Projectile), "bow: an arrow flies to where it was aimed")
 		else:
-			check(added.size() >= 1 and player._muzzle.get_child_count() >= 1, "%s: muzzle flash and tracer" % model)
+			check(player._flash.visible and player._tracers.any(func(t): return t.visible), "%s: muzzle flash and tracer" % model)
 			await wait(0.2)
-			check(player._muzzle.get_child_count() == 0, "%s: the flash is gone a moment later" % model)
+			check(not player._flash.visible and player._tracers.all(func(t): return not t.visible), "%s: the flash and tracer are gone a moment later" % model)
+			# Rapid fire reuses the same few effect nodes: nothing new is created per shot.
+			var nodes_before: int = player.find_children("*", "", true, false).size() + arena.get_child_count()
+			for shot in range(20):
+				player.cooldown_left = 0.0
+				player.shoot()
+			var nodes_after: int = player.find_children("*", "", true, false).size() + arena.get_child_count()
+			check(nodes_after == nodes_before and added.is_empty(), "%s: rapid fire creates no new nodes" % model)
 		player.get_node("Camera3D").rotation = Vector3.ZERO
 		if model == "bow":
 			# A real draw: nothing is hit until the string is released; the cooldown starts at the click.
