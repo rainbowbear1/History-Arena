@@ -2,6 +2,7 @@
 extends Control
 
 const StarRow := preload("res://star_row.gd")
+const QuestionPools := preload("res://question_pools.gd")
 
 @onready var level_grid: GridContainer = $CenterContainer/VBoxContainer/LevelGrid
 @onready var level_info_label: Label = $CenterContainer/VBoxContainer/LevelInfoLabel
@@ -49,6 +50,7 @@ func _ready() -> void:
 		button.mouse_entered.connect(_show_level_info.bind(level_number))
 
 	_add_boss_tile()
+	_add_all_in_one_tile()
 	back_button.pressed.connect(_on_back_pressed)
 
 	if level_grid.get_child_count() > 0:
@@ -95,7 +97,45 @@ func _add_boss_tile() -> void:
 	level_grid.add_sibling(row)
 
 
+# All-in-One, a wide gold-edged tile in its own row under the BOSS, once the BOSS has been defeated.
+func _add_all_in_one_tile() -> void:
+	var id := LevelDatabase.ALL_IN_ONE_ID
+	if not ProgressStore.is_all_in_one_unlocked() or not LevelDatabase.is_playable(id):
+		return
+	var row := CenterContainer.new()
+	row.name = "AllInOneRow"
+	var tile := Button.new()
+	tile.name = "AllInOneTile"
+	tile.text = tr("Бәрі бірге")
+	tile.custom_minimum_size = Vector2(240, 52)
+	tile.focus_mode = Control.FOCUS_ALL
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.13, 0.2, 0.3)
+	style.set_corner_radius_all(8)
+	style.set_border_width_all(3)
+	style.border_color = Color(0.84, 0.68, 0.38)
+	tile.add_theme_stylebox_override("normal", style)
+	var hover := style.duplicate()
+	hover.bg_color = Color(0.19, 0.28, 0.4)
+	tile.add_theme_stylebox_override("hover", hover)
+	tile.add_theme_stylebox_override("focus", hover)
+	tile.pressed.connect(_on_level_selected.bind(id))
+	tile.focus_entered.connect(_show_level_info.bind(id))
+	tile.mouse_entered.connect(_show_level_info.bind(id))
+	row.add_child(tile)
+	var boss_row := level_grid.get_parent().get_node_or_null("BossRow")
+	(boss_row if boss_row else level_grid).add_sibling(row)
+
+
 func _show_level_info(level_number: int) -> void:
+	if level_number == LevelDatabase.ALL_IN_ONE_ID:
+		var best: Dictionary = ProgressStore.all_in_one_best
+		var lines := [tr("Бәрі бірге: барлық %d тапсырма кездейсоқ ретпен") % QuestionPools.all_in_one(QuestionPools.load_banks(LevelDatabase.levels), false).size(),
+			tr("Денсаулық біткенде немесе барлық сұрақ біткенде аяқталады; [H] аптечкалар")]
+		if not best.is_empty():
+			lines.append(tr("Үздік нәтиже: %d дұрыс жауап") % int(best["correct"]))
+		level_info_label.text = "\n".join(lines)
+		return
 	if level_number == LevelDatabase.BOSS_ID:
 		var lines := [tr("BOSS: бүкіл тарих бойынша %d тапсырма") % LevelDatabase.boss.get("questions", 50),
 			tr("Барған сайын қиындайды; [H] аптечкалар"), tr("Үздік ұпай: %d") % ProgressStore.boss["best_score"]]

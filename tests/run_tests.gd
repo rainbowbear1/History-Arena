@@ -95,7 +95,8 @@ func test_level_data() -> void:
 
 	check(level_db.get_level(10).get("boss") == false and level_db.get_level(10)["stars"] == 5, "level 10 is a 5/5 level, not the BOSS")
 	check(level_db.get_level(11).get("boss") == true and level_db.boss["questions"] == 50, "the BOSS is its own 50-task entry (id 11)")
-	check(level_db.get_level(0).is_empty() and level_db.get_level(12).is_empty(), "out-of-range ids return {}")
+	check(level_db.get_level(12).get("all_in_one") == true and level_db.get_level(12).get("boss") == false, "All-in-One is its own entry (id 12)")
+	check(level_db.get_level(0).is_empty() and level_db.get_level(13).is_empty(), "out-of-range ids return {}")
 
 	var themes: Dictionary = EnvironmentBuilder.load_themes()
 	for id in range(1, 11):
@@ -286,7 +287,7 @@ func test_localization() -> void:
 	var keys := []
 	var literal := RegEx.create_from_string(r'(?:tr|_t)\("((?:[^"\\]|\\.)*)"\)')
 	var files := ["abilities.gd", "backend.gd", "character_select.gd", "image_panel.gd", "leaderboard.gd", "level_select.gd",
-		"main_menu.gd", "quiz_manager.gd", "revival_panel.gd", "startup_screen.gd", "tasks/choice_task.gd",
+		"level_database.gd", "boss_reveal.gd", "main_menu.gd", "quiz_manager.gd", "revival_panel.gd", "startup_screen.gd", "tasks/choice_task.gd",
 		"tasks/chronology_task.gd", "tasks/map_task.gd", "tasks/matching_task.gd"]
 	for file in files:
 		for m in literal.search_all(FileAccess.get_file_as_string("res://" + file)):
@@ -296,7 +297,7 @@ func test_localization() -> void:
 		for m in scene_text.search_all(FileAccess.get_file_as_string("res://" + scene)):
 			if m.get_string(1) != "Қазақ хандығы қай жылы құрылды?":  # Placeholder replaced at start.
 				keys.append(m.get_string(1).c_unescape())
-	for level in level_db.levels:
+	for level in level_db.levels + [level_db.all_in_one]:
 		keys.append(level["title"])
 	for character in char_db.characters:
 		keys.append_array([character["name"], character["title"], character["description"], character["weapon"]["name"]])
@@ -454,6 +455,7 @@ func test_arena() -> void:
 	await test_weapon_effects()
 	test_boss_question_sets()
 	await test_boss()
+	await test_all_in_one()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -1875,6 +1877,130 @@ func _same_task(task: Dictionary, original: Dictionary) -> bool:
 	return copy == plain
 
 
+# All-in-One: every campaign task once in a random order, opened by a BOSS victory, with its own
+# results and personal best that New Game keeps; the campaign total never changes.
+func test_all_in_one() -> void:
+	print("== All-in-One")
+	var banks: Dictionary = QuestionPools.load_banks(level_db.levels)
+	var bank_total := 0
+	var bank_ids := {}
+	for id in banks:
+		bank_total += banks[id].size()
+		for task in banks[id]:
+			bank_ids[task["id"]] = true
+	var runs := [QuestionPools.all_in_one(banks), QuestionPools.all_in_one(banks), QuestionPools.all_in_one(banks)]
+	check(runs.all(func(r): return r.size() == bank_total and bank_ids.size() == bank_total), "the pool holds every campaign task (%d, counted from the banks)" % bank_total)
+	check(runs.all(func(r): return _unique_ids(r) and r.all(func(q): return bank_ids.has(q["id"]))), "every task exactly once, none invented")
+	check(runs[0].map(func(q): return q["id"]) != runs[1].map(func(q): return q["id"]) and runs[1].map(func(q): return q["id"]) != runs[2].map(func(q): return q["id"]),
+		"every attempt has a new order")
+	var levels_order: Array = runs[0].map(func(q): return q["source_level"])
+	var sorted := levels_order.duplicate()
+	sorted.sort()
+	var first_ten: Array = runs[0].slice(0, 10).map(func(q): return q["source_level"])
+	check(levels_order != sorted and first_ten.any(func(l): return l != first_ten[0]), "not in chronological order")
+
+	# Ranking: correct answers, then accuracy, then the shorter time; a weaker run keeps the best.
+	var S = ProgressStoreScript
+	check(S.all_in_one_key(81, 133, 9000) > S.all_in_one_key(80, 80, 100), "more correct answers rank first")
+	check(S.all_in_one_key(80, 90, 5000) > S.all_in_one_key(80, 100, 100), "then accuracy")
+	check(S.all_in_one_key(80, 90, 900) > S.all_in_one_key(80, 90, 1000), "then the shorter active time")
+
+	# Locked until the BOSS is defeated.
+	var was_demo: bool = progress.demo_unlock_all
+	progress.reset()
+	progress.unlock_everything_earned = false
+	progress.is_admin = false
+	progress.all_in_one_best = {}
+	progress._save_entitlements()
+	check(not progress.is_unlocked(12), "All-in-One is locked before the BOSS is defeated")
+	progress.record_attempt({"level": 10, "score": 1200, "stars": 1, "passed": true, "completed": true})
+	var select: Control = load("res://level_select.tscn").instantiate()
+	root.add_child(select)
+	await process_frame
+	check(select.find_child("AllInOneTile", true, false) == null, "no All-in-One tile before a BOSS victory")
+	select.queue_free()
+	progress.record_attempt({"level": 11, "score": 3500, "max_score": 5000, "correct": 35, "stars": 1, "passed": true, "completed": true})
+	check(progress.is_unlocked(12), "a BOSS victory opens All-in-One")
+	select = load("res://level_select.tscn").instantiate()
+	root.add_child(select)
+	await process_frame
+	var tile: Button = select.find_child("AllInOneTile", true, false)
+	check(tile != null and tile.text == "Бәрі бірге", "the level screen shows the All-in-One tile")
+	select._show_level_info(12)
+	check(select.level_info_label.text.contains(str(bank_total)), "its info names the number of tasks")
+	select.queue_free()
+
+	# The run: no difficulty ramp, medkits, the source label and Question X / Total.
+	game_state.selected_level = 12
+	game_state.selected_character = "tomyris"
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	check(quiz.is_all_in_one() and quiz.questions.size() == bank_total, "the run asks all %d tasks" % bank_total)
+	check(quiz.source_label.text.begins_with("Сұрақ 1 / %d  ·  " % bank_total) and quiz.source_label.text.contains("-деңгей — "), "Question 1 / %d with the source level" % bank_total)
+	check(quiz.medkits == 2 and quiz.ability_label.text.contains("[H]") and quiz.ability_uses > 0, "medkits and the character ability are available")
+	var base_time: float = quiz.level["time_per_question"] * (quiz.MULTI_STEP_TIME if quiz.MULTI_STEP_TYPES.has(QuestionValidator.get_type(quiz.questions[0])) else 1.0)
+	check(is_equal_approx(quiz.time_limit, base_time), "the timer is the same from the first task")
+	quiz.question_index = 12
+	quiz.load_question()
+	check(quiz.medkits == 3, "a medkit every 12 tasks")
+	quiz.question_index = bank_total - 1
+	quiz.load_question()
+	base_time = quiz.level["time_per_question"] * (quiz.MULTI_STEP_TIME if quiz.MULTI_STEP_TYPES.has(QuestionValidator.get_type(quiz.questions[bank_total - 1])) else 1.0)
+	check(is_equal_approx(quiz.time_limit, base_time) and quiz.boss_progress() == 0.0, "...to the last (no ramp by question number)")
+	check(quiz.source_label.text.begins_with("Сұрақ %d / %d" % [bank_total, bank_total]), "the label follows the run")
+	quiz.question_index = 24
+	quiz.load_question()
+	quiz.health = 40
+	quiz.use_medkit()
+	check(quiz.health == 75, "a medkit restores 35 HP")
+
+	# Losing all health ends the run with its results (after the medical help is used up).
+	var total_before: int = progress.total_score()
+	quiz.revivals_left = 0
+	quiz.correct_count = 20
+	quiz.score = 2100
+	quiz.playtime = 600.0
+	quiz.health = 0
+	quiz.finish_task("Қате!", Color.RED)
+	await wait(1.5)
+	var attempt: Dictionary = quiz.last_attempt
+	check(not quiz.revival_panel.visible and quiz.results_container.visible and quiz.results_title.text == "«Бәрі бірге» аяқталды", "0 HP ends the run with its results")
+	check(attempt["answered"] == 25 and attempt["correct"] == 20 and attempt["wrong"] == 5 and not attempt["completed"] and attempt["max_score"] == bank_total * 100,
+		"the run counts answered, correct and incorrect tasks")
+	check(quiz.results_label.text.contains("25 / %d" % bank_total) and quiz.results_label.text.contains("80%") and quiz.results_label.text.contains("10:0")
+		and quiz.results_label.text.contains("толық аяқталмады"), "results: answered, accuracy, active time, not completed")
+	check(progress.all_in_one_best["correct"] == 20 and progress.total_score() == total_before and not progress.levels.has("12"), "a personal best that never changes the campaign")
+	arena.queue_free()
+	await process_frame
+
+	# A complete run.
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	quiz.correct_count = bank_total - 3
+	quiz.score = (bank_total - 3) * 100
+	quiz.playtime = 3725.0
+	quiz.question_index = bank_total
+	quiz.load_question()
+	await wait(1.5)
+	check(quiz.results_title.text == "Барлық сұрақ орындалды!" and quiz.results_label.text.contains("Бүкіл сұрақ қоры аяқталды")
+		and quiz.results_label.text.contains("1:02:05") and quiz.results_label.text.contains("Жаңа үздік нәтиже!"), "completing the pool: results and a new best")
+	var best: Dictionary = progress.all_in_one_best.duplicate()
+	arena.queue_free()
+	await process_frame
+	progress.record_attempt({"level": 12, "score": 500, "correct": 5, "wrong": 1, "answered": 6, "playtime_sec": 60, "completed": false})
+	check(progress.all_in_one_best == best, "a weaker run never replaces the best")
+	progress.reset()
+	progress.load_data()
+	check(progress.all_in_one_best == best and progress.is_unlocked(12), "the best and the unlock survive New Game")
+	progress.unlock_everything_earned = false
+	progress.all_in_one_best = {}
+	progress._save_entitlements()
+	progress.reset()
+	progress.set_demo_unlock(was_demo)
+	game_state.selected_level = 1
+	game_state.selected_character = ""
+
+
 func test_progress() -> void:
 	print("== Progress, stars and results")
 	var S = ProgressStoreScript
@@ -2124,11 +2250,15 @@ class FakeTransport:
 		signed_out = true
 		user = {}
 
-	func submit_result(payload: Dictionary) -> bool:
+	var reject_levels: Array = []  # Levels the "security rules" refuse.
+
+	func submit_result(payload: Dictionary) -> Dictionary:
 		await Engine.get_main_loop().process_frame
+		if reject_levels.has(int(payload["level"])):
+			return {"ok": false, "error": "сервер жазуға рұқсат бермеді", "rejected": true}
 		if accept:
 			received.append(payload)
-		return accept
+		return {"ok": accept}
 
 	func my_progress() -> Dictionary:
 		await Engine.get_main_loop().process_frame
@@ -2150,9 +2280,15 @@ class FakeTransport:
 		achievements["bossBest"] = maxi(achievements["bossBest"], score)
 		return true
 
-	func leaderboard(_limit: int) -> Dictionary:
+	var pool_board := {"ok": true, "rows": [{"name": "Айгерім", "correct": 120, "answered": 133, "acc": 902, "time": 3725, "completed": true, "me": false},
+		{"name": "Тест Оқушы", "correct": 64, "answered": 80, "acc": 800, "time": 1500, "completed": false, "me": true}],
+		"me": {"correct": 64, "answered": 80, "acc": 800, "time": 1500, "rank": 2}}
+	var boards_asked: Array = []
+
+	func leaderboard(_limit: int, which: String) -> Dictionary:
 		await Engine.get_main_loop().process_frame
-		return board
+		boards_asked.append(which)
+		return pool_board if which == "allinone" else board
 
 
 func test_backend() -> void:
@@ -2227,6 +2363,19 @@ func test_backend() -> void:
 	check(fake.received.size() == 1 and backend.outbox.is_empty(), "the first account's queued run is sent when it returns")
 	var board: Dictionary = await backend.fetch_leaderboard()
 	check(board.get("ok") == true and board["rows"].size() == 2 and int(board["me"]["rank"]) == 2, "leaderboard and personal best fetched")
+
+	# A run the security rules refuse does not hold up the runs behind it, and is kept for later.
+	fake.received.clear()
+	fake.reject_levels = [12]
+	backend.submit_attempt(_with(attempt, "level", 12))
+	backend.submit_attempt(_with(attempt, "level", 5))
+	await wait(0.3)
+	check(fake.received.map(func(p): return int(p["level"])) == [5] and backend.outbox.size() == 1 and int(backend.outbox[0]["level"]) == 12,
+		"a refused run is kept but no longer blocks the queue")
+	fake.reject_levels = []
+	backend.flush_outbox()
+	await wait(0.3)
+	check(backend.outbox.is_empty() and fake.received.size() == 2, "the refused run is sent once the server accepts it")
 	fake.sign_in_result = {"error": "кіру терезесі жабылды"}
 	backend.sign_out()
 	error = await backend.sign_in_with_google()
@@ -2319,6 +2468,12 @@ func test_backend() -> void:
 	var names: Array = current_scene.rows.get_children().map(func(l): return l.text)
 	check(current_scene.name == "Leaderboard" and names.has("Айгерім") and names.has("Тест Оқушы"), "leaderboard lists players and scores")
 	check(current_scene.me_label.text.contains("1100") and current_scene.me_label.text.contains("орын: 2"), "leaderboard shows the player's personal best and rank")
+	current_scene.board_buttons["allinone"].pressed.emit()
+	await wait(0.2)
+	var pool_cells: Array = current_scene.rows.get_children().map(func(l): return l.text)
+	check(fake.boards_asked.has("allinone") and current_scene.rows.columns == 5 and pool_cells.has("120 / 133") and pool_cells.has("90%") and pool_cells.has("1:02:05"),
+		"the All-in-One board lists correct answers, accuracy and time")
+	check(current_scene.me_label.text.contains("64") and current_scene.me_label.text.contains("орын: 2"), "the All-in-One board shows the player's own best and rank")
 	current_scene.queue_free()
 	await process_frame
 
@@ -2356,10 +2511,14 @@ func test_backend() -> void:
 func test_security_rules() -> void:
 	var rules := FileAccess.get_file_as_string("res://firestore.rules")
 	var all_match := true
+	var pool := 0
 	for level in level_db.levels:
 		var count: int = QuestionValidator.load_file(level["question_file"]).questions.size()
+		pool += count
 		all_match = all_match and rules.contains("'%d': %d" % [level["id"], count * 100])
 	check(all_match, "security rules know each level's maximum score")
+	var pool_max := RegEx.create_from_string("poolMax\\(\\) \\{\\s*return (\\d+);").search(rules)
+	check(pool_max != null and int(pool_max.get_string(1)) == pool * 100, "security rules know the All-in-One maximum (%d tasks)" % pool)
 	var max_doubles := 0
 	for character in char_db.characters:
 		if character["ability"]["id"] == "double_score":

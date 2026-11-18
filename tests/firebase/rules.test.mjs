@@ -214,3 +214,108 @@ test("admin records: nobody can create them from the game; owners can read their
   await assertFails(getDoc(doc(alice(), "admins", "teacher")));
   await assertFails(deleteDoc(doc(teacher, "admins", "teacher")));
 });
+
+// ---- All-in-One (level 12): its own leaderboard allinone/{uid} ----
+
+const POOL = 133; // tasks in the ten campaign banks (the Godot tests check the rules' level maxima)
+
+function poolAttempt(correct, answered, extra = {}) {
+  return {
+    level: 12, character: "tomyris", score: correct * 100, max_score: POOL * 100, correct, wrong: answered - correct,
+    answered, playtime_sec: 1200, stars: 0, passed: false, completed: answered === POOL, revivals_used: 0,
+    finished_at: 1763200000, game_id: "history-arena", client_version: "1.0.0", ...extra,
+  };
+}
+
+// The same transaction as web/firebase-bridge.js saveAllInOne, with optional tampering.
+async function poolRun(fs, uid, name, a, tamper = (row) => row) {
+  const attemptRef = doc(collection(doc(fs, "players", uid), "attempts"));
+  const bestRef = doc(fs, "allinone", uid);
+  return runTransaction(fs, async (tx) => {
+    const snap = await tx.get(bestRef);
+    const acc = a.answered > 0 ? Math.floor((a.correct * 1000) / a.answered) : 0;
+    const row = tamper({
+      name, correct: a.correct, answered: a.answered, wrong: a.wrong, acc, time: a.playtime_sec, score: a.score,
+      completed: a.completed, pool: a.max_score / 100, key: a.correct * 100000000 + acc * 100000 + (99999 - a.playtime_sec),
+      run: attemptRef.id, updated: serverTimestamp(),
+    });
+    tx.set(attemptRef, { ...a, created: serverTimestamp() });
+    if (!snap.exists() || row.key > snap.get("key")) tx.set(bestRef, row);
+  });
+}
+
+test("All-in-One: a run is stored with its personal best; a weaker run keeps the best", async () => {
+  await assertSucceeds(poolRun(alice(), "alice", "Alice A", poolAttempt(90, 120)));
+  await assertSucceeds(poolRun(alice(), "alice", "Alice A", poolAttempt(40, 60)));
+  await assertSucceeds(poolRun(alice(), "alice", "Alice A", poolAttempt(133, POOL, { playtime_sec: 4000 })));
+  const best = await getDoc(doc(alice(), "allinone", "alice"));
+  if (best.get("correct") !== 133 || best.get("completed") !== true || best.get("acc") !== 1000) throw new Error("best not kept");
+  const runs = await getDocs(collection(alice(), "players", "alice", "attempts"));
+  if (runs.size !== 3) throw new Error("runs missing");
+  // The campaign row is untouched.
+  if ((await getDoc(doc(alice(), "players", "alice"))).exists()) throw new Error("campaign row written");
+});
+
+test("All-in-One: ranked by correct answers, then accuracy, then time", async () => {
+  await poolRun(alice(), "alice", "Alice A", poolAttempt(80, 100));
+  await poolRun(bob(), "bob", "Bob B", poolAttempt(80, 90));
+  await poolRun(db("cara", "Cara C"), "cara", "Cara C", poolAttempt(80, 90, { playtime_sec: 900 }));
+  await poolRun(db("dan", "Dan D"), "dan", "Dan D", poolAttempt(81, 133, { score: 8300, completed: true }));
+  const top = await assertSucceeds(getDocs(query(collection(bob(), "allinone"), orderBy("key", "desc"), limit(20))));
+  if (top.docs.map((d) => d.id).join() !== "dan,cara,bob,alice") throw new Error("wrong order: " + top.docs.map((d) => d.id).join());
+});
+
+test("All-in-One: a lower result never replaces a better one", async () => {
+  await poolRun(alice(), "alice", "Alice A", poolAttempt(90, 120));
+  const weaker = poolAttempt(50, 70);
+  await assertFails(poolRun(alice(), "alice", "Alice A", weaker, (row) => ({ ...row, key: row.key + 9000000000 })));
+  const fs = alice();
+  await assertFails(runTransaction(fs, async (tx) => {
+    const attemptRef = doc(collection(doc(fs, "players", "alice"), "attempts"));
+    tx.set(attemptRef, { ...weaker, created: serverTimestamp() });
+    tx.set(doc(fs, "allinone", "alice"), {
+      name: "Alice A", correct: 50, answered: 70, wrong: 20, acc: 714, time: 1200, score: 5000, completed: false,
+      pool: POOL, key: 50 * 100000000 + 714 * 100000 + (99999 - 1200), run: attemptRef.id, updated: serverTimestamp(),
+    });
+  }));
+  if ((await getDoc(doc(alice(), "allinone", "alice"))).get("correct") !== 90) throw new Error("best was lowered");
+  await assertFails(deleteDoc(doc(alice(), "allinone", "alice")));
+});
+
+test("All-in-One: tampered runs and rows are rejected", async () => {
+  const tries = {
+    "more correct than answered": [poolAttempt(60, 50, { wrong: 0 })],
+    "more answered than the pool": [poolAttempt(100, 140)],
+    "wrong pool maximum": [poolAttempt(60, 80, { max_score: 9900 })],
+    "score without correct answers": [poolAttempt(60, 80, { score: 9000 })],
+    "completed without the whole pool": [poolAttempt(60, 80, { completed: true })],
+    "stars on All-in-One": [poolAttempt(60, 80, { stars: 2, passed: true })],
+    "wrong count that does not add up": [poolAttempt(60, 80, { wrong: 3 })],
+    "accuracy that does not match": [poolAttempt(60, 80), (row) => ({ ...row, acc: 1000, key: row.key + 250 * 100000 })],
+    "key that does not match": [poolAttempt(60, 80), (row) => ({ ...row, key: row.key + 1 })],
+    "row that differs from its run": [poolAttempt(60, 80), (row) => ({ ...row, correct: 61, key: row.key + 100000000 })],
+    "someone else's name": [poolAttempt(60, 80), (row) => ({ ...row, name: "Teacher" })],
+    "client-chosen time stamp": [poolAttempt(60, 80), (row) => ({ ...row, updated: Timestamp.fromMillis(0) })],
+  };
+  for (const [label, [a, tamper]] of Object.entries(tries)) {
+    try {
+      await assertFails(poolRun(alice(), "alice", "Alice A", a, tamper));
+    } catch (e) {
+      throw new Error("accepted: " + label);
+    }
+  }
+  // Another account's best, and a best without its run in the same write.
+  await assertFails(poolRun(bob(), "alice", "Bob B", poolAttempt(60, 80)));
+  await assertFails(setDoc(doc(alice(), "allinone", "alice"), {
+    name: "Alice A", correct: 1, answered: 1, wrong: 0, acc: 1000, time: 5, score: 100, completed: false, pool: POOL,
+    key: 100000000 + 1000 * 100000 + 99994, run: "nope", updated: serverTimestamp(),
+  }));
+  // An All-in-One run never raises the campaign.
+  await assertFails(submit(alice(), "alice", "Alice A", poolAttempt(60, 80)));
+});
+
+test("All-in-One leaderboard: signed-in players only", async () => {
+  await poolRun(alice(), "alice", "Alice A", poolAttempt(60, 80));
+  await assertSucceeds(getDocs(collection(bob(), "allinone")));
+  await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(), "allinone")));
+});

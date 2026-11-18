@@ -58,6 +58,7 @@ const ProgressStoreScript := preload("res://progress_store.gd")
 const MEDICAL_FILE := "res://questions/medical.json"
 const QuestionPools := preload("res://question_pools.gd")
 const SOURCE_COLOR := Color(0.84, 0.68, 0.38)
+const MAX_FRAME_TIME := 0.25
 
 var score: int = 0
 var level: Dictionary = {}
@@ -68,7 +69,7 @@ var correct_count: int = 0
 var wrong_count: int = 0
 var playtime: float = 0.0
 var revivals_used: int = 0
-# BOSS run: medkits restore HP on the H key; one more is earned every few tasks.
+# BOSS and All-in-One: medkits restore HP on the H key; one more is earned every few tasks.
 var medkits: int = 0
 var medkit_stage: int = 0
 var run_active: bool = true
@@ -194,6 +195,15 @@ func is_boss() -> bool:
 	return level.get("boss", false)
 
 
+# All-in-One: every campaign task once, in a random order, with no difficulty ramp.
+func is_all_in_one() -> bool:
+	return level.get("all_in_one", false)
+
+
+func has_medkits() -> bool:
+	return is_boss() or is_all_in_one()
+
+
 func load_question() -> void:
 	clear_arena()
 	accepting_answers = true
@@ -205,9 +215,9 @@ func load_question() -> void:
 	var question: Dictionary = questions[question_index]
 	current_task = TASK_SCRIPTS[QuestionValidator.get_type(question)].new()
 
-	# BOSS: a new medkit every medkit_every tasks (once per stage, also after a retry).
+	# BOSS and All-in-One: a new medkit every medkit_every tasks (once per stage, also after a retry).
 	var every: int = level.get("medkit_every", 0)
-	if is_boss() and every > 0 and question_index > 0 and question_index % every == 0 and medkit_stage < question_index:
+	if has_medkits() and every > 0 and question_index > 0 and question_index % every == 0 and medkit_stage < question_index:
 		medkit_stage = question_index
 		medkits += 1
 		show_feedback(tr("+1 аптечка [H]"), HP_HIGH, 1.2)
@@ -235,8 +245,10 @@ func load_question() -> void:
 
 
 func _process(delta: float) -> void:
+	# Active time only: the arena does not run while paused, and a long frame (a hidden browser tab)
+	# adds at most MAX_FRAME_TIME.
 	if run_active:
-		playtime += delta
+		playtime += minf(delta, MAX_FRAME_TIME)
 	if not timer_running():
 		return
 	time_left = maxf(time_left - delta, 0.0)
@@ -418,6 +430,8 @@ func show_defeat() -> void:
 
 	if help_question.is_empty():
 		_record_defeat()
+		if is_all_in_one():
+			return
 	revival_panel.open(score, help_question, revive_hp)
 
 
@@ -425,8 +439,14 @@ func show_defeat() -> void:
 func _record_defeat() -> void:
 	run_active = false
 	last_attempt = build_attempt(false)
-	ProgressStore.record_attempt(last_attempt)
+	var new_best := ProgressStore.record_attempt(last_attempt)
 	Backend.submit_attempt(last_attempt)
+	# All-in-One ends when the health runs out: its results replace the defeat screen.
+	if is_all_in_one():
+		if revival_panel.visible:
+			await get_tree().create_timer(1.5, false).timeout
+			revival_panel.hide()
+		show_results(last_attempt, new_best)
 
 
 # A random question from the medical-help bank (questions/medical.json), which tests other facts
@@ -501,7 +521,7 @@ func finish_level() -> void:
 		if last_attempt["passed"]:
 			Backend.record_boss_victory(last_attempt["score"])
 	else:
-		Backend.submit_attempt(last_attempt)
+		Backend.submit_attempt(last_attempt)  # All-in-One goes to its own leaderboard.
 	var earned_unlock: bool = is_boss() and ProgressStore.unlock_everything_earned and not unlock_before
 
 	var fade_in := create_tween()
@@ -524,6 +544,24 @@ func build_attempt(completed: bool) -> Dictionary:
 	var max_score := questions.size() * POINTS
 	var pass_percent: float = level.get("pass_percent", 60)
 	var stars := ProgressStoreScript.stars_for(score, max_score, pass_percent, revivals_used) if completed else 0
+	if is_all_in_one():
+		# Counted in tasks: the task on which the health ran out counts as answered (wrongly).
+		var answered := questions.size() if completed else mini(question_index + 1, questions.size())
+		return {
+			"level": GameState.selected_level,
+			"character": character.get("id", ""),
+			"score": score,
+			"max_score": max_score,
+			"correct": correct_count,
+			"wrong": answered - correct_count,
+			"answered": answered,
+			"playtime_sec": roundi(playtime),
+			"stars": 0,
+			"passed": false,
+			"completed": completed,
+			"revivals_used": revivals_used,
+			"finished_at": int(Time.get_unix_time_from_system()),
+		}
 	return {
 		"level": GameState.selected_level,
 		"character": character.get("id", ""),
@@ -543,6 +581,9 @@ func build_attempt(completed: bool) -> Dictionary:
 func show_results(attempt: Dictionary, new_best: bool, earned_unlock: bool = false) -> void:
 	if is_boss():
 		_show_boss_results(attempt, new_best, earned_unlock)
+		return
+	if is_all_in_one():
+		_show_all_in_one_results(attempt, new_best)
 		return
 	var best: Dictionary = ProgressStore.level_result(attempt["level"])
 	results_title.text = tr("Деңгей өтілді!") if attempt["passed"] else tr("Деңгей өтілмеді")
@@ -596,9 +637,33 @@ func _show_boss_results(attempt: Dictionary, new_best: bool, earned_unlock: bool
 	results_container.get_node("ResultsPanel/ResultsVBox/RestartButton").grab_focus()
 
 
-# H: a medkit restores medkit_hp HP (BOSS only).
+func _show_all_in_one_results(attempt: Dictionary, new_best: bool) -> void:
+	results_title.text = tr("Барлық сұрақ орындалды!") if attempt["completed"] else tr("«Бәрі бірге» аяқталды")
+	results_stars.hide()
+	var best: Dictionary = ProgressStore.all_in_one_best
+	var lines := [
+		tr("Жауап берілген сұрақтар: %d / %d") % [attempt["answered"], questions.size()],
+		tr("Дұрыс: %d    Қате: %d") % [attempt["correct"], attempt["wrong"]],
+		tr("Дәлдік: %d%%") % roundi(ProgressStoreScript.accuracy_permille(attempt["correct"], attempt["answered"]) / 10.0),
+		tr("Ұпай: %d") % attempt["score"],
+		tr("Белсенді ойын уақыты: %s") % ProgressStoreScript.format_duration(attempt["playtime_sec"]),
+		tr("Бүкіл сұрақ қоры аяқталды") if attempt["completed"] else tr("Сұрақ қоры толық аяқталмады"),
+		tr("Жаңа үздік нәтиже!") if new_best else tr("Үздік нәтиже: %d дұрыс жауап") % int(best.get("correct", 0)),
+	]
+	if Backend.is_online_player():
+		lines.append(tr("Нәтиже «Бәрі бірге» рейтингіне жіберілді"))
+	elif Backend.is_guest():
+		lines.append(tr("Қонақ: нәтиже рейтингке түспейді"))
+	results_label.text = "\n".join(lines)
+	next_button.visible = false
+	results_container.show()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	results_container.get_node("ResultsPanel/ResultsVBox/RestartButton").grab_focus()
+
+
+# H: a medkit restores medkit_hp HP (BOSS and All-in-One).
 func use_medkit() -> void:
-	if not is_boss() or not accepting_answers:
+	if not has_medkits() or not accepting_answers:
 		return
 	if medkits <= 0 or health >= max_health:
 		show_feedback(tr("Қазір қолдануға болмайды"), Color.WHITE, 1.0)
@@ -650,7 +715,7 @@ func update_hud() -> void:
 	character_label.text = "%s · %s" % [tr(character["name"]), tr(character["weapon"]["name"])]
 	var ability_name: String = tr(Abilities.INFO[character["ability"]["id"]]["name"])
 	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, tr("  · Қалқан белсенді") if shield_active else ""]
-	if is_boss():
+	if has_medkits():
 		ability_label.text += tr("   [H] Аптечка ×%d") % medkits
 
 
@@ -851,9 +916,19 @@ func load_boss_questions() -> void:
 	medkits = level.get("medkits", 0)
 
 
+# All-in-One asks every task of the ten audited banks exactly once, in a new random order on
+# every attempt. The total follows the banks (never a fixed number).
+func load_all_in_one_questions() -> void:
+	questions = QuestionPools.all_in_one(QuestionPools.load_banks(LevelDatabase.levels), GameState.shuffle_questions).map(func(q): return Locale.localize_question(q))
+	medkits = level.get("medkits", 0)
+
+
 func load_questions_from_file() -> void:
 	if is_boss():
 		load_boss_questions()
+		return
+	if is_all_in_one():
+		load_all_in_one_questions()
 		return
 	var result := QuestionValidator.load_file(question_file)
 

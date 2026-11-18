@@ -9,9 +9,10 @@ extends RefCounted
 #   wait_user() -> Dictionary               (await; restored session, {} when nobody is signed in)
 #   sign_in() -> Dictionary                 (await; user, or {"error": ...})
 #   sign_out() -> void
-#   submit_result(payload) -> bool          (await; true when the server accepted it)
+#   submit_result(payload) -> Dictionary    (await; {"ok": true} when stored, else {"ok": false,
+#                                            "rejected": true when the security rules refused it})
 #   my_progress() -> Dictionary             (await; {"ok", "levels": {"1": {"score", "stars"}}})
-#   leaderboard(limit) -> Dictionary        (await; {"ok", "rows": [{"name", "total", "me"}], "me": {"total", "rank"}})
+#   leaderboard(limit, board) -> Dictionary (await; board "campaign" or "allinone"; {"ok", "rows", "me"})
 #   entitlements() -> Dictionary            (await; {"ok", "bossDefeated", "bossBest", "admin"})
 #   record_boss(score) -> bool              (await; true when the server stored the BOSS victory)
 
@@ -59,17 +60,16 @@ func sign_out() -> void:
 	hub.signOut()
 
 
-func submit_result(payload: Dictionary) -> bool:
-	var text := await _await_promise(hub.submitResult(JSON.stringify(payload)))
-	return _parse_object(text).get("ok", false) == true
+func submit_result(payload: Dictionary) -> Dictionary:
+	return _parse_object(await _await_promise(hub.submitResult(JSON.stringify(payload))))
 
 
 func my_progress() -> Dictionary:
 	return _parse_object(await _await_promise(hub.getMyProgress()))
 
 
-func leaderboard(limit: int) -> Dictionary:
-	return _parse_object(await _await_promise(hub.getLeaderboard(limit)))
+func leaderboard(limit: int, board: String) -> Dictionary:
+	return _parse_object(await _await_promise(hub.getLeaderboard(limit, board)))
 
 
 func entitlements() -> Dictionary:

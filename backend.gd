@@ -121,16 +121,19 @@ func submit_attempt(attempt: Dictionary) -> void:
 
 
 # Sends the current player's queued runs in order; stops at the first failure and keeps the rest.
-# Runs queued by other accounts on this device wait until that account signs in again.
+# A run the security rules refuse is kept for a later session (e.g. after a rules update) but no
+# longer holds up the runs behind it. Runs queued by other accounts on this device wait until that
+# account signs in again.
 func flush_outbox() -> void:
 	if flushing or not is_online_player():
 		return
 	flushing = true
 	var uid: String = user["uid"]
 	var sent := 0
+	var skipped := []
 	# Re-check each time: the player may sign out while we wait.
 	while is_online_player() and user.get("uid") == uid:
-		var index: int = outbox.find_custom(func(p): return p is Dictionary and p.get("owner") == uid)
+		var index: int = outbox.find_custom(func(p): return p is Dictionary and p.get("owner") == uid and not skipped.has(p))
 		if index < 0:
 			break
 		var entry: Dictionary = outbox[index]
@@ -138,9 +141,12 @@ func flush_outbox() -> void:
 			await get_tree().create_timer(upload_gap).timeout
 		var payload := entry.duplicate()
 		payload.erase("owner")
-		var ok: bool = await transport.submit_result(payload)
-		last_upload_ok = ok
-		if not ok:
+		var result: Dictionary = await transport.submit_result(payload)
+		last_upload_ok = result.get("ok") == true
+		if not last_upload_ok:
+			if result.get("rejected") == true:
+				skipped.append(entry)
+				continue
 			break
 		outbox.erase(entry)
 		save_outbox()
@@ -153,11 +159,12 @@ func pending_uploads() -> int:
 	return outbox.filter(func(p): return p is Dictionary and p.get("owner") == uid).size()
 
 
-# {"ok": true, "rows": [{"name", "total", "me"}], "me": {"total", "rank"}} or {"error": ...}
-func fetch_leaderboard(limit: int = 20) -> Dictionary:
+# board "campaign": {"ok": true, "rows": [{"name", "total", "me"}], "me": {"total", "rank"}};
+# board "allinone": rows and "me" with "correct", "answered", "acc", "time", "completed"; or {"error": ...}
+func fetch_leaderboard(limit: int = 20, board: String = "campaign") -> Dictionary:
 	if not is_online_player():
 		return {"error": tr("Рейтингті көру үшін Google арқылы кіріңіз")}
-	var result: Dictionary = await transport.leaderboard(limit)
+	var result: Dictionary = await transport.leaderboard(limit, board)
 	if result.get("ok") != true:
 		return {"error": tr("Рейтинг жүктелмеді: ") + bridge_message(str(result.get("error", "белгісіз қате")))}
 	return result

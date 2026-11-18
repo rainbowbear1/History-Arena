@@ -11,6 +11,10 @@ var levels: Array = []
 # "boss" entry in levels.json; id BOSS_ID). It does not count towards the total score.
 const BOSS_ID := 11
 var boss: Dictionary = {}
+# All-in-One: every campaign task once in a random order, opened by a BOSS victory ("all_in_one"
+# entry in levels.json; id ALL_IN_ONE_ID). Outside the campaign, with its own leaderboard.
+const ALL_IN_ONE_ID := 12
+var all_in_one: Dictionary = {}
 
 
 func _ready() -> void:
@@ -55,12 +59,24 @@ func load_levels(path: String = LEVELS_FILE) -> void:
 		entry["boss"] = true
 		boss = entry
 
+	all_in_one = {}
+	entry = json.data.get("all_in_one")
+	if entry is Dictionary:
+		for field in INT_FIELDS + ["medkits", "medkit_every", "medkit_hp"]:
+			entry[field] = int(entry.get(field, 0))
+		entry["id"] = ALL_IN_ONE_ID
+		entry["boss"] = false
+		entry["all_in_one"] = true
+		all_in_one = entry
+
 
 func get_level(id: int) -> Dictionary:
 	if id >= 1 and id <= levels.size():
 		return levels[id - 1]
 	if id == BOSS_ID:
 		return boss
+	if id == ALL_IN_ONE_ID:
+		return all_in_one
 	return {}
 
 
@@ -76,10 +92,10 @@ func source_label(id: int) -> String:
 	return tr("%d-деңгей — %s") % [id, era]
 
 
-# A level is playable once its question file exists (the BOSS uses every level's file).
+# A level is playable once its question file exists (the BOSS and All-in-One use every level's file).
 func is_playable(id: int) -> bool:
-	if id == BOSS_ID:
-		return not boss.is_empty() and levels.all(func(l): return FileAccess.file_exists(l["question_file"]))
+	if id == BOSS_ID or id == ALL_IN_ONE_ID:
+		return not get_level(id).is_empty() and levels.all(func(l): return FileAccess.file_exists(l["question_file"]))
 	var level := get_level(id)
 	return not level.is_empty() and FileAccess.file_exists(level["question_file"])
 

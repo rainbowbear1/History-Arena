@@ -9,6 +9,7 @@ extends Node
 
 const SAVE_PATH := "user://progress.json"
 const BOSS_ID := 11
+const ALL_IN_ONE_ID := 12
 const VERSION := 1
 const MAX_HISTORY := 50
 
@@ -26,6 +27,9 @@ var boss_just_unlocked := false  # The last attempt passed level 10 for the firs
 # stored online (Backend), and administrators have it from their admin record in Firestore.
 var unlock_everything_earned := false
 var is_admin := false
+# All-in-One personal best ({"correct", "answered", "accuracy", "playtime_sec", "score", "completed",
+# "key"}, empty before the first run). Not campaign progress: kept with the entitlements.
+var all_in_one_best := {}
 
 
 func _ready() -> void:
@@ -93,6 +97,8 @@ func save_data() -> void:
 func record_attempt(attempt: Dictionary) -> bool:
 	if int(attempt["level"]) == BOSS_ID:
 		return _record_boss(attempt)
+	if int(attempt["level"]) == ALL_IN_ONE_ID:
+		return _record_all_in_one(attempt)
 	var key := str(attempt["level"])
 	var boss_was_open := is_boss_unlocked()
 	var best: Dictionary = levels.get(key, {"best_score": 0, "stars": 0, "passed": false, "attempts": 0})
@@ -131,6 +137,49 @@ func _record_boss(attempt: Dictionary) -> bool:
 	return new_best
 
 
+# All-in-One results never touch the campaign; the best run (all_in_one_key) is kept for good.
+func _record_all_in_one(attempt: Dictionary) -> bool:
+	var answered := int(attempt.get("answered", 0))
+	var correct := int(attempt.get("correct", 0))
+	var seconds := int(attempt.get("playtime_sec", 0))
+	var key := all_in_one_key(correct, answered, seconds)
+	var new_best: bool = all_in_one_best.is_empty() or key > int(all_in_one_best.get("key", -1))
+	if new_best:
+		all_in_one_best = {"correct": correct, "answered": answered, "accuracy": accuracy_permille(correct, answered),
+			"playtime_sec": seconds, "score": int(attempt.get("score", 0)), "completed": attempt.get("completed", false) == true, "key": key}
+		_save_entitlements()
+	history.append(attempt)
+	if history.size() > MAX_HISTORY:
+		history = history.slice(history.size() - MAX_HISTORY)
+	just_opened = []
+	boss_just_unlocked = false
+	save_data()
+	return new_best
+
+
+# All-in-One ranking, the same on the device, in the bridge and in firestore.rules: most correct
+# answers first, then accuracy (correct per thousand answered), then the shorter active time.
+# Character bonuses (double score) never count.
+static func all_in_one_key(correct: int, answered: int, seconds: int) -> int:
+	return correct * 100000000 + accuracy_permille(correct, answered) * 100000 + (99999 - clampi(seconds, 0, 99999))
+
+
+static func accuracy_permille(correct: int, answered: int) -> int:
+	return 0 if answered <= 0 else correct * 1000 / answered
+
+
+# 75 -> "01:15", 3725 -> "1:02:05".
+static func format_duration(seconds: int) -> String:
+	if seconds >= 3600:
+		return "%d:%02d:%02d" % [seconds / 3600, seconds / 60 % 60, seconds % 60]
+	return "%02d:%02d" % [seconds / 60, seconds % 60]
+
+
+# All-in-One opens with a BOSS victory (kept for good, like Unlock Everything) or for administrators.
+func is_all_in_one_unlocked() -> bool:
+	return can_unlock_everything() or boss["defeated"]
+
+
 # The BOSS tile appears once level 10 has been passed (or with Unlock Everything on).
 func is_boss_unlocked() -> bool:
 	return demo_unlock_all or level_result(10)["passed"]
@@ -152,15 +201,23 @@ func _entitlements_path() -> String:
 
 func _load_entitlements() -> void:
 	unlock_everything_earned = false
+	all_in_one_best = {}
 	if FileAccess.file_exists(_entitlements_path()):
 		var data = JSON.parse_string(FileAccess.get_file_as_string(_entitlements_path()))
-		unlock_everything_earned = data is Dictionary and data.get("unlock_everything", false) == true
+		if data is Dictionary:
+			unlock_everything_earned = data.get("unlock_everything", false) == true
+			if data.get("all_in_one_best") is Dictionary and not data["all_in_one_best"].is_empty():
+				var best: Dictionary = data["all_in_one_best"]
+				all_in_one_best = {}
+				for field in ["correct", "answered", "accuracy", "playtime_sec", "score", "key"]:
+					all_in_one_best[field] = int(best.get(field, 0))
+				all_in_one_best["completed"] = best.get("completed", false) == true
 
 
 func _save_entitlements() -> void:
 	var file := FileAccess.open(_entitlements_path(), FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify({"unlock_everything": unlock_everything_earned}))
+		file.store_string(JSON.stringify({"unlock_everything": unlock_everything_earned, "all_in_one_best": all_in_one_best}))
 
 
 # Switches to the progress of one account ("" = guest) and loads it.
@@ -214,6 +271,8 @@ func unlock_score(id: int) -> int:
 func is_unlocked(id: int) -> bool:
 	if id == BOSS_ID:
 		return is_boss_unlocked()
+	if id == ALL_IN_ONE_ID:
+		return is_all_in_one_unlocked()
 	return demo_unlock_all or id <= 1 or unlocked.has(id) or total_score() >= unlock_score(id)
 
 

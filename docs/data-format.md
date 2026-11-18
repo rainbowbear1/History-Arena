@@ -109,6 +109,28 @@ uses one with **H** for `medkit_hp` (35) HP; medical help works as on the levels
   "BOSS UNLOCKED", and the level screen shows a red BOSS tile centred beneath level 8.
 - **Level 10** is a normal 5/5 level (the arcade gallery); it is no longer marked BOSS.
 
+## All-in-One — `"all_in_one"` in `data/levels.json` (id 12)
+
+«Бәрі бірге» / All-in-One opens once the player has defeated the BOSS (the permanent BOSS victory,
+or an administrator account) and shows as a wide tile under the BOSS. It asks **every task of the ten
+campaign banks exactly once** in a new random order each attempt — the total is counted from the
+banks (133 today), never written down — with each task's source shown as in the BOSS
+(«Сұрақ 12 / 133 · 6-деңгей — Қазақ хандығы»). There is no difficulty ramp: `time_per_question`,
+`target_speed`, decoys and enemies stay the same for the whole run; the mixture of eras is the
+challenge. Characters, abilities, damage and medical help work as on the levels; the player starts
+with `medkits` (2) medkits and gets one more every `medkit_every` (12) tasks (**H**, `medkit_hp` HP).
+
+The run ends when the pool is finished or the health runs out (after medical help is used up). The
+results show tasks answered (the task on which the health ran out counts as answered, wrongly),
+correct and incorrect tasks, accuracy, score, active play time (pauses and hidden-tab time are not
+counted) and whether the whole pool was completed. All-in-One never changes the campaign total.
+
+**Ranking** (device, bridge and security rules alike): most correct answers, then accuracy (correct
+per thousand answered), then the shorter active time — `ProgressStore.all_in_one_key`. Character
+score bonuses never decide the order. The personal best is kept with the permanent entitlements
+(`progress[_uid]_entitlements.json`, `all_in_one_best`), so New Game does not clear it; online it is
+`allinone/{uid}` (see `docs/online.md`).
+
 ## New Game and Unlock Everything
 - **Settings → «Жаңа ойын» / New Game** (two presses) restarts the campaign on this device: level
   results, unlocks, BOSS results and history of the current profile. It never deletes anything online

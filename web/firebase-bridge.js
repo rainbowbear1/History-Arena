@@ -10,6 +10,7 @@
   "use strict";
   var SDK = "https://www.gstatic.com/firebasejs/13.1.0/";
   var LEVELS = 10;
+  var ALL_IN_ONE = 12; // All-in-One runs: own leaderboard allinone/{uid}, never the campaign total.
   // Local testing against the Firebase Emulator Suite: http://localhost:<port>/?emulator=1
   var EMULATOR = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]emulator=1\b/.test(location.search);
   var DEMO_CONFIG = { apiKey: "demo-key", authDomain: "demo-history-arena.firebaseapp.com", projectId: "demo-history-arena", appId: "demo" };
@@ -85,13 +86,64 @@
   // Only the fields the security rules accept; numbers must stay integers.
   function attemptDoc(a) {
     var keys = ["level", "character", "score", "max_score", "correct", "wrong", "playtime_sec", "stars",
-      "passed", "completed", "revivals_used", "finished_at", "game_id", "client_version"];
+      "passed", "completed", "revivals_used", "finished_at", "game_id", "client_version", "answered"];
     var doc = {};
     keys.forEach(function (k) {
-      doc[k] = typeof a[k] === "number" ? Math.round(a[k]) : a[k];
+      if (a[k] !== undefined) doc[k] = typeof a[k] === "number" ? Math.round(a[k]) : a[k];
     });
     doc.created = F.serverTimestamp();
     return doc;
+  }
+
+  // A campaign run (levels 1-10): the attempt plus the player's per-level bests, in one transaction.
+  function saveCampaign(user, a) {
+    var playerRef = F.doc(db, "players", user.uid);
+    var attemptRef = F.doc(F.collection(playerRef, "attempts"));
+    return F.runTransaction(db, function (tx) {
+      return tx.get(playerRef).then(function (snap) {
+        var prev = snap.exists() ? snap.data() : {};
+        var next = { name: user.displayName || "Ойыншы", last: attemptRef.id, updated: F.serverTimestamp(), total: 0 };
+        for (var i = 1; i <= LEVELS; i++) {
+          next["s" + i] = prev["s" + i] || 0;
+          next["t" + i] = prev["t" + i] || 0;
+        }
+        var k = Math.round(a.level);
+        next["s" + k] = Math.max(next["s" + k], Math.round(a.score));
+        next["t" + k] = Math.max(next["t" + k], Math.round(a.stars));
+        for (var j = 1; j <= LEVELS; j++) next.total += next["s" + j];
+        tx.set(attemptRef, attemptDoc(a));
+        tx.set(playerRef, next);
+        return next.total;
+      });
+    });
+  }
+
+  // All-in-One ranking key, the same as ProgressStore.all_in_one_key and firestore.rules: correct
+  // answers, then accuracy (per thousand), then the shorter active time.
+  function poolRow(user, a, runId) {
+    var correct = Math.round(a.correct);
+    var answered = Math.round(a.answered);
+    var time = Math.round(a.playtime_sec);
+    var acc = answered > 0 ? Math.floor((correct * 1000) / answered) : 0;
+    return {
+      name: user.displayName || "Ойыншы", correct: correct, answered: answered, wrong: Math.round(a.wrong), acc: acc,
+      time: time, score: Math.round(a.score), completed: a.completed === true, pool: Math.round(a.max_score / 100),
+      key: correct * 100000000 + acc * 100000 + (99999 - time), run: runId, updated: F.serverTimestamp(),
+    };
+  }
+
+  // An All-in-One run: the attempt, and the personal best in allinone/{uid} only when it is better.
+  function saveAllInOne(user, a) {
+    var attemptRef = F.doc(F.collection(F.doc(db, "players", user.uid), "attempts"));
+    var bestRef = F.doc(db, "allinone", user.uid);
+    return F.runTransaction(db, function (tx) {
+      return tx.get(bestRef).then(function (snap) {
+        var row = poolRow(user, a, attemptRef.id);
+        tx.set(attemptRef, attemptDoc(a));
+        if (!snap.exists() || row.key > snap.get("key")) tx.set(bestRef, row);
+        return 0;
+      });
+    });
   }
 
   window.HistoryArenaHub = {
@@ -128,40 +180,24 @@
       });
     },
 
-    // payloadJson: one attempt record. Stores it under players/{uid}/attempts and raises the
-    // player's per-level best in players/{uid} in one transaction.
-    // -> Promise<string>: {"ok": true, "total": n} or {"ok": false, "error": "..."}
+    // payloadJson: one attempt record, stored under players/{uid}/attempts. A campaign run also
+    // raises the player's per-level best in players/{uid}; an All-in-One run its personal best in
+    // allinone/{uid}; each in one transaction with the attempt.
+    // -> Promise<string>: {"ok": true, "total": n} or {"ok": false, "error": "...", "rejected": bool}
     submitResult: function (payloadJson) {
       return whenReady()
         .then(function () {
           var user = requireUser();
           var a = JSON.parse(payloadJson);
-          var playerRef = F.doc(db, "players", user.uid);
-          var attemptRef = F.doc(F.collection(playerRef, "attempts"));
-          return F.runTransaction(db, function (tx) {
-            return tx.get(playerRef).then(function (snap) {
-              var prev = snap.exists() ? snap.data() : {};
-              var next = { name: user.displayName || "Ойыншы", last: attemptRef.id, updated: F.serverTimestamp(), total: 0 };
-              for (var i = 1; i <= LEVELS; i++) {
-                next["s" + i] = prev["s" + i] || 0;
-                next["t" + i] = prev["t" + i] || 0;
-              }
-              var k = Math.round(a.level);
-              next["s" + k] = Math.max(next["s" + k], Math.round(a.score));
-              next["t" + k] = Math.max(next["t" + k], Math.round(a.stars));
-              for (var j = 1; j <= LEVELS; j++) next.total += next["s" + j];
-              tx.set(attemptRef, attemptDoc(a));
-              tx.set(playerRef, next);
-              return next.total;
-            });
-          });
+          return Math.round(a.level) === ALL_IN_ONE ? saveAllInOne(user, a) : saveCampaign(user, a);
         })
         .then(function (total) {
           return JSON.stringify({ ok: true, total: total });
         })
         .catch(function (e) {
           console.warn("submitResult failed", e);
-          return JSON.stringify({ ok: false, error: message(e) });
+          // The rules refused this record: sending it again will not help, so the game moves on.
+          return JSON.stringify({ ok: false, error: message(e), rejected: !!(e && e.code === "permission-denied") });
         });
     },
 
@@ -226,26 +262,44 @@
         });
     },
 
-    // -> Promise<string>: {"ok": true, "rows": [{"name","total","me"}], "me": {"total","rank"}}
-    // rank is 0 when the player has no saved result yet.
-    getLeaderboard: function (limit) {
+    // board "campaign" (default): players by total score; "allinone": All-in-One personal bests by
+    // their ranking key. Rows carry the board's fields: campaign {"name","total","me"}, All-in-One
+    // {"name","correct","answered","acc","time","completed","me"}; "me" adds "rank" (0 = no result yet).
+    // -> Promise<string>: {"ok": true, "rows": [...], "me": {...}}
+    getLeaderboard: function (limit, board) {
       var uid = "";
       var rows = [];
+      var pool = board === "allinone";
+      var col = pool ? "allinone" : "players";
+      var field = pool ? "key" : "total";
+      function row(d) {
+        var r = { name: d.get("name"), me: d.id === uid };
+        if (pool) {
+          ["correct", "answered", "acc", "time"].forEach(function (k) {
+            r[k] = d.get(k) || 0;
+          });
+          r.completed = d.get("completed") === true;
+        } else {
+          r.total = d.get("total");
+        }
+        return r;
+      }
       return whenReady()
         .then(function () {
           uid = requireUser().uid;
-          var top = F.query(F.collection(db, "players"), F.orderBy("total", "desc"), F.limit(Math.min(Math.max(limit || 20, 1), 50)));
-          return Promise.all([F.getDocs(top), F.getDoc(F.doc(db, "players", uid))]);
+          var top = F.query(F.collection(db, col), F.orderBy(field, "desc"), F.limit(Math.min(Math.max(limit || 20, 1), 50)));
+          return Promise.all([F.getDocs(top), F.getDoc(F.doc(db, col, uid))]);
         })
         .then(function (r) {
           r[0].forEach(function (d) {
-            rows.push({ name: d.get("name"), total: d.get("total"), me: d.id === uid });
+            rows.push(row(d));
           });
           if (!r[1].exists()) return { total: 0, rank: 0 };
-          var total = r[1].get("total");
-          var higher = F.query(F.collection(db, "players"), F.where("total", ">", total));
+          var mine = row(r[1]);
+          var higher = F.query(F.collection(db, col), F.where(field, ">", r[1].get(field)));
           return F.getCountFromServer(higher).then(function (c) {
-            return { total: total, rank: c.data().count + 1 };
+            mine.rank = c.data().count + 1;
+            return mine;
           });
         })
         .then(function (me) {

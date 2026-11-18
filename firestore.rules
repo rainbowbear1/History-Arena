@@ -4,7 +4,8 @@ rules_version = '2';
 //
 //   players/{uid}                 one row per Google account: name, best score s1..s10 and stars
 //                                 t1..t10 per level, total = s1 + ... + s10, last attempt id
-//   players/{uid}/attempts/{id}   every finished run, write-once
+//   players/{uid}/attempts/{id}   every finished run, write-once (campaign levels 1-10, All-in-One 12)
+//   allinone/{uid}                All-in-One personal best (own leaderboard, never in the total)
 //
 // The uid always comes from the verified Firebase ID token (request.auth), never from the game.
 // Scores are still produced in the player's browser; see docs/online.md for what these rules
@@ -26,6 +27,16 @@ service cloud.firestore {
               '6': 1300, '7': 1200, '8': 1300, '9': 1300, '10': 1500}[string(level)];
     }
 
+    // All-in-One asks every campaign task once: its maximum is the sum of the level maxima above
+    // (written out, as rules evaluation is limited; tests/run_tests.gd checks the sum).
+    function poolMax() {
+      return 13300;
+    }
+
+    function maxScoreOf(level) {
+      return level == 12 ? poolMax() : maxScore(level);
+    }
+
     // The "double score" ability can add at most this much per run (2 uses x 100).
     function doubleBonus() {
       return 200;
@@ -38,10 +49,11 @@ service cloud.firestore {
     function validAttempt(a) {
       return a.keys().hasOnly(['level', 'character', 'score', 'max_score', 'correct', 'wrong',
                                'playtime_sec', 'stars', 'passed', 'completed', 'revivals_used',
-                               'finished_at', 'game_id', 'client_version', 'created'])
+                               'finished_at', 'game_id', 'client_version', 'created', 'answered'])
           && a.keys().hasAll(['level', 'score', 'max_score', 'stars', 'playtime_sec', 'created'])
-          && a.level is int && a.level >= 1 && a.level <= 10
-          && a.max_score == maxScore(a.level)
+          && a.level is int && ((a.level >= 1 && a.level <= 10) || a.level == 12)
+          && a.max_score == maxScoreOf(a.level)
+          && (a.level != 12 || validPoolRun(a))
           && a.score is int && a.score >= 0 && a.score % 100 == 0
           && a.score <= a.max_score + doubleBonus()
           && a.stars is int && a.stars >= 0 && a.stars <= 3
@@ -57,6 +69,41 @@ service cloud.firestore {
           && a.get('game_id', 'history-arena') == 'history-arena'
           && a.get('client_version', '') is string && a.get('client_version', '').size() <= 16
           && a.created == request.time;
+    }
+
+    // An All-in-One run is counted in tasks: answered of the pool, correct of answered, wrong = the
+    // rest; every point needs a correct task (plus the double-score bonus); no stars; a completed
+    // run answered the whole pool.
+    function validPoolRun(a) {
+      return a.keys().hasAll(['correct', 'wrong', 'answered', 'completed'])
+          && a.answered is int && a.answered >= a.correct && a.answered * 100 <= poolMax()
+          && a.wrong == a.answered - a.correct
+          && a.score >= a.correct * 100 && a.score <= a.correct * 100 + doubleBonus()
+          && a.stars == 0
+          && (!a.completed || a.answered * 100 == poolMax());
+    }
+
+    // The All-in-One best copies its run (created in the same write) and its ranking key: correct
+    // answers, then accuracy per thousand (acc = floor(1000 * correct / answered)), then the
+    // shorter active time. It is only ever replaced by a better run.
+    function validPoolBest(uid, prev) {
+      let d = request.resource.data;
+      let run = /databases/$(database)/documents/players/$(uid)/attempts/$(d.run);
+      let a = getAfter(run).data;
+      return d.keys().hasOnly(['name', 'correct', 'answered', 'wrong', 'acc', 'time', 'score', 'completed',
+                               'pool', 'key', 'run', 'updated'])
+          && d.run is string && !exists(run) && existsAfter(run)
+          && a.level == 12
+          && d.name == playerName()
+          && d.updated == request.time
+          && d.correct == a.correct && d.answered == a.answered && d.wrong == a.wrong
+          && d.score == a.score && d.time == a.playtime_sec && d.completed == a.completed
+          && d.pool * 100 == poolMax()
+          && d.acc is int
+          && ((d.answered == 0 && d.acc == 0)
+              || (d.answered > 0 && d.acc * d.answered <= d.correct * 1000 && d.correct * 1000 < (d.acc + 1) * d.answered))
+          && d.key == d.correct * 100000000 + d.acc * 100000 + (99999 - d.time)
+          && d.key > prev.get('key', -1);
     }
 
     // Level j is unchanged unless it is the level k of this write's attempt.
@@ -116,6 +163,14 @@ service cloud.firestore {
     match /admins/{uid} {
       allow read: if isOwner(uid);
       allow write: if false;
+    }
+
+    match /allinone/{uid} {
+      // The All-in-One leaderboard, like the campaign one, is visible to signed-in players.
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validPoolBest(uid, {});
+      allow update: if isOwner(uid) && validPoolBest(uid, resource.data);
+      allow delete: if false;
     }
 
     match /players/{uid} {

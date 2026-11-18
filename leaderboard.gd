@@ -1,10 +1,19 @@
 extends Control
 
-# Online leaderboard: the top players by total score (sum of each level's best), plus the current
-# player's personal best and rank. Data comes from Cloud Firestore through Backend.
+# Online leaderboards, read from Cloud Firestore through Backend:
+#   Campaign   — players by total score (sum of each level's best);
+#   All-in-One — personal bests ranked by correct answers, then accuracy, then active time
+#                (character score bonuses never decide the order).
+# Each board shows the top players and the current player's own best and rank.
 
 const LIMIT := 20
 const ME_COLOR := Color(0.84, 0.68, 0.38)
+const HEADER_COLOR := Color(0.7, 0.7, 0.7)
+const BOARDS := ["campaign", "allinone"]
+const ProgressStoreScript := preload("res://progress_store.gd")
+
+var board := "campaign"
+var board_buttons := {}
 
 @onready var status_label: Label = %StatusLabel
 @onready var me_label: Label = %MeLabel
@@ -14,9 +23,37 @@ const ME_COLOR := Color(0.84, 0.68, 0.38)
 
 
 func _ready() -> void:
+	_build_board_switch()
 	refresh_button.pressed.connect(refresh)
 	back_button.pressed.connect(func(): get_tree().change_scene_to_file("res://main_menu.tscn"))
 	back_button.grab_focus.call_deferred()
+	refresh()
+
+
+# «Науқан» / «Бәрі бірге» tabs above the table.
+func _build_board_switch() -> void:
+	var box := HBoxContainer.new()
+	box.name = "BoardSwitch"
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_theme_constant_override("separation", 8)
+	var group := ButtonGroup.new()
+	for id in BOARDS:
+		var button := Button.new()
+		button.text = tr("Науқан") if id == "campaign" else tr("Бәрі бірге")
+		button.toggle_mode = true
+		button.button_group = group
+		button.button_pressed = id == board
+		button.custom_minimum_size = Vector2(180, 40)
+		button.pressed.connect(show_board.bind(id))
+		box.add_child(button)
+		board_buttons[id] = button
+	me_label.add_sibling(box)
+	me_label.get_parent().move_child(box, me_label.get_index())
+
+
+func show_board(id: String) -> void:
+	board = id
+	board_buttons[id].set_pressed_no_signal(true)
 	refresh()
 
 
@@ -26,9 +63,10 @@ func refresh() -> void:
 	me_label.text = ""
 	refresh_button.disabled = true
 	status_label.text = tr("Жүктелуде...")
+	var shown := board
 
-	var result: Dictionary = await Backend.fetch_leaderboard(LIMIT)
-	if not is_inside_tree():
+	var result: Dictionary = await Backend.fetch_leaderboard(LIMIT, board)
+	if not is_inside_tree() or shown != board:
 		return
 	refresh_button.disabled = not Backend.is_online_player()
 	if result.has("error"):
@@ -36,31 +74,48 @@ func refresh() -> void:
 		return
 
 	var list: Array = result.get("rows", [])
-	status_label.text = tr("Әлі нәтиже жоқ. Деңгейді өтіп, бірінші болыңыз!") if list.is_empty() else ""
-	if not list.is_empty():
-		_add_row("#", tr("Ойыншы"), tr("Ұпай"), Color(0.7, 0.7, 0.7))
+	var pool := board == "allinone"
+	rows.columns = 5 if pool else 3
+	if list.is_empty():
+		status_label.text = tr("Әлі нәтиже жоқ. «Бәрі бірге» сынағын өтіп, бірінші болыңыз!") if pool else tr("Әлі нәтиже жоқ. Деңгейді өтіп, бірінші болыңыз!")
+	else:
+		status_label.text = ""
+		_add_row(["#", tr("Ойыншы"), tr("Дұрыс"), tr("Дәлдік"), tr("Уақыт")] if pool else ["#", tr("Ойыншы"), tr("Ұпай")], HEADER_COLOR)
 	for i in list.size():
 		var row: Dictionary = list[i]
-		var color := ME_COLOR if row.get("me", false) else Color.WHITE
-		_add_row(str(i + 1), str(row.get("name", "?")), str(int(row.get("total", 0))), color)
+		_add_row(_cells(str(i + 1), row), ME_COLOR if row.get("me", false) else Color.WHITE)
 
 	var me: Dictionary = result.get("me", {})
 	var pending := Backend.pending_uploads()
-	if int(me.get("rank", 0)) > 0:
-		me_label.text = tr("%s · үздік жалпы ұпай: %d · орын: %d") % [Backend.display_name(), int(me["total"]), int(me["rank"])]
-	else:
+	if int(me.get("rank", 0)) <= 0:
 		me_label.text = tr("%s · рейтингте әлі нәтиже жоқ") % Backend.display_name()
+	elif pool:
+		me_label.text = tr("%s · үздік нәтиже: %d дұрыс, дәлдік %s · орын: %d") % [Backend.display_name(), int(me["correct"]), _percent(me), int(me["rank"])]
+	else:
+		me_label.text = tr("%s · үздік жалпы ұпай: %d · орын: %d") % [Backend.display_name(), int(me["total"]), int(me["rank"])]
 	if pending > 0:
 		me_label.text += tr("\nЖіберілуді күтуде: %d нәтиже") % pending
 
 
-func _add_row(rank: String, player: String, total: String, color: Color) -> void:
-	var cells := [rank, player, total]
+func _cells(rank: String, row: Dictionary) -> Array:
+	var name := str(row.get("name", "?"))
+	if board != "allinone":
+		return [rank, name, str(int(row.get("total", 0)))]
+	var correct := "%d / %d" % [int(row.get("correct", 0)), int(row.get("answered", 0))]
+	return [rank, name, correct, _percent(row), ProgressStoreScript.format_duration(int(row.get("time", 0)))]
+
+
+# Accuracy is stored per thousand answered tasks.
+static func _percent(row: Dictionary) -> String:
+	return "%d%%" % roundi(int(row.get("acc", 0)) / 10.0)
+
+
+func _add_row(cells: Array, color: Color) -> void:
 	for column in cells.size():
 		var label := Label.new()
 		label.text = cells[column]
 		label.add_theme_color_override("font_color", color)
 		label.clip_text = true
-		label.custom_minimum_size.x = 380 if column == 1 else 70
+		label.custom_minimum_size.x = (300 if board == "allinone" else 380) if column == 1 else (90 if column > 1 else 50)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if column == 1 else HORIZONTAL_ALIGNMENT_RIGHT
 		rows.add_child(label)
