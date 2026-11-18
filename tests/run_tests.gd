@@ -1777,7 +1777,9 @@ func test_boss() -> void:
 	quiz.load_question()
 	var base_time: float = quiz.level["time_per_question"] * (quiz.MULTI_STEP_TIME if quiz.MULTI_STEP_TYPES.has(QuestionValidator.get_type(quiz.questions[49])) else 1.0)
 	check(is_equal_approx(quiz.time_limit, base_time * quiz.level["time_floor"]) and quiz.time_limit < first_time * 1.5, "the timer shrinks towards the end")
-	check(quiz.targets.is_empty() or quiz.targets[0].move_speed > first_speed * 1.2, "targets move faster towards the end")
+	# Each target has a random ±20 % speed: on the last task even the slowest beats the fastest possible first-task target.
+	var fastest_first: float = quiz.level["target_speed"] * 1.2
+	check(quiz.targets.is_empty() or quiz.targets.all(func(t): return t.move_speed > fastest_first), "targets move faster towards the end")
 	var total_before: int = progress.total_score()
 	quiz.score = 4000
 	quiz.correct_count = 40
