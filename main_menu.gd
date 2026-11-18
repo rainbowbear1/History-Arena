@@ -32,6 +32,7 @@ const CREDITS := """Ойын: Тарих Аренасы — Godot Engine 4.7 (MI
 Лицензиялар: creativecommons.org/licenses"""
 
 const TrophyIcon := preload("res://trophy_icon.gd")
+const StartupScreen := preload("res://startup_screen.gd")
 
 var reset_armed: bool = false
 var language_buttons := {}
@@ -136,6 +137,7 @@ func _show_progress_note() -> void:
 		lines.append(tr("«Барлығын ашу» BOSS-ты бір рет жеңгенде ашылады."))
 	if ProgressStore.best_trophy > 0:
 		lines.append(tr("Ең жоғары BOSS жүлдесі: %s") % tr(TrophyIcon.NAMES[ProgressStore.best_trophy]))
+	lines.append(tr(StartupScreen.RECORDING_NOTICE))
 	note.text = "\n".join(lines)
 
 

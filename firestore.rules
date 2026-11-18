@@ -4,11 +4,16 @@ rules_version = '2';
 //
 //   players/{uid}                 one row per Google account: name, best score s1..s10 and stars
 //                                 t1..t10 per level, total = s1 + ... + s10, last attempt id
-//   players/{uid}/attempts/{id}   every finished run, write-once (campaign levels 1-10, BOSS 11,
-//                                 All-in-One 12)
+//   players/{uid}/attempts/{id}   every run, write-once (campaign levels 1-10, BOSS 11, All-in-One
+//                                 12), with its active play time; "abandoned" runs were left early
+//   profiles/{uid}                name, first and last sign-in of every Google account
 //   achievements/{uid}            BOSS victory (permanent), best BOSS score and highest trophy
 //   allinone/{uid}                All-in-One personal best (own leaderboard, never in the total)
 //   admins/{uid}                  teacher accounts, created only in the Firebase Console
+//
+// Administrators (an admins/{uid} document, which no client can write) may read every player's
+// records for the teacher dashboard (web/admin.html); nobody else may read other players' attempt
+// history or profile.
 //
 // The uid always comes from the verified Firebase ID token (request.auth), never from the game.
 // Scores are still produced in the player's browser; see docs/online.md for what these rules
@@ -22,6 +27,10 @@ service cloud.firestore {
 
     function isOwner(uid) {
       return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     // Tasks per level x 100 (questions/*.json). tests/run_tests.gd checks that these match.
@@ -65,9 +74,11 @@ service cloud.firestore {
     function validAttempt(a) {
       return a.keys().hasOnly(['level', 'character', 'score', 'max_score', 'correct', 'wrong',
                                'playtime_sec', 'stars', 'passed', 'completed', 'revivals_used',
-                               'finished_at', 'game_id', 'client_version', 'created', 'answered'])
+                               'finished_at', 'game_id', 'client_version', 'created', 'answered', 'abandoned'])
           && a.keys().hasAll(['level', 'score', 'max_score', 'stars', 'playtime_sec', 'created'])
           && a.level is int && a.level >= 1 && a.level <= 12
+          && a.get('abandoned', false) is bool
+          && (!a.get('abandoned', false) || (!a.get('completed', false) && a.stars == 0))
           && a.max_score == maxScoreOf(a.level)
           && (a.level != 11 || validBossRun(a))
           && (a.level != 12 || validPoolRun(a))
@@ -214,6 +225,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Written by the game at every sign-in: the Google display name, the first and the latest
+    // sign-in (server time). Read by the owner and administrators.
+    match /profiles/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid)
+                            && request.resource.data.keys().hasOnly(['name', 'firstSeen', 'lastSeen'])
+                            && request.resource.data.name == playerName()
+                            && request.resource.data.lastSeen == request.time
+                            && request.resource.data.firstSeen == (resource == null ? request.time : resource.data.firstSeen);
+      allow delete: if false;
+    }
+
+    // The teacher dashboard reads every player's runs at once (a collection-group query).
+    match /{path=**}/attempts/{attemptId} {
+      allow read: if isAdmin();
+    }
+
     match /allinone/{uid} {
       // The All-in-One leaderboard, like the campaign one, is visible to signed-in players.
       allow read: if signedIn();
@@ -232,7 +260,7 @@ service cloud.firestore {
       allow delete: if false;
 
       match /attempts/{attemptId} {
-        allow read: if isOwner(uid);
+        allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid) && validAttempt(request.resource.data);
         allow update, delete: if false;
       }

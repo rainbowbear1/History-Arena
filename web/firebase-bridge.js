@@ -87,7 +87,7 @@
   // Only the fields the security rules accept; numbers must stay integers.
   function attemptDoc(a) {
     var keys = ["level", "character", "score", "max_score", "correct", "wrong", "playtime_sec", "stars",
-      "passed", "completed", "revivals_used", "finished_at", "game_id", "client_version", "answered"];
+      "passed", "completed", "revivals_used", "finished_at", "game_id", "client_version", "answered", "abandoned"];
     var doc = {};
     keys.forEach(function (k) {
       if (a[k] !== undefined) doc[k] = typeof a[k] === "number" ? Math.round(a[k]) : a[k];
@@ -144,6 +144,14 @@
         if (!snap.exists() || row.key > snap.get("key")) tx.set(bestRef, row);
         return 0;
       });
+    });
+  }
+
+  // A run left before its end (Restart or Levels): only the attempt, for the play time and activity
+  // the teacher dashboard shows; it never changes a best, the BOSS achievement or a leaderboard.
+  function saveAbandoned(user, a) {
+    return F.setDoc(F.doc(F.collection(F.doc(db, "players", user.uid), "attempts")), attemptDoc(a)).then(function () {
+      return 0;
     });
   }
 
@@ -233,6 +241,7 @@
           var user = requireUser();
           var a = JSON.parse(payloadJson);
           var level = Math.round(a.level);
+          if (a.abandoned === true) return saveAbandoned(user, a);
           if (level === BOSS) return saveBoss(user, a);
           return level === ALL_IN_ONE ? saveAllInOne(user, a) : saveCampaign(user, a);
         })
@@ -243,6 +252,33 @@
           console.warn("submitResult failed", e);
           // The rules refused this record: sending it again will not help, so the game moves on.
           return JSON.stringify({ ok: false, error: message(e), rejected: !!(e && e.code === "permission-denied") });
+        });
+    },
+
+    // Records a sign-in in profiles/{uid}: the Google display name, the first sign-in (kept) and the
+    // latest one (server time). Shown to administrators on the teacher dashboard.
+    // -> Promise<string>: {"ok": true} or {"ok": false, "error": "..."}
+    touchProfile: function () {
+      return whenReady()
+        .then(function () {
+          var user = requireUser();
+          var ref = F.doc(db, "profiles", user.uid);
+          return F.runTransaction(db, function (tx) {
+            return tx.get(ref).then(function (snap) {
+              tx.set(ref, {
+                name: user.displayName || "Ойыншы",
+                firstSeen: snap.exists() ? snap.get("firstSeen") : F.serverTimestamp(),
+                lastSeen: F.serverTimestamp(),
+              });
+            });
+          });
+        })
+        .then(function () {
+          return JSON.stringify({ ok: true });
+        })
+        .catch(function (e) {
+          console.warn("touchProfile failed", e);
+          return JSON.stringify({ ok: false, error: message(e) });
         });
     },
 

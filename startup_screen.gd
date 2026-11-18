@@ -4,6 +4,8 @@ extends Control
 
 const OFFLINE_NOTE := "Онлайн режим қосылмаған. Қонақ ретінде ойнаңыз: нәтижелер тек осы құрылғыда сақталады."
 const GUEST_NOTE := "Қонақ нәтижелері рейтингке түспейді."
+# What is recorded, and for whom (the teacher dashboard, web/admin.html). Also shown in Settings.
+const RECORDING_NOTICE := "Бұл ойын — «Қазақстан тарихы» пәні бойынша университет тапсырмасы. Google арқылы кірген ойыншылардың прогресі мен белсенділігі (нәтижелер, ойын уақыты, соңғы кіру) жазылып, оқытушыға көрсетіледі. Қонақ ойыны тек осы құрылғыда қалады."
 
 @onready var google_button: Button = %GoogleButton
 @onready var guest_button: Button = %GuestButton
@@ -11,6 +13,14 @@ const GUEST_NOTE := "Қонақ нәтижелері рейтингке түсп
 
 
 func _ready() -> void:
+	var notice := Label.new()
+	notice.name = "RecordingNotice"
+	notice.text = tr(RECORDING_NOTICE)
+	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	notice.custom_minimum_size = Vector2(440, 0)
+	notice.add_theme_font_size_override("font_size", 14)
+	notice.add_theme_color_override("font_color", Color(0.72, 0.75, 0.8))
+	status_label.add_sibling(notice)
 	google_button.pressed.connect(_on_google_pressed)
 	guest_button.pressed.connect(_on_guest_pressed)
 

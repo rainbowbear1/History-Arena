@@ -189,6 +189,7 @@ func sync_progress() -> void:
 
 
 func _after_sign_in() -> void:
+	transport.touch_profile()  # The sign-in for the teacher dashboard; the game does not wait for it.
 	await sync_progress()
 	await sync_entitlements()
 	flush_outbox()

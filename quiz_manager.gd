@@ -59,6 +59,8 @@ const MEDICAL_FILE := "res://questions/medical.json"
 const QuestionPools := preload("res://question_pools.gd")
 const SOURCE_COLOR := Color(0.84, 0.68, 0.38)
 const MAX_FRAME_TIME := 0.25
+# Runs left before their end shorter than this are not reported.
+const MIN_RECORDED_TIME := 5.0
 const TrophyIcon := preload("res://trophy_icon.gd")
 
 var score: int = 0
@@ -256,6 +258,21 @@ func _process(delta: float) -> void:
 	update_timer()
 	if time_left <= 0.0:
 		_on_time_up()
+
+
+# A run left before its end (Restart, Levels, the pause menu, or the medical-help screen) still
+# reports its active play time for the teacher dashboard: online only, as an "abandoned" attempt
+# that never changes a result, a best or the BOSS achievement.
+func _exit_tree() -> void:
+	if not run_active or playtime < MIN_RECORDED_TIME or questions.is_empty() or level.is_empty():
+		return
+	run_active = false
+	var attempt := build_attempt(false)
+	attempt["abandoned"] = true
+	if is_all_in_one():
+		attempt["answered"] = mini(maxi(question_index, correct_count), questions.size())
+		attempt["wrong"] = attempt["answered"] - correct_count
+	Backend.submit_attempt(attempt)
 
 
 # Running out of time counts as a wrong answer.

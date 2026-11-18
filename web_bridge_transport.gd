@@ -14,6 +14,7 @@ extends RefCounted
 #   my_progress() -> Dictionary             (await; {"ok", "levels": {"1": {"score", "stars"}}})
 #   leaderboard(limit, board) -> Dictionary (await; board "campaign" or "allinone"; {"ok", "rows", "me"})
 #   entitlements() -> Dictionary            (await; {"ok", "bossDefeated", "bossBest", "trophy", "admin"})
+#   touch_profile() -> void                 (records the sign-in in profiles/{uid}; result ignored)
 #   record_boss(score) -> bool              (await; an old-style BOSS victory without run details,
 #                                            stored without a trophy; true when the server stored it)
 
@@ -71,6 +72,10 @@ func my_progress() -> Dictionary:
 
 func leaderboard(limit: int, board: String) -> Dictionary:
 	return _parse_object(await _await_promise(hub.getLeaderboard(limit, board)))
+
+
+func touch_profile() -> void:
+	await _await_promise(hub.touchProfile())
 
 
 func entitlements() -> Dictionary:

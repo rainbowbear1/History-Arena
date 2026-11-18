@@ -414,3 +414,104 @@ test("BOSS trophies are visible to signed-in players for the leaderboards", asyn
   await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(), "achievements")));
   await assertFails(setDoc(doc(bob(), "achievements", "alice"), { bossDefeated: true }));
 });
+
+// ---- Teacher dashboard: administrators read everything, players only their own ----
+
+import { collectionGroup } from "firebase/firestore";
+
+const teacher = () => db("teacher", "Teacher T");
+async function makeAdmin(uid) {
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "admins", uid), { role: "teacher" }));
+}
+
+// The same transaction as web/firebase-bridge.js touchProfile, with optional tampering.
+async function touch(fs, uid, name, tamper = (next) => next) {
+  const ref = doc(fs, "profiles", uid);
+  return runTransaction(fs, async (tx) => {
+    const snap = await tx.get(ref);
+    tx.set(ref, tamper({ name, firstSeen: snap.exists() ? snap.get("firstSeen") : serverTimestamp(), lastSeen: serverTimestamp() }));
+  });
+}
+
+async function seedClass() {
+  await submit(alice(), "alice", "Alice A", attempt(1, 1200));
+  await touch(alice(), "alice", "Alice A");
+  await bossRun(alice(), "alice", bossAttempt(46));
+  await poolRun(alice(), "alice", "Alice A", poolAttempt(90, 120));
+  await submit(bob(), "bob", "Bob B", attempt(2, 700));
+  await touch(bob(), "bob", "Bob B");
+}
+
+test("an administrator reads every player's records, history and activity", async () => {
+  await seedClass();
+  await makeAdmin("teacher");
+  const t = teacher();
+  await assertSucceeds(getDocs(collection(t, "players")));
+  await assertSucceeds(getDocs(collection(t, "achievements")));
+  await assertSucceeds(getDocs(collection(t, "allinone")));
+  const profiles = await assertSucceeds(getDocs(collection(t, "profiles")));
+  if (profiles.size !== 2) throw new Error("profiles missing");
+  const runs = await assertSucceeds(getDocs(collectionGroup(t, "attempts")));
+  if (runs.size !== 4) throw new Error("expected 4 runs, got " + runs.size);
+  await assertSucceeds(getDocs(collection(t, "players", "alice", "attempts")));
+  await assertSucceeds(getDoc(doc(t, "profiles", "bob")));
+});
+
+test("players without an admin record cannot read other players' history or activity", async () => {
+  await seedClass();
+  await assertFails(getDocs(collectionGroup(bob(), "attempts")));
+  await assertFails(getDocs(collection(bob(), "players", "alice", "attempts")));
+  await assertFails(getDocs(collection(bob(), "profiles")));
+  await assertFails(getDoc(doc(bob(), "profiles", "alice")));
+  await assertSucceeds(getDoc(doc(bob(), "profiles", "bob")));
+  await assertSucceeds(getDocs(collection(bob(), "players", "bob", "attempts")));
+  // Signed out, or signed in without Google: nothing.
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDocs(collectionGroup(anon, "attempts")));
+  await assertFails(getDocs(collection(anon, "profiles")));
+  // An admin record for another provider's account does not count.
+  await makeAdmin("eve");
+  const password = db("eve", "Eve", { firebase: { sign_in_provider: "password" } });
+  await assertFails(getDocs(collectionGroup(password, "attempts")));
+});
+
+test("nobody can make themselves an administrator, and administrators cannot rewrite results", async () => {
+  await seedClass();
+  await assertFails(setDoc(doc(bob(), "admins", "bob"), { role: "teacher" }));
+  await assertFails(setDoc(doc(bob(), "admins", "teacher"), { role: "teacher" }));
+  await makeAdmin("teacher");
+  const t = teacher();
+  await assertFails(setDoc(doc(t, "admins", "bob"), { role: "teacher" }));
+  await assertFails(deleteDoc(doc(t, "admins", "teacher")));
+  await assertFails(updateDoc(doc(t, "players", "alice"), { s1: 0, total: 0, updated: serverTimestamp() }));
+  await assertFails(setDoc(doc(t, "profiles", "alice"), { name: "Teacher T", firstSeen: serverTimestamp(), lastSeen: serverTimestamp() }));
+  await assertFails(deleteDoc(doc(t, "achievements", "alice")));
+  const run = (await getDocs(collection(t, "players", "alice", "attempts"))).docs[0];
+  await assertFails(deleteDoc(run.ref));
+});
+
+test("profiles: written by their owner at sign-in with server times; the first sign-in is kept", async () => {
+  await assertSucceeds(touch(alice(), "alice", "Alice A"));
+  const first = (await getDoc(doc(alice(), "profiles", "alice"))).get("firstSeen");
+  await assertSucceeds(touch(alice(), "alice", "Alice A"));
+  const snap = await getDoc(doc(alice(), "profiles", "alice"));
+  if (!snap.get("firstSeen").isEqual(first) || snap.get("lastSeen").toMillis() < first.toMillis()) throw new Error("first sign-in changed");
+  await assertFails(touch(alice(), "alice", "Alice A", (n) => ({ ...n, firstSeen: Timestamp.fromMillis(0) })));
+  await assertFails(touch(alice(), "alice", "Alice A", (n) => ({ ...n, lastSeen: Timestamp.fromMillis(0) })));
+  await assertFails(touch(alice(), "alice", "Teacher", (n) => n));
+  await assertFails(touch(alice(), "alice", "Alice A", (n) => ({ ...n, email: "a@b.c" })));
+  await assertFails(touch(bob(), "alice", "Bob B"));
+  await assertFails(deleteDoc(doc(alice(), "profiles", "alice")));
+});
+
+test("runs left early are stored for play time only", async () => {
+  const left = (a) => setDoc(doc(collection(doc(alice(), "players", "alice"), "attempts")), { abandoned: true, ...a, created: serverTimestamp() });
+  await assertSucceeds(left({ ...attempt(3, 400), stars: 0, passed: false, completed: false }));
+  await assertSucceeds(left(bossAttempt(12, { completed: false, stars: 0, passed: false, wrong: 3 })));
+  await assertSucceeds(left(poolAttempt(9, 12, { completed: false })));
+  await assertFails(left({ ...attempt(3, 1400), stars: 3, passed: true, completed: false }));
+  await assertFails(left({ ...attempt(3, 1400), stars: 0, passed: false, completed: true }));
+  await assertFails(left({ ...attempt(3, 400), stars: 0, passed: false, completed: false, abandoned: "yes" }));
+  // A run left early never counts as a BOSS victory.
+  await assertFails(bossRun(alice(), "alice", bossAttempt(40, { completed: false, abandoned: true })));
+});

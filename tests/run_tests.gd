@@ -306,6 +306,7 @@ func test_localization() -> void:
 		keys.append_array([info["name"], info["description"]])
 	keys.append_array(["Ретімен қойылды", "Табылған жұптар", "Жылдамдық", "Қорғаныс"])
 	keys.append_array(TrophyIconScript.NAMES.slice(1))
+	keys.append(load("res://startup_screen.gd").RECORDING_NOTICE)
 	var missing := keys.filter(func(k): return not english.has(k))
 	check(missing.is_empty(), "every interface text has an English entry (%d texts) %s" % [keys.size(), str(missing)])
 
@@ -2287,6 +2288,11 @@ class FakeTransport:
 		user = {}
 
 	var reject_levels: Array = []  # Levels the "security rules" refuse.
+	var profile_touches := 0
+
+	func touch_profile() -> void:
+		await Engine.get_main_loop().process_frame
+		profile_touches += 1
 
 	func submit_result(payload: Dictionary) -> Dictionary:
 		await Engine.get_main_loop().process_frame
@@ -2501,6 +2507,8 @@ func test_backend() -> void:
 	current_scene = screen
 	await process_frame
 	check(screen.google_button.disabled and screen.status_label.text == screen.OFFLINE_NOTE, "login screen explains offline mode")
+	var notice: Label = screen.find_child("RecordingNotice", true, false)
+	check(notice != null and notice.text.contains("университет тапсырмасы") and notice.text.contains("оқытушыға"), "the login screen says progress and activity are recorded for the assignment")
 	screen.guest_button.pressed.emit()
 	await process_frame
 	await process_frame
@@ -2567,6 +2575,37 @@ func test_backend() -> void:
 	check(quiz.results_label.text.contains("рейтингке жіберілді"), "results screen says the result went to the leaderboard")
 	quiz.get_parent().queue_free()
 	await process_frame
+	check(fake.received.size() == 1, "a finished run is not reported again when the arena closes")
+	check(fake.profile_touches > 0, "each sign-in is recorded for the teacher dashboard (profiles/{uid})")
+
+	# A run left early (Restart, Levels) reports its active play time only, online.
+	var history_before: int = progress.history.size()
+	quiz = await _start_task(samples["single_choice"])
+	quiz.playtime = 42.0
+	quiz.score = 100
+	quiz.correct_count = 1
+	quiz.get_parent().queue_free()
+	await wait(0.1)
+	var left: Dictionary = fake.received.back()
+	check(fake.received.size() == 2 and left.get("abandoned") == true and left["playtime_sec"] == 42 and left["stars"] == 0 and not left["completed"]
+		and not left["passed"], "a run left early is reported as abandoned with its play time")
+	check(progress.history.size() == history_before, "...and never changes the results on the device")
+	quiz = await _start_task(samples["single_choice"])
+	quiz.playtime = 2.0
+	quiz.get_parent().queue_free()
+	await wait(0.1)
+	check(fake.received.size() == 2, "a run of a few seconds is not reported")
+	game_state.selected_level = 12
+	var arena := await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	quiz.playtime = 300.0
+	quiz.question_index = 7
+	quiz.correct_count = 6
+	arena.queue_free()
+	await wait(0.1)
+	left = fake.received.back()
+	check(left["level"] == 12 and left["abandoned"] == true and left["answered"] == 7 and left["wrong"] == 1, "an All-in-One run left early counts only the tasks answered")
+	game_state.selected_level = 1
 
 	backend.transport = null
 	backend._set_user({})
@@ -2587,6 +2626,14 @@ func test_security_rules() -> void:
 	check(all_match, "security rules know each level's maximum score")
 	var pool_max := RegEx.create_from_string("poolMax\\(\\) \\{\\s*return (\\d+);").search(rules)
 	check(pool_max != null and int(pool_max.get_string(1)) == pool * 100, "security rules know the All-in-One maximum (%d tasks)" % pool)
+	var boss_tasks := RegEx.create_from_string("bossTasks\\(\\) \\{\\s*return (\\d+);").search(rules)
+	check(boss_tasks != null and int(boss_tasks.get_string(1)) == int(level_db.boss["questions"]), "security rules know the BOSS task count")
+	var maxima := ", ".join(level_db.levels.map(func(l): return str(QuestionValidator.load_file(l["question_file"]).questions.size() * 100)))
+	var dashboard := FileAccess.get_file_as_string("res://web/admin.html")
+	check(dashboard.contains("var LEVEL_MAX = [%s];" % maxima), "the teacher dashboard knows each level's maximum score")
+	check(rules.contains("function isAdmin()") and rules.contains("match /{path=**}/attempts/{attemptId}") and rules.contains("allow read: if isOwner(uid) || isAdmin();"),
+		"other players' history is readable by administrators only")
+	check(not dashboard.contains("@") or not RegEx.create_from_string("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[a-z]{2,}").search(dashboard), "the dashboard names no e-mail address (access is by admins/{uid})")
 	var max_doubles := 0
 	for character in char_db.characters:
 		if character["ability"]["id"] == "double_score":

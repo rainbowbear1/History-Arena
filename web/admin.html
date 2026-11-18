@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Тарих Аренасы — оқытушы панелі</title>
+<!--
+  Teacher dashboard for History Arena (published next to the game as admin.html).
+  Sign-in uses the same Firebase project and Google provider as the game. Who may see the data is
+  decided by firestore.rules: only accounts with an admins/{uid} document (created by the project
+  owner in the Firebase Console) can read other players' records; for anyone else every read below
+  fails, whatever this page shows. No password, e-mail list or secret is stored here.
+  Local testing against the emulators: http://localhost:<port>/admin.html?emulator=1
+-->
+<style>
+  @font-face { font-family: "Fira Sans"; src: url("fonts/FiraSans-Regular.ttf") format("truetype"); font-weight: 400; }
+  @font-face { font-family: "Fira Sans"; src: url("fonts/FiraSans-SemiBold.ttf") format("truetype"); font-weight: 600; }
+  @font-face { font-family: "PT Serif"; src: url("fonts/PTSerif-Bold.ttf") format("truetype"); font-weight: 700; }
+  :root {
+    --bg: #152235; --panel: #1c2c43; --row: #213452; --line: #2f4566; --gold: #d6ad60;
+    --text: #eef1f5; --muted: #9fb0c6; --good: #6cc070; --bad: #e07a6e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 "Fira Sans", system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  h1, h2, h3 { font-family: "PT Serif", Georgia, serif; color: var(--gold); margin: 0; }
+  h1 { font-size: 24px; flex: 1; }
+  h2 { font-size: 21px; margin: 18px 0 10px; }
+  h3 { font-size: 17px; margin: 18px 0 8px; }
+  main { padding: 18px 24px 40px; }
+  button, input { font: inherit; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+  button:hover, button:focus-visible { border-color: var(--gold); outline: none; }
+  button.primary { background: var(--gold); color: #1b1408; border-color: var(--gold); font-weight: 600; }
+  button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+  input[type="search"] { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; min-width: 260px; }
+  .muted { color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; max-width: 640px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar .grow { flex: 1; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th { background: var(--panel); color: var(--muted); font-weight: 600; position: sticky; top: 0; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--text); }
+  th[aria-sort="ascending"]::after { content: " ▲"; color: var(--gold); }
+  th[aria-sort="descending"]::after { content: " ▼"; color: var(--gold); }
+  td.left, th.left { text-align: left; }
+  tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
+  tbody tr.clickable { cursor: pointer; }
+  tbody tr.clickable:hover { background: var(--row); }
+  td.level { color: var(--muted); font-size: 13px; }
+  td.level.passed { color: var(--text); }
+  .name { display: inline-flex; align-items: center; gap: 6px; }
+  .ok { color: var(--good); }
+  .no { color: var(--muted); }
+  .bad { color: var(--bad); }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 4px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; min-width: 150px; }
+  .stat b { display: block; font-size: 19px; color: var(--text); }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .uid { font-family: ui-monospace, Consolas, monospace; font-size: 13px; background: var(--bg); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; user-select: all; }
+  .message { margin-top: 12px; }
+  [hidden] { display: none !important; }
+</style>
+<script src="firebase-config.js"></script>
+</head>
+<body>
+<header>
+  <h1 data-t="title"></h1>
+  <span id="who" class="muted"></span>
+  <button id="signout" hidden data-t="signOut"></button>
+  <span role="group" aria-label="Language">
+    <button data-lang="kk">KZ</button>
+    <button data-lang="en">EN</button>
+  </span>
+</header>
+<main>
+  <section id="signin" class="card" hidden>
+    <h2 data-t="signInTitle"></h2>
+    <p data-t="signInText"></p>
+    <button id="google" class="primary" data-t="signInButton"></button>
+    <div id="signinMessage" class="message"></div>
+  </section>
+
+  <section id="denied" class="card" hidden>
+    <h2 data-t="deniedTitle"></h2>
+    <p data-t="deniedText"></p>
+    <p><span data-t="yourUid"></span> <span id="deniedUid" class="uid"></span></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <div class="toolbar">
+      <input id="search" type="search" data-t-placeholder="search">
+      <span id="count" class="muted grow"></span>
+      <button id="refresh" data-t="refresh"></button>
+      <button id="csv" data-t="csv"></button>
+    </div>
+    <div class="table-wrap"><table id="players"></table></div>
+    <p class="muted" data-t="footnote"></p>
+  </section>
+
+  <section id="detail" hidden>
+    <button id="back" data-t="back"></button>
+    <h2 id="detailName"></h2>
+    <div class="muted"><span data-t="uidLabel"></span> <span id="detailUid" class="uid"></span></div>
+    <div id="detailStats" class="stats"></div>
+    <h3 data-t="levelResults"></h3>
+    <div class="table-wrap"><table id="levels"></table></div>
+    <h3 data-t="history"></h3>
+    <div class="table-wrap"><table id="attempts"></table></div>
+  </section>
+
+  <div id="status" class="message muted"></div>
+</main>
+
+<script type="module">
+  "use strict";
+  var SDK = "https://www.gstatic.com/firebasejs/13.1.0/";
+  var EMULATOR = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]emulator=1\b/.test(location.search);
+  var DEMO_CONFIG = { apiKey: "demo-key", authDomain: "demo-history-arena.firebaseapp.com", projectId: "demo-history-arena", appId: "demo" };
+  var config = EMULATOR ? DEMO_CONFIG : window.HISTORY_ARENA_FIREBASE || {};
+
+  // Campaign levels: maximum score (tasks x 100, as in firestore.rules maxScore) and era names.
+  var LEVEL_MAX = [1300, 1300, 1400, 1400, 1300, 1300, 1200, 1300, 1300, 1500];
+  var ERAS = {
+    kk: ["Сақтар дәуірі", "Ғұндар", "Түрік қағанаты", "Отырар", "Алтын Орда", "Қазақ хандығы", "Жоңғар шапқыншылығы", "XVIII–XIX ғасыр", "XX ғасыр", "Тәуелсіздік кезеңі"],
+    en: ["Saka Era", "Huns", "Turkic Khaganate", "Otrar", "Golden Horde", "Kazakh Khanate", "Dzungar Invasion", "18th–19th Centuries", "20th Century", "Independence"],
+  };
+  var BOSS = 11;
+  var ALL_IN_ONE = 12;
+
+  var TEXT = {
+    kk: {
+      title: "Тарих Аренасы — оқытушы панелі", signOut: "Шығу", signInTitle: "Әкімші ретінде кіру",
+      signInText: "Ойындағыдай Google аккаунтыңызбен кіріңіз. Деректерді тек әкімші ретінде тіркелген аккаунттар көре алады.",
+      signInButton: "Google арқылы кіру", deniedTitle: "Рұқсат жоқ",
+      deniedText: "Бұл аккаунт әкімші ретінде тіркелмеген. Жоба иесіне төмендегі UID-ті жіберіңіз: ол оны Firebase Console-да admins тізіміне қосады, содан кейін бетті жаңартыңыз.",
+      yourUid: "Сіздің UID:", search: "Ойыншы атын іздеу…", refresh: "Жаңарту", csv: "CSV жүктеу",
+      footnote: "Нәтижелер мен ойын уақытын ойыншының браузері жібереді; ережелер оларды шынайы шектерде ұстайды, бірақ ойын шынымен ойналғанын дәлелдей алмайды. Ойын уақыты — белсенді ойын (мәзір мен үзіліс есептелмейді); ерте тоқтатылған ойындар да қосылады.",
+      back: "← Барлық ойыншылар", uidLabel: "UID:", levelResults: "Деңгейлер бойынша нәтижелер", history: "Ойын тарихы",
+      name: "Ойыншы", progress: "Науқан", total: "Жалпы ұпай", boss: "BOSS", trophy: "Жүлде", pool: "Бәрі бірге",
+      playtime: "Ойын уақыты", last: "Соңғы белсенділік", players: "ойыншы", loading: "Жүктелуде…",
+      level: "Деңгей", best: "Үздік ұпай", stars: "Жұлдыз", attempts: "Әрекет", lastPlayed: "Соңғы ойын",
+      date: "Уақыты", mode: "Режим", character: "Кейіпкер", score: "Ұпай", correct: "Дұрыс / қате", time: "Ойын уақыты", outcome: "Нәтиже",
+      passed: "Өтті", failed: "Өтпеді", defeat: "Жеңіліс", left: "Ерте тоқтатылды", completed: "Барлығы орындалды",
+      defeated: "Жеңді", notDefeated: "—", bossBest: "BOSS үздік ұпайы", poolBest: "«Бәрі бірге» үздігі",
+      runs: "Барлық ойын", levelsPassed: "Өтілген деңгейлер", none: "—", bronze: "Қола", silver: "Күміс", gold: "Алтын",
+      allInOne: "Бәрі бірге", empty: "Әзірге ойыншы жоқ.", loadError: "Деректер жүктелмеді: ", signInError: "Кіру сәтсіз: ",
+      level_n: function (n) { return n + "-деңгей — " + ERAS.kk[n - 1]; },
+    },
+    en: {
+      title: "History Arena — teacher dashboard", signOut: "Sign out", signInTitle: "Sign in as an administrator",
+      signInText: "Sign in with your Google account, as in the game. Only accounts registered as administrators can see the data.",
+      signInButton: "Sign in with Google", deniedTitle: "No access",
+      deniedText: "This account is not registered as an administrator. Send the UID below to the project owner, who adds it to the admins list in the Firebase Console, then reload this page.",
+      yourUid: "Your UID:", search: "Search player name…", refresh: "Refresh", csv: "Download CSV",
+      footnote: "Scores and play time are reported by each player's browser; the security rules keep them within plausible limits but cannot prove a run was really played. Play time is active play (menus and pauses are not counted); runs left early are included.",
+      back: "← All players", uidLabel: "UID:", levelResults: "Results by level", history: "Play history",
+      name: "Player", progress: "Campaign", total: "Total score", boss: "BOSS", trophy: "Trophy", pool: "All-in-One",
+      playtime: "Play time", last: "Last activity", players: "players", loading: "Loading…",
+      level: "Level", best: "Best score", stars: "Stars", attempts: "Attempts", lastPlayed: "Last played",
+      date: "Time", mode: "Mode", character: "Character", score: "Score", correct: "Correct / wrong", time: "Play time", outcome: "Outcome",
+      passed: "Passed", failed: "Not passed", defeat: "Defeat", left: "Left early", completed: "Pool completed",
+      defeated: "Defeated", notDefeated: "—", bossBest: "BOSS best score", poolBest: "All-in-One best",
+      runs: "All runs", levelsPassed: "Levels passed", none: "—", bronze: "Bronze", silver: "Silver", gold: "Gold",
+      allInOne: "All-in-One", empty: "No players yet.", loadError: "Could not load the data: ", signInError: "Sign-in failed: ",
+      level_n: function (n) { return "Level " + n + " — " + ERAS.en[n - 1]; },
+    },
+  };
+
+  var lang = "kk";
+  try { lang = localStorage.getItem("ha-admin-lang") === "en" ? "en" : "kk"; } catch (e) { /* private window */ }
+  var A = null, F = null, auth = null, db = null;
+  var players = [];
+  var sort = { key: "last", dir: -1 };
+  var current = null;
+
+  function t(key) { return TEXT[lang][key]; }
+  function $(id) { return document.getElementById(id); }
+  function el(tag, text, cls) {
+    var e = document.createElement(tag);
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    if (cls) e.className = cls;
+    return e;
+  }
+  function show(id) {
+    ["signin", "denied", "dashboard", "detail"].forEach(function (s) { $(s).hidden = s !== id; });
+  }
+  function status(text) { $("status").textContent = text || ""; }
+
+  function applyLanguage() {
+    document.documentElement.lang = lang;
+    document.title = t("title");
+    document.querySelectorAll("[data-t]").forEach(function (e) { e.textContent = t(e.getAttribute("data-t")); });
+    document.querySelectorAll("[data-t-placeholder]").forEach(function (e) { e.placeholder = t(e.getAttribute("data-t-placeholder")); });
+    document.querySelectorAll("[data-lang]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-lang") === lang)); });
+    if (!$("dashboard").hidden) renderTable();
+    if (!$("detail").hidden && current) renderDetail(current);
+  }
+
+  // ---- formatting ----
+  function duration(sec) {
+    sec = Math.max(0, Math.round(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return h > 0 ? h + ":" + String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0") : m + ":" + String(s).padStart(2, "0");
+  }
+  // 18.11.2026 15:28 in local time (browsers format kk-KZ dates inconsistently).
+  function when(ms) {
+    if (!ms) return t("none");
+    var d = new Date(ms);
+    function two(n) { return String(n).padStart(2, "0"); }
+    return two(d.getDate()) + "." + two(d.getMonth() + 1) + "." + d.getFullYear() + " " + two(d.getHours()) + ":" + two(d.getMinutes());
+  }
+  function millis(ts) { return ts && typeof ts.toMillis === "function" ? ts.toMillis() : 0; }
+  function modeName(level) {
+    if (level === BOSS) return "BOSS";
+    if (level === ALL_IN_ONE) return t("allInOne");
+    return t("level_n")(level);
+  }
+  function trophyName(level) { return [t("none"), t("bronze"), t("silver"), t("gold")][level || 0]; }
+
+  // The game's cup: bronze, silver and gold differ in colour and in 1, 2 or 3 bands on the base.
+  function cup(level) {
+    var span = el("span");
+    if (!level) return span;
+    var ns = "http://www.w3.org/2000/svg";
+    var colors = [null, ["#b87333", "#7a4721"], ["#c7ccd6", "#858c99"], ["#f5c740", "#b8850f"]][level];
+    var svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "20");
+    svg.setAttribute("height", "20");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", trophyName(level));
+    var title = document.createElementNS(ns, "title");
+    title.textContent = trophyName(level);
+    svg.appendChild(title);
+    function shape(name, attrs) {
+      var s = document.createElementNS(ns, name);
+      Object.keys(attrs).forEach(function (k) { s.setAttribute(k, attrs[k]); });
+      svg.appendChild(s);
+    }
+    shape("path", { d: "M5.8 4.2 A3.6 3.6 0 0 0 5.8 11.4 M18.2 4.2 A3.6 3.6 0 0 1 18.2 11.4", fill: "none", stroke: colors[1], "stroke-width": "1.7" });
+    shape("path", { d: "M4.8 1.9 H19.2 L16.8 10.1 L13.4 13.4 H10.6 L7.2 10.1 Z", fill: colors[0] });
+    shape("rect", { x: "10.8", y: "13.2", width: "2.4", height: "3.9", fill: colors[0] });
+    shape("rect", { x: "6.2", y: "17", width: "11.6", height: "5.3", fill: colors[0] });
+    for (var i = 0; i < level; i++) shape("rect", { x: String(6.2 + 1.66 * (1 + 2 * i)), y: "18", width: "1.66", height: "3.3", fill: colors[1] });
+    span.appendChild(svg);
+    return span;
+  }
+
+  // ---- data ----
+  function load() {
+    status(t("loading"));
+    var reads = [
+      F.getDocs(F.collection(db, "players")),
+      F.getDocs(F.collection(db, "achievements")),
+      F.getDocs(F.collection(db, "allinone")),
+      F.getDocs(F.collection(db, "profiles")),
+      F.getDocs(F.collectionGroup(db, "attempts")),
+    ];
+    return Promise.all(reads).then(function (r) {
+      var byUid = {};
+      function get(uid) {
+        if (!byUid[uid]) {
+          byUid[uid] = { uid: uid, name: "", bests: [], stars: [], total: 0, levelsPassed: 0, starSum: 0, bossDefeated: false,
+            trophy: 0, bossBest: 0, pool: null, playtime: 0, last: 0, runs: [] };
+          for (var i = 0; i < 10; i++) { byUid[uid].bests.push(0); byUid[uid].stars.push(0); }
+        }
+        return byUid[uid];
+      }
+      r[0].forEach(function (d) {
+        var p = get(d.id), data = d.data();
+        p.name = p.name || data.name || "";
+        for (var i = 1; i <= 10; i++) { p.bests[i - 1] = data["s" + i] || 0; p.stars[i - 1] = data["t" + i] || 0; }
+        p.total = data.total || 0;
+        p.last = Math.max(p.last, millis(data.updated));
+      });
+      r[1].forEach(function (d) {
+        var p = get(d.id), data = d.data();
+        p.bossDefeated = data.bossDefeated === true;
+        p.trophy = data.trophy || 0;
+        p.bossBest = data.bossBest || 0;
+        p.last = Math.max(p.last, millis(data.updated));
+      });
+      r[2].forEach(function (d) {
+        var p = get(d.id), data = d.data();
+        p.name = p.name || data.name || "";
+        p.pool = { correct: data.correct || 0, answered: data.answered || 0, pool: data.pool || 0, acc: data.acc || 0, time: data.time || 0, completed: data.completed === true };
+      });
+      r[3].forEach(function (d) {
+        var p = get(d.id), data = d.data();
+        p.name = data.name || p.name;
+        p.firstSeen = millis(data.firstSeen);
+        p.last = Math.max(p.last, millis(data.lastSeen));
+      });
+      r[4].forEach(function (d) {
+        var uid = d.ref.parent.parent.id, p = get(uid), a = d.data();
+        a.createdMs = millis(a.created);
+        p.runs.push(a);
+        p.playtime += a.playtime_sec || 0;
+        p.last = Math.max(p.last, a.createdMs);
+      });
+      players = Object.keys(byUid).map(function (uid) {
+        var p = byUid[uid];
+        p.name = p.name || uid.slice(0, 8);
+        p.levelsPassed = p.stars.filter(function (s) { return s > 0; }).length;
+        p.starSum = p.stars.reduce(function (x, y) { return x + y; }, 0);
+        p.runs.sort(function (x, y) { return y.createdMs - x.createdMs; });
+        return p;
+      });
+      status("");
+    });
+  }
+
+  // ---- players table ----
+  var COLUMNS = [
+    { key: "name", label: "name", left: true, value: function (p) { return p.name.toLocaleLowerCase(); } },
+    { key: "progress", label: "progress", value: function (p) { return p.levelsPassed * 100 + p.starSum; } },
+    { key: "total", label: "total", value: function (p) { return p.total; } },
+  ];
+  for (var lv = 1; lv <= 10; lv++) {
+    (function (n) { COLUMNS.push({ key: "s" + n, label: null, title: n, value: function (p) { return p.bests[n - 1]; } }); })(lv);
+  }
+  COLUMNS.push(
+    { key: "boss", label: "boss", value: function (p) { return p.bossDefeated ? 1 : 0; } },
+    { key: "trophy", label: "trophy", value: function (p) { return p.trophy; } },
+    { key: "pool", label: "pool", value: function (p) { return p.pool ? p.pool.correct * 10000 + p.pool.acc : -1; } },
+    { key: "playtime", label: "playtime", value: function (p) { return p.playtime; } },
+    { key: "last", label: "last", value: function (p) { return p.last; } }
+  );
+
+  function filtered() {
+    var q = $("search").value.trim().toLocaleLowerCase();
+    var col = COLUMNS.filter(function (c) { return c.key === sort.key; })[0];
+    return players
+      .filter(function (p) { return !q || p.name.toLocaleLowerCase().indexOf(q) >= 0 || p.uid.toLowerCase().indexOf(q) >= 0; })
+      .sort(function (a, b) {
+        var x = col.value(a), y = col.value(b);
+        return (x < y ? -1 : x > y ? 1 : 0) * sort.dir;
+      });
+  }
+
+  function renderTable() {
+    var table = $("players");
+    table.textContent = "";
+    var head = el("tr");
+    COLUMNS.forEach(function (c) {
+      var th = el("th", c.label ? t(c.label) : String(c.title), "sortable" + (c.left ? " left" : ""));
+      if (!c.label) th.title = t("level_n")(c.title);
+      th.tabIndex = 0;
+      if (sort.key === c.key) th.setAttribute("aria-sort", sort.dir > 0 ? "ascending" : "descending");
+      function pick() {
+        sort = { key: c.key, dir: sort.key === c.key ? -sort.dir : (c.key === "name" ? 1 : -1) };
+        renderTable();
+      }
+      th.addEventListener("click", pick);
+      th.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      head.appendChild(th);
+    });
+    var thead = el("thead");
+    thead.appendChild(head);
+    table.appendChild(thead);
+    var body = el("tbody");
+    var list = filtered();
+    list.forEach(function (p) {
+      var tr = el("tr", null, "clickable");
+      tr.tabIndex = 0;
+      var nameCell = el("td", null, "left");
+      var name = el("span", null, "name");
+      name.appendChild(el("span", p.name));
+      name.appendChild(cup(p.trophy));
+      nameCell.appendChild(name);
+      tr.appendChild(nameCell);
+      tr.appendChild(el("td", p.levelsPassed + "/10 · " + p.starSum + "★"));
+      tr.appendChild(el("td", p.total));
+      for (var i = 0; i < 10; i++) tr.appendChild(el("td", p.bests[i] || "·", "level" + (p.stars[i] > 0 ? " passed" : "")));
+      tr.appendChild(el("td", p.bossDefeated ? t("defeated") : t("notDefeated"), p.bossDefeated ? "ok" : "no"));
+      var trophyCell = el("td");
+      trophyCell.appendChild(cup(p.trophy));
+      if (p.trophy) trophyCell.appendChild(document.createTextNode(" " + trophyName(p.trophy)));
+      tr.appendChild(trophyCell);
+      tr.appendChild(el("td", p.pool ? p.pool.correct + "/" + p.pool.pool + " · " + Math.round(p.pool.acc / 10) + "%" : t("none")));
+      tr.appendChild(el("td", duration(p.playtime)));
+      tr.appendChild(el("td", when(p.last)));
+      function open() { current = p; renderDetail(p); show("detail"); window.scrollTo(0, 0); }
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", function (e) { if (e.key === "Enter") open(); });
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    $("count").textContent = list.length ? list.length + " " + t("players") : t("empty");
+  }
+
+  // ---- player details ----
+  function stat(value, label) {
+    var box = el("div", null, "stat");
+    var b = el("b");
+    if (value instanceof Node) b.appendChild(value); else b.textContent = value;
+    box.appendChild(b);
+    box.appendChild(el("span", label));
+    return box;
+  }
+
+  function row(table, cells, header) {
+    var tr = el("tr");
+    cells.forEach(function (c, i) {
+      var cell = el(header ? "th" : "td", null, i === 0 || (!header && c && c.left) ? "left" : "");
+      if (c instanceof Node) cell.appendChild(c); else cell.textContent = c && c.text !== undefined ? c.text : c;
+      tr.appendChild(cell);
+    });
+    table.appendChild(tr);
+  }
+
+  function outcome(a) {
+    if (a.abandoned) return { text: t("left"), left: true };
+    if (a.level === ALL_IN_ONE) return { text: a.completed ? t("completed") : t("defeat"), left: true };
+    if (a.level === BOSS) return { text: a.stars > 0 ? t("defeated") + " · " + trophyName(a.stars) : (a.completed ? t("failed") : t("defeat")), left: true };
+    return { text: a.passed ? t("passed") + " " + "★".repeat(a.stars || 0) : (a.completed ? t("failed") : t("defeat")), left: true };
+  }
+
+  function renderDetail(p) {
+    $("detailName").textContent = p.name;
+    $("detailUid").textContent = p.uid;
+    var stats = $("detailStats");
+    stats.textContent = "";
+    stats.appendChild(stat(p.levelsPassed + "/10", t("levelsPassed")));
+    stats.appendChild(stat(String(p.total), t("total")));
+    var trophy = el("span", null, "name");
+    trophy.appendChild(cup(p.trophy));
+    trophy.appendChild(el("span", p.bossDefeated ? trophyName(p.trophy) : t("none")));
+    stats.appendChild(stat(trophy, t("trophy")));
+    stats.appendChild(stat(p.bossBest ? String(p.bossBest) : t("none"), t("bossBest")));
+    stats.appendChild(stat(p.pool ? p.pool.correct + "/" + p.pool.answered + " · " + Math.round(p.pool.acc / 10) + "% · " + duration(p.pool.time) : t("none"), t("poolBest")));
+    stats.appendChild(stat(duration(p.playtime), t("playtime")));
+    stats.appendChild(stat(String(p.runs.length), t("runs")));
+    stats.appendChild(stat(when(p.last), t("last")));
+
+    var levels = $("levels");
+    levels.textContent = "";
+    row(levels, [t("level"), t("best"), t("stars"), t("attempts"), t("playtime"), t("lastPlayed")], true);
+    for (var n = 1; n <= 10; n++) {
+      var runs = p.runs.filter(function (a) { return a.level === n; });
+      var time = runs.reduce(function (s, a) { return s + (a.playtime_sec || 0); }, 0);
+      row(levels, [t("level_n")(n), (p.bests[n - 1] || 0) + " / " + LEVEL_MAX[n - 1], "★".repeat(p.stars[n - 1]) || t("none"),
+        String(runs.length), duration(time), runs.length ? when(runs[0].createdMs) : t("none")]);
+    }
+
+    var attempts = $("attempts");
+    attempts.textContent = "";
+    row(attempts, [t("date"), t("mode"), t("character"), t("score"), t("correct"), t("time"), t("outcome")], true);
+    p.runs.forEach(function (a) {
+      var correct = (a.correct || 0) + " / " + (a.wrong || 0) + (a.level === ALL_IN_ONE ? " (" + (a.answered || 0) + "/" + Math.round((a.max_score || 0) / 100) + ")" : "");
+      row(attempts, [when(a.createdMs), { text: modeName(a.level), left: true }, { text: a.character || "", left: true },
+        (a.score || 0) + " / " + (a.max_score || 0), correct, duration(a.playtime_sec), outcome(a)]);
+    });
+  }
+
+  function csv() {
+    var head = ["uid", "name", "levels_passed", "stars", "total"];
+    for (var i = 1; i <= 10; i++) head.push("level_" + i);
+    head.push("boss_defeated", "trophy", "boss_best", "all_in_one_correct", "all_in_one_answered", "all_in_one_accuracy_pct", "all_in_one_time_sec",
+      "play_time_sec", "runs", "last_activity");
+    var lines = [head];
+    filtered().forEach(function (p) {
+      var line = [p.uid, p.name, p.levelsPassed, p.starSum, p.total].concat(p.bests);
+      line.push(p.bossDefeated, ["", "bronze", "silver", "gold"][p.trophy || 0], p.bossBest,
+        p.pool ? p.pool.correct : "", p.pool ? p.pool.answered : "", p.pool ? Math.round(p.pool.acc / 10) : "", p.pool ? p.pool.time : "",
+        p.playtime, p.runs.length, p.last ? new Date(p.last).toISOString() : "");
+      lines.push(line);
+    });
+    var text = "﻿" + lines.map(function (l) {
+      return l.map(function (v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(",");
+    }).join("\r\n");
+    var link = el("a");
+    link.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+    link.download = "history-arena-players.csv";
+    link.click();
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+  }
+
+  // ---- sign-in ----
+  function onUser(user) {
+    $("who").textContent = user ? user.displayName || "" : "";
+    $("signout").hidden = !user;
+    if (!user) { show("signin"); return; }
+    status(t("loading"));
+    // Only the owner of admins/{uid} may read it; the rules also guard every read below.
+    F.getDoc(F.doc(db, "admins", user.uid))
+      .then(function (snap) {
+        if (!snap.exists()) {
+          $("deniedUid").textContent = user.uid;
+          status("");
+          show("denied");
+          return;
+        }
+        return load().then(function () { show("dashboard"); renderTable(); });
+      })
+      .catch(function (e) { status(t("loadError") + (e && e.message ? e.message : e)); });
+  }
+
+  function start() {
+    applyLanguage();
+    if (!(config.apiKey && config.projectId)) { status("firebase-config.js"); return; }
+    Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")])
+      .then(function (m) {
+        var app = m[0].initializeApp(config);
+        A = m[1];
+        F = m[2];
+        auth = A.getAuth(app);
+        db = F.getFirestore(app);
+        if (EMULATOR) {
+          A.connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+          F.connectFirestoreEmulator(db, "127.0.0.1", 8080);
+          // Emulator only (localhost + ?emulator=1): sign in as a test Google account without a popup.
+          window.emulatorSignIn = function (uid, name) {
+            var token = JSON.stringify({ sub: uid, email: uid + "@example.com", name: name, email_verified: true });
+            return A.signInWithCredential(auth, A.GoogleAuthProvider.credential(token));
+          };
+        }
+        A.onAuthStateChanged(auth, onUser);
+      })
+      .catch(function (e) { status(t("loadError") + (e && e.message ? e.message : e)); });
+  }
+
+  $("google").addEventListener("click", function () {
+    $("signinMessage").textContent = "";
+    var provider = new A.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    A.signInWithPopup(auth, provider).catch(function (e) { $("signinMessage").textContent = t("signInError") + (e && e.code ? e.code : e); });
+  });
+  $("signout").addEventListener("click", function () { A.signOut(auth); });
+  $("refresh").addEventListener("click", function () { load().then(renderTable).catch(function (e) { status(t("loadError") + e.message); }); });
+  $("csv").addEventListener("click", csv);
+  $("search").addEventListener("input", renderTable);
+  $("back").addEventListener("click", function () { current = null; show("dashboard"); renderTable(); });
+  document.querySelectorAll("[data-lang]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      lang = b.getAttribute("data-lang");
+      try { localStorage.setItem("ha-admin-lang", lang); } catch (e) { /* private window */ }
+      applyLanguage();
+    });
+  });
+  start();
+</script>
+</body>
+</html>
