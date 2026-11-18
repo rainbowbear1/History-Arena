@@ -5,8 +5,8 @@
 //
 // Leave the values empty to run without online features (guest play only).
 window.HISTORY_ARENA_FIREBASE = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: "",
+  apiKey: "AIzaSyAKF2WuM9vgbtHH2B-tJbTMDGWhOVXnYIY",
+  authDomain: "history-arena-709c8.firebaseapp.com",
+  projectId: "history-arena-709c8",
+  appId: "1:672570055582:web:3336726ec08682ee03d48f",
 };
