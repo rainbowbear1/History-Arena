@@ -4,17 +4,18 @@ A browser FPS quiz about the history of Kazakhstan (Godot 4.7.2, web export). Th
 enemy soldier marked with the right answer (a red outline and a floating label above them), across ten historical arenas from the Saka era
 to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3.
 
-> **Online features:** Google sign-in (Firebase Authentication) and the online leaderboard (Cloud
-> Firestore) are implemented with the real Firebase SDK; there is no mock login. They were verified
-> in the browser against the Firebase emulators (session restore, results saved under the player's
-> UID, leaderboard, server-side checks, sign-out) and by 9 security-rule tests. They go live once
-> `web/firebase-config.js` holds your Firebase project's web config and the build is on GitHub
-> Pages (`docs/deploy.md`). Until then the game runs offline with guest play. See `docs/online.md`.
+> **Online features:** Google sign-in (Firebase Authentication), the campaign and All-in-One
+> leaderboards with BOSS trophies, and the teacher dashboard (`admin.html`) use the real Firebase
+> SDK and project `history-arena-709c8`; there is no mock login. They are verified against the
+> Firebase emulators in the browser and by 27 security-rule tests. Sign-in, the campaign leaderboard
+> and record keeping were also checked live by hand; the newer rules (trophies, All-in-One,
+> dashboard) are not published yet. Deployment to <https://rainbowbear1.github.io/History-Arena/>:
+> `docs/deploy.md`. Details: `docs/online.md`.
 
 ## What the game does
 | Assignment requirement | In the game |
 |---|---|
-| 10 arenas, rising difficulty, level 10 BOSS | Saka → Huns → Turkic Khaganate → Otyrar → Golden Horde → Kazakh Khanate → Dzungar wars → 18th–19th c. → 20th c. → Independence (arcade shooting gallery with moving plaques and tin ducks) |
+| 10 arenas, rising difficulty, BOSS | Saka → Huns → Turkic Khaganate → Otyrar → Golden Horde → Kazakh Khanate → Dzungar wars → 18th–19th c. → 20th c. → Independence (arcade shooting gallery with moving plaques and tin ducks) |
 | 10 characters with HP, speed, weapon, ability, defense | Character screen; each character opens with their era's level (Manshuk after passing level 9); each level preselects its historical protagonist |
 | Shoot the correct answer: +100, wrong −10 HP | Answer soldiers are outlined in red with a floating answer label; a wrong answer shows an enemy landing a shot |
 | 6 task types | single choice, fill-in-the-blank, matching, chronology, map (Natural Earth map), image (licensed photos) |
@@ -22,19 +23,23 @@ to independent Kazakhstan. University project: CYB26, Technical Assignment No. 3
 | "Жан біткенде" medical help | At 0 HP: one history question; correct → +50/40/30 HP and retry the task, wrong → restart |
 | Results saved (score, level, correct, wrong, playtime) | Saved per account on the device (stars, unlocks) and in Cloud Firestore under the player's Google account |
 | Google login, leaderboard | Firebase Authentication (Google); **Рейтинг** screen with top 20, own best total and rank; Firestore security rules |
+| BOSS | 50 tasks in three phases of randomly mixed levels (1–3, 4–7, 8–10), shrinking timer, medkits; bronze/silver/gold trophy by correct answers |
+| All-in-One | After a BOSS victory: every campaign task once in random order, own leaderboard (correct answers, accuracy, time) |
+| Teacher dashboard | `admin.html`: Google sign-in, access only for `admins/{uid}`; all players' progress, trophies, play time, history |
 | Languages | Kazakh (default) and English, switch in the main menu (questions, menus, results) |
 
 ## Run, test, build
 ```
 godot --path .                                   # open/run (Godot 4.7.2)
 godot --headless --path . --import               # first time, or after adding assets
-godot --headless --path . --script res://tests/run_tests.gd   # 888 checks; exit code = failures
+godot --headless --path . --script res://tests/run_tests.gd   # 984 checks; exit code = failures
 (cd tests/firebase && npm install && npm test)   # Firestore security rules (emulator; Node 20+, Java 21+)
-tools/export_web.sh <path-to-godot> build/web    # web build + Firebase bridge
+tools/export_web.sh <path-to-godot> build/web    # web build + Firebase bridge + admin.html
 tools/publish_pages.sh                           # build -> local gh-pages branch (no push)
 ```
 Serve `build/web/` over HTTP(S) to play (threads are off, so no special headers are needed).
-Settings → **Демо режимі** opens every level (for presentations); **Прогресті тазалау** resets progress.
+Settings → **Барлығын ашу** (Unlock Everything, after a BOSS victory or for administrators) opens
+every level; **Жаңа ойын** (New Game) restarts the campaign on this device.
 
 ## Architecture
 ```

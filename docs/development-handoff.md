@@ -1,5 +1,16 @@
 # History Arena — development handoff (18 November 2026)
 
+> **Update, later on 18 Nov (milestones 28–32, after the "final development specifications"):**
+> checkpoint tag `checkpoint-before-final-spec` (= `ff36bc1`), then
+> M28 BOSS phases + source labels, M29 All-in-One (replaces the Endless idea) with its own
+> leaderboard, M30 BOSS trophies, M31 teacher dashboard `web/admin.html` + activity tracking
+> (`profiles/{uid}`, abandoned runs), M32 rule tests, secret audit, `origin` =
+> `https://github.com/rainbowbear1/History-Arena.git` (nothing pushed), Pages docs.
+> Tests: 984 Godot checks, 27 emulator rule tests, all passing. Still waiting on the user: publishing
+> the new `firestore.rules`, adding `rainbowbear1.github.io` to Authorized domains, the teacher's
+> UID in `admins/`, approval to push and deploy. The sections below describe the state before these
+> milestones where they differ; `docs/online.md`, `docs/data-format.md` and `docs/deploy.md` are current.
+
 Written at the end of a long development session so that a fresh session can continue without the
 conversation history. Everything below describes the repository at commit `ed470e5` on `main`
 (plus this document's own commit). **Read "Rules for continuing" before changing anything.**
