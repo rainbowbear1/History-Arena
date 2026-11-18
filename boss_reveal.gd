@@ -7,11 +7,14 @@ const HOLD := 2.2
 
 
 func play() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var band := ColorRect.new()
 	band.color = Color(0.05, 0.03, 0.04, 0.88)
-	band.set_anchors_preset(Control.PRESET_HCENTER_WIDE)
+	band.anchor_left = 0.0
+	band.anchor_right = 1.0
+	band.anchor_top = 0.5
+	band.anchor_bottom = 0.5
 	band.offset_top = -90
 	band.offset_bottom = 90
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -25,13 +28,14 @@ func play() -> void:
 	title.add_theme_constant_override("outline_size", 10)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	band.add_child(title)
 	var hint := Label.new()
 	hint.text = tr("Деңгейлер тізімінде 8-деңгейдің астында")
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -34
+	hint.offset_bottom = -8
 	band.add_child(hint)
 
 	await get_tree().process_frame
