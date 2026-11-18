@@ -15,5 +15,6 @@
   "boss": { "id": 11, "title": "BOSS", "stars": 5, "protagonist": "", "boss": true, "question_file": "", "theme": "golden_horde",
             "time_per_question": 24, "target_speed": 1.3, "extra_decoys": 2, "enemies": 3, "revive_hp": 40, "revivals": 1,
             "pass_percent": 60, "unlock_score": 0, "questions": 50, "medkits": 2, "medkit_every": 10, "medkit_hp": 35,
-            "time_floor": 0.55, "speed_ramp": 0.6 }
+            "time_floor": 0.55, "speed_ramp": 0.6,
+            "phases": [ { "levels": [1, 2, 3], "count": 15 }, { "levels": [4, 5, 6, 7], "count": 20 }, { "levels": [8, 9, 10], "count": 15 } ] }
 }

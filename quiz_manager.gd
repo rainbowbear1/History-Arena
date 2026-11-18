@@ -56,6 +56,8 @@ const ProgressStoreScript := preload("res://progress_store.gd")
 # Question types that can be asked on the medical-help screen (plain four-button answers).
 # Medical help asks from its own bank, never from the level's tasks.
 const MEDICAL_FILE := "res://questions/medical.json"
+const QuestionPools := preload("res://question_pools.gd")
+const SOURCE_COLOR := Color(0.84, 0.68, 0.38)
 
 var score: int = 0
 var level: Dictionary = {}
@@ -105,6 +107,8 @@ var feedback_token: int = 0
 @onready var targets_root: Node3D = $"../Targets"
 # Photo and map of image and map tasks live in the HUD (image_panel.gd, map_overlay.gd).
 var image_panel: PanelContainer
+# Mixed runs (BOSS, All-in-One): "Сұрақ 12 / 50 · 6-деңгей — Қазақ хандығы" above the question.
+var source_label: Label
 var map_overlay: Control
 # The Independence level's moving tracks and ducks (gallery.gd); null on other levels.
 var gallery: Node3D
@@ -209,6 +213,7 @@ func load_question() -> void:
 		show_feedback(tr("+1 аптечка [H]"), HP_HIGH, 1.2)
 
 	set_question(question["question"])
+	update_source_label()
 	update_hud()
 
 	if gallery:
@@ -614,6 +619,16 @@ func set_question(text: String) -> void:
 	question_panel.visible = not text.is_empty()
 
 
+# Mixed runs name each task's position in the run and the campaign level and era it comes from.
+func update_source_label() -> void:
+	var question: Dictionary = questions[question_index] if question_index < questions.size() else {}
+	if not question.has("source_level"):
+		source_label.text = ""
+	else:
+		source_label.text = tr("Сұрақ %d / %d") % [question_index + 1, questions.size()] + "  ·  " + LevelDatabase.source_label(int(question["source_level"]))
+	source_label.visible = not source_label.text.is_empty()
+
+
 func update_progress() -> void:
 	if current_task == null or current_task.total == 0:
 		progress_label.text = ""
@@ -801,6 +816,14 @@ func _build_overlays() -> void:
 	for overlay in [image_panel, map_overlay]:
 		hud.add_child(overlay)
 		hud.move_child(overlay, answer_labels.get_index() + 1)
+	source_label = Label.new()
+	source_label.name = "SourceLabel"
+	source_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	source_label.add_theme_font_size_override("font_size", 17)
+	source_label.add_theme_color_override("font_color", SOURCE_COLOR)
+	source_label.hide()
+	question_label.get_parent().add_child(source_label)
+	question_label.get_parent().move_child(source_label, 0)
 
 
 func _on_restart_button_pressed() -> void:
@@ -817,19 +840,14 @@ func _on_levels_button_pressed() -> void:
 
 
 
-# The BOSS asks `questions` tasks taken evenly from every level's verified bank, in the order of
-# the eras and, within an era, from easier to harder, so the run builds up to the hardest material.
+# The BOSS asks its phases one after another (levels.json "phases": tasks 1–15 from levels 1–3,
+# 16–35 from levels 4–7, 36–50 from levels 8–10), each a new random mix of the audited banks with
+# no task twice. Too few tasks for a phase is an error in the banks, reported here, never padded.
 func load_boss_questions() -> void:
-	var per_level := ceili(float(level.get("questions", 50)) / LevelDatabase.levels.size())
-	questions = []
-	for campaign_level in LevelDatabase.levels:
-		var bank: Array = QuestionValidator.load_file(campaign_level["question_file"]).questions
-		if GameState.shuffle_questions:
-			bank.shuffle()
-		var picked := bank.slice(0, per_level)
-		picked.sort_custom(func(a, b): return a.get("difficulty", 2) < b.get("difficulty", 2))
-		questions.append_array(picked)
-	questions = questions.slice(0, level.get("questions", 50)).map(func(q): return Locale.localize_question(q))
+	var run := QuestionPools.boss_run(level.get("phases", []), QuestionPools.load_banks(LevelDatabase.levels), GameState.shuffle_questions)
+	for problem in run["problems"]:
+		push_error(problem)
+	questions = run["questions"].map(func(q): return Locale.localize_question(q))
 	medkits = level.get("medkits", 0)
 
 

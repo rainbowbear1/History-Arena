@@ -64,6 +64,18 @@ func get_level(id: int) -> Dictionary:
 	return {}
 
 
+# Where a task of a mixed run (BOSS, All-in-One) comes from, in the current language:
+# "6-деңгей — Қазақ хандығы" / "Level 6 — Kazakh Khanate".
+func source_label(id: int) -> String:
+	var level := get_level(id)
+	if level.is_empty() or id > levels.size():
+		return ""
+	var era := tr(level["title"])
+	if era.begins_with("The "):
+		era = era.substr(4)
+	return tr("%d-деңгей — %s") % [id, era]
+
+
 # A level is playable once its question file exists (the BOSS uses every level's file).
 func is_playable(id: int) -> bool:
 	if id == BOSS_ID:

@@ -92,8 +92,14 @@ leaving Restart and Levels. These numbers are preliminary and will be tuned afte
 ## BOSS — `"boss"` in `data/levels.json` (id 11)
 
 A separate 50-task endurance run, not part of the ten-level campaign and never counted in the total
-score or the leaderboard total. It takes five tasks from every level's verified bank, ordered by era
-and, within an era, from easier to harder. Over the run the timer shrinks to `time_floor` (55 %) of
+score or the leaderboard total. Its tasks come in three phases (`"phases"`): tasks 1–15 are drawn at
+random from levels 1–3, tasks 16–35 from levels 4–7 and tasks 36–50 from levels 8–10. Within a
+phase the levels are mixed (not grouped by era); every attempt draws a new selection and order, and
+no task appears twice (`question_pools.gd`). Tasks are taken unchanged from the audited banks; if a
+phase's levels ever hold fewer tasks than its `count`, the game reports an error and the tests fail
+instead of padding the run. Above each question the HUD shows its place in the run and its source,
+e.g. «Сұрақ 12 / 50 · 6-деңгей — Қазақ хандығы» / "Question 12 / 50 · Level 6 — Kazakh Khanate".
+Over the run the timer shrinks to `time_floor` (55 %) of
 `time_per_question` and targets speed up by `speed_ramp` (+60 %); three enemies fight throughout.
 The player starts with `medkits` (2) medkits, gets one more every `medkit_every` (10) tasks, and
 uses one with **H** for `medkit_hp` (35) HP; medical help works as on the levels. Scoring at least

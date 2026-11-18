@@ -15,6 +15,7 @@ const Projectile := preload("res://projectile.gd")
 const Soldier := preload("res://soldier.gd")
 const EnvironmentBuilder := preload("res://environment_builder.gd")
 const QuestionAudit := preload("res://question_audit.gd")
+const QuestionPools := preload("res://question_pools.gd")
 
 var failures := 0
 var checks := 0
@@ -451,6 +452,7 @@ func test_arena() -> void:
 	test_total_score_unlocks()
 	await test_character_unlocks()
 	await test_weapon_effects()
+	test_boss_question_sets()
 	await test_boss()
 	await test_progress()
 	await test_full_playthrough()
@@ -1755,13 +1757,9 @@ func test_boss() -> void:
 	game_state.selected_character = "tomyris"
 	var arena := await _load_arena()
 	var quiz = arena.get_node("QuizManager")
-	var per_level := {}
-	for q in quiz.questions:
-		var prefix: String = str(q["id"]).rsplit("-", true, 1)[0]
-		per_level[prefix] = per_level.get(prefix, 0) + 1
-	check(quiz.questions.size() == 50 and per_level.size() == 10 and per_level.values().all(func(n): return n == 5), "50 tasks, five from every level's bank")
-	var eras: Array = quiz.questions.map(func(q): return str(q["id"]).rsplit("-", true, 1)[0])
-	check(eras[0] == "saka" and eras[49] == "independence", "the run goes from the Saka era to independence")
+	check(quiz.questions.size() == 50 and _in_phases(quiz.questions), "50 tasks: 15 from levels 1–3, 20 from levels 4–7, 15 from levels 8–10")
+	check(quiz.source_label.visible and quiz.source_label.text == "Сұрақ 1 / 50  ·  %d-деңгей — %s" % [quiz.questions[0]["source_level"], level_db.get_level(quiz.questions[0]["source_level"])["title"]],
+		"the HUD names the task's number, source level and era")
 	var first_time: float = quiz.time_limit
 	var first_speed: float = quiz.targets[0].move_speed if not quiz.targets.is_empty() else 1.0
 	check(quiz.medkits == 2 and quiz.ability_label.text.contains("[H]"), "the BOSS starts with 2 medkits shown in the HUD")
@@ -1802,6 +1800,79 @@ func test_boss() -> void:
 	progress.set_demo_unlock(was_demo)
 	game_state.selected_level = 1
 	game_state.selected_character = ""
+
+
+# The BOSS set: three phases of randomly mixed tasks from the audited banks, nothing invented,
+# nothing repeated, a new set every attempt; each task carries its source level for the HUD label.
+func test_boss_question_sets() -> void:
+	print("== BOSS question phases")
+	var boss: Dictionary = level_db.boss
+	var banks: Dictionary = QuestionPools.load_banks(level_db.levels)
+	var bank_ids := {}
+	for id in banks:
+		for task in banks[id]:
+			bank_ids[task["id"]] = task
+	var runs := []
+	for i in range(6):
+		runs.append(QuestionPools.boss_run(boss["phases"], banks))
+	check(runs.all(func(r): return r["problems"].is_empty()), "every BOSS phase has enough tasks in its levels' banks")
+	check(runs.all(func(r): return r["questions"].size() == 50 and _in_phases(r["questions"])), "every run: 15 + 20 + 15 tasks from the right levels")
+	check(runs.all(func(r): return _unique_ids(r["questions"])), "no task is asked twice in one BOSS run")
+	check(runs.all(func(r): return r["questions"].all(func(q): return bank_ids.has(q["id"]) and _same_task(q, bank_ids[q["id"]]))),
+		"every BOSS task is an unchanged task of the audited banks")
+	var orders := {}
+	for r in runs:
+		orders[",".join(r["questions"].map(func(q): return q["id"]))] = true
+	check(orders.size() == runs.size(), "each attempt gets a new selection and order")
+	# Within a phase the eras are mixed, not grouped: a run sorted by level would be a 1-in-millions chance.
+	var mixed := runs.any(func(r):
+		var phase: Array = r["questions"].slice(0, 15).map(func(q): return q["source_level"])
+		var sorted := phase.duplicate()
+		sorted.sort()
+		return phase != sorted)
+	check(mixed, "phase tasks are shuffled across their levels, not grouped by era")
+	var phase_levels := {}
+	for r in runs:
+		for q in r["questions"].slice(15, 35):
+			phase_levels[q["source_level"]] = true
+	check(phase_levels.size() == 4, "the middle phase draws from all of levels 4–7")
+
+	# Too few tasks: reported, never padded with invented ones.
+	var short := QuestionPools.boss_run([{"levels": [1], "count": 40}], banks)
+	check(short["questions"].size() == banks[1].size() and short["problems"].size() == 1 and short["problems"][0].contains("needs 40"),
+		"a phase with too few tasks is reported and gets only the real tasks")
+
+	# Labels in both languages.
+	check(level_db.source_label(6) == "6-деңгей — Қазақ хандығы", "Kazakh source label: 6-деңгей — Қазақ хандығы")
+	locale.set_language("en")
+	check(level_db.source_label(6) == "Level 6 — Kazakh Khanate", "English source label: Level 6 — Kazakh Khanate")
+	check(level_db.source_label(10) == "Level 10 — Independence" and level_db.source_label(1) == "Level 1 — Saka Era", "every level has an English era name")
+	locale.set_language("kk")
+	check(level_db.source_label(11) == "" and level_db.source_label(0) == "", "only campaign levels are named as a source")
+
+
+func _in_phases(questions: Array) -> bool:
+	var spans := [[0, 15, 1, 3], [15, 35, 4, 7], [35, 50, 8, 10]]
+	return spans.all(func(span): return questions.slice(span[0], span[1]).all(func(q):
+		return int(q.get("source_level", 0)) >= span[2] and int(q.get("source_level", 0)) <= span[3]))
+
+
+func _unique_ids(questions: Array) -> bool:
+	var seen := {}
+	for q in questions:
+		if seen.has(q["id"]):
+			return false
+		seen[q["id"]] = true
+	return true
+
+
+# The task as written in its bank (the run only adds "source_level").
+func _same_task(task: Dictionary, original: Dictionary) -> bool:
+	var copy := task.duplicate(true)
+	copy.erase("source_level")
+	var plain := original.duplicate(true)
+	plain.erase("source_level")
+	return copy == plain
 
 
 func test_progress() -> void:
