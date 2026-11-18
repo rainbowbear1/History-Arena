@@ -89,6 +89,33 @@ question that was just failed is not offered again after Restart. A correct answ
 start over), keeping their score and completed tasks. A wrong answer means no medical help,
 leaving Restart and Levels. These numbers are preliminary and will be tuned after playtesting with timers and enemies.
 
+## BOSS — `"boss"` in `data/levels.json` (id 11)
+
+A separate 50-task endurance run, not part of the ten-level campaign and never counted in the total
+score or the leaderboard total. It takes five tasks from every level's verified bank, ordered by era
+and, within an era, from easier to harder. Over the run the timer shrinks to `time_floor` (55 %) of
+`time_per_question` and targets speed up by `speed_ramp` (+60 %); three enemies fight throughout.
+The player starts with `medkits` (2) medkits, gets one more every `medkit_every` (10) tasks, and
+uses one with **H** for `medkit_hp` (35) HP; medical help works as on the levels. Scoring at least
+`pass_percent` (60 %) defeats the BOSS.
+
+- **Reveal:** the first time level 10 is passed, the results screen is followed by «BOSS АШЫЛДЫ!» /
+  "BOSS UNLOCKED", and the level screen shows a red BOSS tile centred beneath level 8.
+- **Level 10** is a normal 5/5 level (the arcade gallery); it is no longer marked BOSS.
+
+## New Game and Unlock Everything
+- **Settings → «Жаңа ойын» / New Game** (two presses) restarts the campaign on this device: level
+  results, unlocks, BOSS results and history of the current profile. It never deletes anything online
+  (leaderboard rows, attempts, achievements) and never removes Unlock Everything.
+- **«Барлығын ашу» / Unlock Everything** (formerly Demo mode) opens every level, the BOSS and every
+  character. It is locked until the player has defeated the BOSS once; that entitlement is kept in its
+  own file (`progress[_uid]_entitlements.json`) and, for a Google account, in Firestore
+  `achievements/{uid}`, so it survives New Game, sign-out and sign-in. **Administrators** have it at
+  once: an administrator is a Google account with a document `admins/{uid}` in Firestore, which only
+  the project owner can create (see `docs/online.md`); the game only reads it, never a local flag.
+- Settings explains the difference: campaign progress lives on the device; online results and
+  permanent achievements belong to the account.
+
 ## Saved progress — `user://progress.json`
 
 Written by `progress_store.gd` (in the browser, `user://` is stored in IndexedDB). It holds, per

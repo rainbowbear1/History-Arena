@@ -13,6 +13,7 @@ signal user_changed(user: Dictionary)
 const GAME_ID := "history-arena"
 const CLIENT_VERSION := "1.0.0"
 const OUTBOX_PATH := "user://outbox.json"
+const BOSS_PENDING_PATH := "user://boss_pending.json"
 const MAX_OUTBOX := 100
 const OFFLINE_MESSAGE := "Онлайн режим бапталмаған: Google арқылы кіру жұмыс істемейді"
 const WebBridgeTransport := preload("res://web_bridge_transport.gd")
@@ -27,10 +28,15 @@ var flushing: bool = false
 var upload_gap: float = 6.0  # The security rules accept one result per player every 5 seconds.
 var last_error: String = ""
 var last_upload_ok: bool = false
+var boss_pending_path: String = BOSS_PENDING_PATH
+# BOSS victories not yet stored online, by uid (best score), so a lost connection loses nothing.
+var boss_pending: Dictionary = {}
 
 
 func _ready() -> void:
 	load_outbox()
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(boss_pending_path)) if FileAccess.file_exists(boss_pending_path) else null
+	boss_pending = saved if saved is Dictionary else {}
 	if OS.has_feature("web") and WebBridgeTransport.bridge_present():
 		transport = WebBridgeTransport.new()
 
@@ -176,7 +182,46 @@ func sync_progress() -> void:
 
 func _after_sign_in() -> void:
 	await sync_progress()
+	await sync_entitlements()
 	flush_outbox()
+
+
+# Reads the account's permanent achievements and role: a BOSS victory stored online gives Unlock
+# Everything on this device too; administrators (admins/{uid} in Firestore, set by the project
+# owner) have it without beating the BOSS. A victory still waiting to be stored is sent first.
+func sync_entitlements() -> void:
+	if not is_online_player():
+		return
+	var uid: String = user["uid"]
+	if boss_pending.has(uid):
+		if await transport.record_boss(int(boss_pending[uid])):
+			boss_pending.erase(uid)
+			_save_boss_pending()
+	var result: Dictionary = await transport.entitlements()
+	if result.get("ok") != true or user.get("uid") != uid:
+		return
+	if result.get("bossDefeated") == true:
+		ProgressStore.earn_unlock_everything()
+	ProgressStore.is_admin = result.get("admin") == true
+
+
+# A BOSS victory of a signed-in player: stored online as a permanent achievement (kept on the device
+# until the server accepts it). Guests keep it on this device only.
+func record_boss_victory(score: int) -> void:
+	if not is_signed_in() or is_guest():
+		return
+	var uid: String = user["uid"]
+	boss_pending[uid] = maxi(int(boss_pending.get(uid, 0)), score)
+	_save_boss_pending()
+	if is_online_player() and await transport.record_boss(score):
+		boss_pending.erase(uid)
+		_save_boss_pending()
+
+
+func _save_boss_pending() -> void:
+	var file := FileAccess.open(boss_pending_path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(boss_pending))
 
 
 func load_outbox() -> void:
@@ -197,6 +242,8 @@ func save_outbox() -> void:
 func _set_user(new_user: Dictionary) -> void:
 	user = new_user
 	# Each Google account has its own progress on this device; guests share the default file.
+	# Admin status comes only from the server, so it is cleared until the account is checked.
+	ProgressStore.is_admin = false
 	ProgressStore.use_profile("" if is_guest() else str(user.get("uid", "")))
 	user_changed.emit(user)
 

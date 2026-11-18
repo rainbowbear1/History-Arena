@@ -53,6 +53,22 @@ The result payload is one finished run: `level`, `character`, `score`, `max_scor
 `client_version`. **It contains no user id**: the bridge always uses the signed-in Firebase user,
 and the rules check that against the verified ID token.
 
+## Permanent achievements and administrators
+| Path | Contents | Who can read | Who can write |
+|---|---|---|---|
+| `achievements/{uid}` | `bossDefeated` (always true), `bossBest`, `firstDefeated`, `updated` | only that player | only that player: once created it stays, the best only rises, the first victory time never changes, no delete |
+| `admins/{uid}` | any fields (e.g. `role: "teacher"`) | only that account (to learn it is an admin) | nobody from the game; the project owner creates it in the console |
+
+**Adding a teacher as administrator** (they get Unlock Everything; later the teacher dashboard):
+1. The teacher signs in to the game once with Google.
+2. Firebase Console → **Authentication → Users** → copy the teacher's **User UID**.
+3. **Firestore Database → Start collection** `admins` (first time) → **Document ID** = that UID →
+   add a field, e.g. `role` = `teacher` → Save. The teacher signs out and in again.
+
+Like scores, a BOSS victory is reported by the player's browser; the rules make it permanent and
+plausible but cannot prove the run happened (that would need a Cloud Function, which the free
+Spark plan does not provide).
+
 ## Data in Firestore
 | Path | Contents | Who can read | Who can write |
 |---|---|---|---|

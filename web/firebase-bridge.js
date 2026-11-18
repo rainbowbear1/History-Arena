@@ -180,6 +180,52 @@
         });
     },
 
+    // Permanent achievements and roles of the signed-in account.
+    // -> Promise<string>: {"ok": true, "bossDefeated": bool, "bossBest": n, "admin": bool}
+    // admin is true when an administrator document admins/{uid} exists; only the project owner can
+    // create those (Firebase Console), the security rules forbid clients from writing them.
+    getEntitlements: function () {
+      return whenReady()
+        .then(function () {
+          var uid = requireUser().uid;
+          return Promise.all([F.getDoc(F.doc(db, "achievements", uid)), F.getDoc(F.doc(db, "admins", uid))]);
+        })
+        .then(function (r) {
+          var a = r[0].exists() ? r[0].data() : {};
+          return JSON.stringify({ ok: true, bossDefeated: a.bossDefeated === true, bossBest: a.bossBest || 0, admin: r[1].exists() });
+        })
+        .catch(function (e) {
+          return JSON.stringify({ ok: false, error: message(e) });
+        });
+    },
+
+    // Marks the BOSS as defeated for this account (permanent) and raises the best BOSS score.
+    // -> Promise<string>: {"ok": true} or {"ok": false, "error": "..."}
+    recordBossVictory: function (score) {
+      return whenReady()
+        .then(function () {
+          var ref = F.doc(db, "achievements", requireUser().uid);
+          return F.runTransaction(db, function (tx) {
+            return tx.get(ref).then(function (snap) {
+              var prev = snap.exists() ? snap.data() : {};
+              tx.set(ref, {
+                bossDefeated: true,
+                bossBest: Math.max(prev.bossBest || 0, Math.round(score)),
+                firstDefeated: prev.firstDefeated || F.serverTimestamp(),
+                updated: F.serverTimestamp(),
+              });
+            });
+          });
+        })
+        .then(function () {
+          return JSON.stringify({ ok: true });
+        })
+        .catch(function (e) {
+          console.warn("recordBossVictory failed", e);
+          return JSON.stringify({ ok: false, error: message(e) });
+        });
+    },
+
     // -> Promise<string>: {"ok": true, "rows": [{"name","total","me"}], "me": {"total","rank"}}
     // rank is 0 when the player has no saved result yet.
     getLeaderboard: function (limit) {

@@ -92,8 +92,9 @@ func test_level_data() -> void:
 	for i in range(levels.size()):
 		check(levels[i]["id"] == i + 1, "level %d has id %d" % [i + 1, i + 1])
 
-	check(level_db.get_level(10).get("boss") == true, "level 10 is the boss level")
-	check(level_db.get_level(0).is_empty() and level_db.get_level(11).is_empty(), "out-of-range ids return {}")
+	check(level_db.get_level(10).get("boss") == false and level_db.get_level(10)["stars"] == 5, "level 10 is a 5/5 level, not the BOSS")
+	check(level_db.get_level(11).get("boss") == true and level_db.boss["questions"] == 50, "the BOSS is its own 50-task entry (id 11)")
+	check(level_db.get_level(0).is_empty() and level_db.get_level(12).is_empty(), "out-of-range ids return {}")
 
 	var themes: Dictionary = EnvironmentBuilder.load_themes()
 	for id in range(1, 11):
@@ -374,7 +375,7 @@ func test_level_select() -> void:
 	var info: Label = scene.get_node("CenterContainer/VBoxContainer/LevelInfoLabel")
 	check(info.text.begins_with("1. Сақтар дәуірі"), "info label shows level 1")
 	scene._show_level_info(10)
-	check(info.text.contains("BOSS") and not info.text.contains("дайындалуда"), "level 10 shows BOSS and is ready")
+	check(info.text.contains("5/5") and not info.text.contains("BOSS") and not info.text.contains("дайындалуда"), "level 10 shows 5/5 and is ready")
 	scene.queue_free()
 	await process_frame
 
@@ -450,6 +451,7 @@ func test_arena() -> void:
 	test_total_score_unlocks()
 	await test_character_unlocks()
 	await test_weapon_effects()
+	await test_boss()
 	await test_progress()
 	await test_full_playthrough()
 	await test_backend()
@@ -1710,6 +1712,96 @@ func test_weapon_effects() -> void:
 	game_state.selected_level = 1
 
 
+# BOSS: a 50-task run over every era that gets harder, with medkits; it appears under level 8
+# once level 10 is passed, never changes the total score, and a victory earns the permanent
+# Unlock Everything, which New Game keeps.
+func test_boss() -> void:
+	print("== BOSS, New Game, Unlock Everything")
+	var was_demo: bool = progress.demo_unlock_all
+	progress.reset()
+	progress.unlock_everything_earned = false
+	progress.is_admin = false
+	check(not progress.is_boss_unlocked() and not progress.is_unlocked(11), "the BOSS is hidden at the start")
+	var select: Control = load("res://level_select.tscn").instantiate()
+	root.add_child(select)
+	await process_frame
+	check(select.find_child("BossTile", true, false) == null, "no BOSS tile before level 10 is passed")
+	select.queue_free()
+	progress.record_attempt({"level": 10, "score": 1200, "stars": 1, "passed": true, "completed": true})
+	check(progress.is_boss_unlocked() and progress.boss_just_unlocked, "passing level 10 unlocks the BOSS (and asks for the reveal)")
+	progress.record_attempt({"level": 10, "score": 1300, "stars": 2, "passed": true, "completed": true})
+	check(not progress.boss_just_unlocked, "the reveal happens only once")
+	select = load("res://level_select.tscn").instantiate()
+	root.add_child(select)
+	await process_frame
+	await process_frame
+	var tile: Button = select.find_child("BossTile", true, false)
+	var grid: GridContainer = select.level_grid
+	var level8: Control = grid.get_child(7)
+	check(tile != null and absf(tile.get_global_rect().get_center().x - level8.get_global_rect().get_center().x) < 2.0
+		and tile.get_global_rect().position.y > level8.get_global_rect().end.y, "the BOSS tile sits centred beneath level 8")
+	select._show_level_info(11)
+	check(select.level_info_label.text.contains("50"), "the BOSS info names its 50 tasks")
+	select.queue_free()
+	var reveal = load("res://boss_reveal.gd").new()
+	root.add_child(reveal)
+	reveal.play()
+	await process_frame
+	check(reveal.find_children("*", "Label", true, false).any(func(l): return l.text == "BOSS АШЫЛДЫ!"), "the reveal says BOSS UNLOCKED")
+	reveal.queue_free()
+
+	# The run itself.
+	game_state.selected_level = 11
+	game_state.selected_character = "tomyris"
+	var arena := await _load_arena()
+	var quiz = arena.get_node("QuizManager")
+	var per_level := {}
+	for q in quiz.questions:
+		var prefix: String = str(q["id"]).rsplit("-", true, 1)[0]
+		per_level[prefix] = per_level.get(prefix, 0) + 1
+	check(quiz.questions.size() == 50 and per_level.size() == 10 and per_level.values().all(func(n): return n == 5), "50 tasks, five from every level's bank")
+	var eras: Array = quiz.questions.map(func(q): return str(q["id"]).rsplit("-", true, 1)[0])
+	check(eras[0] == "saka" and eras[49] == "independence", "the run goes from the Saka era to independence")
+	var first_time: float = quiz.time_limit
+	var first_speed: float = quiz.targets[0].move_speed if not quiz.targets.is_empty() else 1.0
+	check(quiz.medkits == 2 and quiz.ability_label.text.contains("[H]"), "the BOSS starts with 2 medkits shown in the HUD")
+	quiz.health = 50
+	quiz.use_medkit()
+	check(quiz.health == 85 and quiz.medkits == 1, "a medkit restores 35 HP")
+	quiz.question_index = 10
+	quiz.load_question()
+	check(quiz.medkits == 2, "every 10 tasks bring another medkit")
+	quiz.load_question()
+	check(quiz.medkits == 2, "a retried task does not give it twice")
+	quiz.question_index = 49
+	quiz.load_question()
+	var base_time: float = quiz.level["time_per_question"] * (quiz.MULTI_STEP_TIME if quiz.MULTI_STEP_TYPES.has(QuestionValidator.get_type(quiz.questions[49])) else 1.0)
+	check(is_equal_approx(quiz.time_limit, base_time * quiz.level["time_floor"]) and quiz.time_limit < first_time * 1.5, "the timer shrinks towards the end")
+	check(quiz.targets.is_empty() or quiz.targets[0].move_speed > first_speed * 1.2, "targets move faster towards the end")
+	var total_before: int = progress.total_score()
+	quiz.score = 4000
+	quiz.correct_count = 40
+	quiz.question_index = 50
+	quiz.load_question()
+	await wait(1.5)
+	check(quiz.results_container.visible and quiz.results_title.text == "BOSS жеңілді!", "finishing with 80 % defeats the BOSS")
+	check(progress.total_score() == total_before and not progress.levels.has("11"), "the BOSS never changes the total score")
+	check(progress.boss["defeated"] and progress.unlock_everything_earned and quiz.results_label.text.contains("Барлығын ашу"), "a first victory earns Unlock Everything and says so")
+	arena.queue_free()
+	await process_frame
+
+	# New Game: the campaign starts over, the permanent entitlement stays.
+	progress.reset()
+	progress.load_data()
+	check(progress.total_score() == 0 and not progress.is_boss_unlocked() and not progress.boss["defeated"], "New Game restarts the campaign and hides the BOSS again")
+	check(progress.unlock_everything_earned and progress.can_unlock_everything(), "Unlock Everything survives New Game")
+	progress.unlock_everything_earned = false
+	progress._save_entitlements()
+	progress.set_demo_unlock(was_demo)
+	game_state.selected_level = 1
+	game_state.selected_character = ""
+
+
 func test_progress() -> void:
 	print("== Progress, stars and results")
 	var S = ProgressStoreScript
@@ -1859,8 +1951,15 @@ func test_progress() -> void:
 	await process_frame
 	menu.settings_button.pressed.emit()
 	check(menu.settings_container.visible, "Settings opens")
+	progress.unlock_everything_earned = false
+	progress.is_admin = false
+	menu.settings_button.pressed.emit()
 	menu.demo_check.button_pressed = true
-	check(progress.demo_unlock_all, "demo toggle opens all levels")
+	check(menu.demo_check.disabled and not progress.demo_unlock_all, "Unlock Everything stays locked before the BOSS is defeated")
+	progress.unlock_everything_earned = true
+	menu.settings_button.pressed.emit()
+	menu.demo_check.button_pressed = true
+	check(not menu.demo_check.disabled and progress.demo_unlock_all, "after a BOSS victory Unlock Everything opens all levels")
 	menu.reset_button.pressed.emit()
 	check(progress.level_result(1)["attempts"] == 1, "first reset press only asks for confirmation")
 	menu.reset_button.pressed.emit()
@@ -1962,6 +2061,22 @@ class FakeTransport:
 		await Engine.get_main_loop().process_frame
 		return progress
 
+	var achievements := {"ok": true, "bossDefeated": false, "bossBest": 0, "admin": false}
+	var boss_records: Array = []
+
+	func entitlements() -> Dictionary:
+		await Engine.get_main_loop().process_frame
+		return achievements if accept else {"ok": false, "error": "желі қатесі"}
+
+	func record_boss(score: int) -> bool:
+		await Engine.get_main_loop().process_frame
+		if not accept:
+			return false
+		boss_records.append(score)
+		achievements["bossDefeated"] = true
+		achievements["bossBest"] = maxi(achievements["bossBest"], score)
+		return true
+
 	func leaderboard(_limit: int) -> Dictionary:
 		await Engine.get_main_loop().process_frame
 		return board
@@ -2051,6 +2166,44 @@ func test_backend() -> void:
 	check(error == "Sign-in failed: the browser blocked the sign-in window; allow pop-ups for this site", "sign-in errors are translated")
 	check(backend.bridge_message("Firebase жүктелмеді: blocked by client") == "Firebase did not load: blocked by client", "a Firebase loading error keeps its detail")
 	locale.set_language("kk")
+
+	# Permanent entitlements: the admin role and BOSS victories come from the server and follow the
+	# account across sign-out, sign-in and New Game.
+	backend.boss_pending_path = "user://test_boss_pending.json"
+	backend.boss_pending = {}
+	fake.sign_in_result = {"uid": "admin-1", "name": "Мұғалім"}
+	fake.achievements = {"ok": true, "bossDefeated": false, "bossBest": 0, "admin": true}
+	error = await backend.sign_in_with_google()
+	check(error.is_empty() and progress.is_admin and progress.can_unlock_everything() and not progress.unlock_everything_earned,
+		"an administrator (admins/{uid} in Firestore) has Unlock Everything without beating the BOSS")
+	backend.sign_out()
+	check(not progress.is_admin and not progress.can_unlock_everything(), "the admin role ends with sign-out (it is never stored on the device)")
+	fake.sign_in_result = {"uid": "player-7", "name": "Ойыншы"}
+	fake.achievements = {"ok": true, "bossDefeated": false, "bossBest": 0, "admin": false}
+	await backend.sign_in_with_google()
+	fake.accept = false
+	await backend.record_boss_victory(3600)
+	check(backend.boss_pending.get("player-7") == 3600 and fake.boss_records.is_empty(), "a BOSS victory without a connection waits on the device")
+	fake.accept = true
+	backend.sign_out()
+	progress.use_profile("player-7")
+	progress.unlock_everything_earned = false
+	progress._save_entitlements()
+	await backend.sign_in_with_google()
+	check(fake.boss_records == [3600] and backend.boss_pending.is_empty() and fake.achievements["bossDefeated"], "the waiting victory is stored at the next sign-in")
+	check(progress.unlock_everything_earned, "a victory stored online gives Unlock Everything on this device")
+	progress.reset()
+	backend.sign_out()
+	await backend.sign_in_with_google()
+	check(progress.can_unlock_everything() and progress.total_score() == 0, "Unlock Everything survives New Game, sign-out and sign-in")
+	await backend.record_boss_victory(2000)
+	check(fake.achievements["bossBest"] == 3600, "a lower BOSS score never lowers the best")
+	backend.sign_out()
+	backend.continue_as_guest()
+	check(not progress.can_unlock_everything(), "a guest does not inherit an account's entitlement")
+	progress.unlock_everything_earned = false
+	progress._save_entitlements()
+	backend.sign_out()
 
 	# Screens: offline login, guest -> menu shows the player, sign out returns to login.
 	backend.transport = null

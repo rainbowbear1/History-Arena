@@ -7,6 +7,10 @@ const INT_FIELDS := ["id", "stars", "extra_decoys", "enemies", "revive_hp", "rev
 const NUMBER_FIELDS := ["time_per_question", "target_speed", "pass_percent"]
 
 var levels: Array = []
+# The BOSS: a 50-task endurance run over every era, outside the ten-level campaign (its own
+# "boss" entry in levels.json; id BOSS_ID). It does not count towards the total score.
+const BOSS_ID := 11
+var boss: Dictionary = {}
 
 
 func _ready() -> void:
@@ -42,15 +46,28 @@ func load_levels(path: String = LEVELS_FILE) -> void:
 		level["unlock_score"] = int(level.get("unlock_score", 0))
 		levels.append(level)
 
+	boss = {}
+	var entry = json.data.get("boss")
+	if entry is Dictionary:
+		for field in INT_FIELDS + ["questions", "medkits", "medkit_every", "medkit_hp"]:
+			entry[field] = int(entry.get(field, 0))
+		entry["id"] = BOSS_ID
+		entry["boss"] = true
+		boss = entry
+
 
 func get_level(id: int) -> Dictionary:
 	if id >= 1 and id <= levels.size():
 		return levels[id - 1]
+	if id == BOSS_ID:
+		return boss
 	return {}
 
 
-# A level is playable once its question file exists.
+# A level is playable once its question file exists (the BOSS uses every level's file).
 func is_playable(id: int) -> bool:
+	if id == BOSS_ID:
+		return not boss.is_empty() and levels.all(func(l): return FileAccess.file_exists(l["question_file"]))
 	var level := get_level(id)
 	return not level.is_empty() and FileAccess.file_exists(level["question_file"])
 

@@ -12,6 +12,8 @@ extends RefCounted
 #   submit_result(payload) -> bool          (await; true when the server accepted it)
 #   my_progress() -> Dictionary             (await; {"ok", "levels": {"1": {"score", "stars"}}})
 #   leaderboard(limit) -> Dictionary        (await; {"ok", "rows": [{"name", "total", "me"}], "me": {"total", "rank"}})
+#   entitlements() -> Dictionary            (await; {"ok", "bossDefeated", "bossBest", "admin"})
+#   record_boss(score) -> bool              (await; true when the server stored the BOSS victory)
 
 const BRIDGE := "HistoryArenaHub"
 const TIMEOUT := 30.0
@@ -68,6 +70,14 @@ func my_progress() -> Dictionary:
 
 func leaderboard(limit: int) -> Dictionary:
 	return _parse_object(await _await_promise(hub.getLeaderboard(limit)))
+
+
+func entitlements() -> Dictionary:
+	return _parse_object(await _await_promise(hub.getEntitlements()))
+
+
+func record_boss(score: int) -> bool:
+	return _parse_object(await _await_promise(hub.recordBossVictory(score))).get("ok", false) == true
 
 
 # Waits for a JS Promise that resolves to a JSON string; a rejection or timeout becomes {"error": ...}.

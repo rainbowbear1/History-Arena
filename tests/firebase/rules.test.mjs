@@ -163,3 +163,54 @@ test("at most one result every 5 seconds", async () => {
 test("double-score bonus fits within the limit", async () => {
   await assertSucceeds(submit(alice(), "alice", "Alice A", attempt(1, 1500, { stars: 3 })));
 });
+
+test("a lower score never overwrites a higher personal best, even when the client tries", async () => {
+  await submit(alice(), "alice", "Alice A", attempt(1, 1200));
+  await age("alice");
+  await assertFails(submit(alice(), "alice", "Alice A", attempt(1, 900), (next) => ({ ...next, s1: 900, total: 900 })));
+  const snap = await getDoc(doc(alice(), "players", "alice"));
+  if (snap.get("s1") !== 1200) throw new Error("best was lowered");
+});
+
+// The same transaction as web/firebase-bridge.js recordBossVictory, with optional tampering.
+async function bossVictory(fs, uid, score, tamper = (next) => next) {
+  const ref = doc(fs, "achievements", uid);
+  return runTransaction(fs, async (tx) => {
+    const snap = await tx.get(ref);
+    const prev = snap.exists() ? snap.data() : {};
+    tx.set(ref, tamper({
+      bossDefeated: true, bossBest: Math.max(prev.bossBest || 0, score),
+      firstDefeated: prev.firstDefeated || serverTimestamp(), updated: serverTimestamp(),
+    }, prev));
+  });
+}
+
+test("a BOSS victory is stored once and kept; the best only rises", async () => {
+  await assertSucceeds(bossVictory(alice(), "alice", 3600));
+  await assertSucceeds(bossVictory(alice(), "alice", 2000));
+  const snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("bossBest") !== 3600 || snap.get("bossDefeated") !== true) throw new Error("achievement not kept");
+  await assertFails(bossVictory(alice(), "alice", 2000, (next) => ({ ...next, bossBest: 2000 })));
+  await assertFails(bossVictory(alice(), "alice", 4000, (next) => ({ ...next, bossDefeated: false })));
+  await assertFails(bossVictory(alice(), "alice", 4000, (next) => ({ ...next, firstDefeated: serverTimestamp() })));
+  await assertFails(deleteDoc(doc(alice(), "achievements", "alice")));
+});
+
+test("BOSS achievements: own account only, plausible scores only", async () => {
+  await assertFails(bossVictory(bob(), "alice", 3600));
+  await assertFails(bossVictory(alice(), "alice", 9900));
+  await assertFails(bossVictory(alice(), "alice", 3650));
+  await bossVictory(alice(), "alice", 3600);
+  await assertFails(getDoc(doc(bob(), "achievements", "alice")));
+  await assertSucceeds(getDoc(doc(alice(), "achievements", "alice")));
+});
+
+test("admin records: nobody can create them from the game; owners can read their own", async () => {
+  await assertFails(setDoc(doc(alice(), "admins", "alice"), { role: "teacher" }));
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), "admins", "teacher"), { role: "teacher" }));
+  const teacher = db("teacher", "Teacher T");
+  await assertSucceeds(getDoc(doc(teacher, "admins", "teacher")));
+  await assertSucceeds(getDoc(doc(alice(), "admins", "alice")));
+  await assertFails(getDoc(doc(alice(), "admins", "teacher")));
+  await assertFails(deleteDoc(doc(teacher, "admins", "teacher")));
+});

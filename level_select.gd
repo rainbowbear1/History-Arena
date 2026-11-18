@@ -48,6 +48,7 @@ func _ready() -> void:
 
 		button.mouse_entered.connect(_show_level_info.bind(level_number))
 
+	_add_boss_tile()
 	back_button.pressed.connect(_on_back_pressed)
 
 	if level_grid.get_child_count() > 0:
@@ -57,7 +58,49 @@ func _ready() -> void:
 
 
 
+# The BOSS tile, centred under the second row (beneath level 8), once level 10 has been passed.
+func _add_boss_tile() -> void:
+	if not ProgressStore.is_boss_unlocked() or not LevelDatabase.is_playable(LevelDatabase.BOSS_ID):
+		return
+	var row := CenterContainer.new()
+	row.name = "BossRow"
+	var tile := Button.new()
+	tile.name = "BossTile"
+	tile.text = "BOSS"
+	tile.custom_minimum_size = Vector2(90, 90)
+	tile.focus_mode = Control.FOCUS_ALL
+	tile.theme_type_variation = &"BossButton"
+	tile.add_theme_color_override("font_color", Color(1, 0.92, 0.85))
+	tile.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.62, 0.12, 0.1)
+	style.set_corner_radius_all(8)
+	style.set_border_width_all(3)
+	style.border_color = Color(0.95, 0.75, 0.3)
+	tile.add_theme_stylebox_override("normal", style)
+	var hover := style.duplicate()
+	hover.bg_color = Color(0.75, 0.16, 0.12)
+	tile.add_theme_stylebox_override("hover", hover)
+	tile.add_theme_stylebox_override("focus", hover)
+	var best := StarRow.new()
+	best.star_size = 18.0
+	best.stars = 3 if ProgressStore.boss["defeated"] else 0
+	best.position = Vector2(0, 64)
+	best.size = Vector2(90, 20)
+	tile.add_child(best)
+	tile.pressed.connect(_on_level_selected.bind(LevelDatabase.BOSS_ID))
+	tile.focus_entered.connect(_show_level_info.bind(LevelDatabase.BOSS_ID))
+	tile.mouse_entered.connect(_show_level_info.bind(LevelDatabase.BOSS_ID))
+	row.add_child(tile)
+	level_grid.add_sibling(row)
+
+
 func _show_level_info(level_number: int) -> void:
+	if level_number == LevelDatabase.BOSS_ID:
+		var lines := [tr("BOSS: бүкіл тарих бойынша %d тапсырма") % LevelDatabase.boss.get("questions", 50),
+			tr("Барған сайын қиындайды; [H] аптечкалар"), tr("Үздік ұпай: %d") % ProgressStore.boss["best_score"]]
+		level_info_label.text = "\n".join(lines)
+		return
 	var level := LevelDatabase.get_level(level_number)
 	var difficulty := "BOSS" if level["boss"] else "%d/5" % level["stars"]
 	var text: String = tr("%d. %s\nҚиындық: %s") % [level_number, tr(level["title"]), difficulty]

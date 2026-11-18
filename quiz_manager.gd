@@ -46,6 +46,7 @@ const MULTI_STEP_TIME := 2.0
 # Image tasks keep the top row free for the picture, so they get no decoys.
 const DECOY_TYPES := ["single_choice", "fill_blank"]
 const POINTS := 100
+const BossReveal := preload("res://boss_reveal.gd")
 const ABILITY_COLOR := Color(0.91, 0.78, 0.5)
 const HP_HIGH := Color(0.3, 0.75, 0.35)
 const HP_MID := Color(0.9, 0.75, 0.2)
@@ -65,6 +66,9 @@ var correct_count: int = 0
 var wrong_count: int = 0
 var playtime: float = 0.0
 var revivals_used: int = 0
+# BOSS run: medkits restore HP on the H key; one more is earned every few tasks.
+var medkits: int = 0
+var medkit_stage: int = 0
 var run_active: bool = true
 var last_attempt: Dictionary = {}
 var time_limit: float = 0.0
@@ -175,6 +179,17 @@ func _ready() -> void:
 
 
 
+# The BOSS gets harder as it goes: 0.0 on the first task, 1.0 on the last. 0 on normal levels.
+func boss_progress() -> float:
+	if not level.get("boss", false) or questions.size() < 2:
+		return 0.0
+	return clampf(float(question_index) / (questions.size() - 1), 0.0, 1.0)
+
+
+func is_boss() -> bool:
+	return level.get("boss", false)
+
+
 func load_question() -> void:
 	clear_arena()
 	accepting_answers = true
@@ -185,6 +200,13 @@ func load_question() -> void:
 
 	var question: Dictionary = questions[question_index]
 	current_task = TASK_SCRIPTS[QuestionValidator.get_type(question)].new()
+
+	# BOSS: a new medkit every medkit_every tasks (once per stage, also after a retry).
+	var every: int = level.get("medkit_every", 0)
+	if is_boss() and every > 0 and question_index > 0 and question_index % every == 0 and medkit_stage < question_index:
+		medkit_stage = question_index
+		medkits += 1
+		show_feedback(tr("+1 аптечка [H]"), HP_HIGH, 1.2)
 
 	set_question(question["question"])
 	update_hud()
@@ -200,6 +222,8 @@ func load_question() -> void:
 	if not level.is_empty():
 		var multi_step := MULTI_STEP_TYPES.has(QuestionValidator.get_type(question))
 		time_limit = level["time_per_question"] * (MULTI_STEP_TIME if multi_step else 1.0)
+		# BOSS: the timer shrinks to time_floor of its start by the last task.
+		time_limit *= lerpf(1.0, level.get("time_floor", 1.0), boss_progress())
 	time_left = time_limit
 	update_timer()
 	enemy_spawner.start()
@@ -465,17 +489,30 @@ func finish_level() -> void:
 	set_question("")
 
 	last_attempt = build_attempt(true)
+	var unlock_before := ProgressStore.unlock_everything_earned
 	var new_best := ProgressStore.record_attempt(last_attempt)
-	Backend.submit_attempt(last_attempt)
+	# The BOSS is not a leaderboard level; a victory is a permanent achievement of the account.
+	if is_boss():
+		if last_attempt["passed"]:
+			Backend.record_boss_victory(last_attempt["score"])
+	else:
+		Backend.submit_attempt(last_attempt)
+	var earned_unlock: bool = is_boss() and ProgressStore.unlock_everything_earned and not unlock_before
 
 	var fade_in := create_tween()
 	fade_in.tween_property(fade_rect, "modulate:a", 1.0, FADE_SECONDS)
 	await fade_in.finished
 
-	show_results(last_attempt, new_best)
+	show_results(last_attempt, new_best, earned_unlock)
 
 	var fade_out := create_tween()
 	fade_out.tween_property(fade_rect, "modulate:a", 0.0, FADE_SECONDS)
+	# Passing level 10 for the first time: a short surprise after the results.
+	if ProgressStore.boss_just_unlocked and not is_boss():
+		await fade_out.finished
+		var reveal := BossReveal.new()
+		results_container.get_parent().add_child(reveal)
+		reveal.play()
 
 
 func build_attempt(completed: bool) -> Dictionary:
@@ -498,7 +535,10 @@ func build_attempt(completed: bool) -> Dictionary:
 	}
 
 
-func show_results(attempt: Dictionary, new_best: bool) -> void:
+func show_results(attempt: Dictionary, new_best: bool, earned_unlock: bool = false) -> void:
+	if is_boss():
+		_show_boss_results(attempt, new_best, earned_unlock)
+		return
 	var best: Dictionary = ProgressStore.level_result(attempt["level"])
 	results_title.text = tr("Деңгей өтілді!") if attempt["passed"] else tr("Деңгей өтілмеді")
 	results_stars.stars = attempt["stars"]
@@ -530,6 +570,45 @@ func show_results(attempt: Dictionary, new_best: bool) -> void:
 
 
 
+func _show_boss_results(attempt: Dictionary, new_best: bool, earned_unlock: bool) -> void:
+	results_title.text = tr("BOSS жеңілді!") if attempt["passed"] else tr("BOSS жеңілмеді")
+	results_stars.stars = attempt["stars"]
+	var seconds: int = attempt["playtime_sec"]
+	var lines := [
+		tr("Ұпай: %d / %d") % [attempt["score"], attempt["max_score"]],
+		tr("Дұрыс: %d    Қате: %d") % [attempt["correct"], attempt["wrong"]],
+		tr("Уақыт: %02d:%02d") % [seconds / 60, seconds % 60],
+		tr("Жаңа рекорд!") if new_best else tr("Үздік нәтиже: %d") % ProgressStore.boss["best_score"],
+	]
+	if not attempt["passed"]:
+		lines.append(tr("Жеңу үшін кемінде %d%% ұпай керек") % level.get("pass_percent", 60))
+	if earned_unlock:
+		lines.append(tr("Тұрақты жетістік: «Барлығын ашу» мүмкіндігі ашылды (Баптаулар)"))
+	results_label.text = "\n".join(lines)
+	next_button.visible = false
+	results_container.show()
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	results_container.get_node("ResultsPanel/ResultsVBox/RestartButton").grab_focus()
+
+
+# H: a medkit restores medkit_hp HP (BOSS only).
+func use_medkit() -> void:
+	if not is_boss() or not accepting_answers:
+		return
+	if medkits <= 0 or health >= max_health:
+		show_feedback(tr("Қазір қолдануға болмайды"), Color.WHITE, 1.0)
+		return
+	medkits -= 1
+	health = mini(health + int(level.get("medkit_hp", 35)), max_health)
+	update_hud()
+	show_feedback(tr("Аптечка: +%d HP") % int(level.get("medkit_hp", 35)), HP_HIGH, 1.0)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_H:
+		use_medkit()
+
+
 func set_question(text: String) -> void:
 	question_label.text = text
 	question_panel.visible = not text.is_empty()
@@ -556,6 +635,8 @@ func update_hud() -> void:
 	character_label.text = "%s · %s" % [tr(character["name"]), tr(character["weapon"]["name"])]
 	var ability_name: String = tr(Abilities.INFO[character["ability"]["id"]]["name"])
 	ability_label.text = "[E] %s ×%d%s" % [ability_name, ability_uses, tr("  · Қалқан белсенді") if shield_active else ""]
+	if is_boss():
+		ability_label.text += tr("   [H] Аптечка ×%d") % medkits
 
 
 # `placement` is where its screen label goes: "above" the head or "below" the feet (answer_labels.gd).
@@ -566,7 +647,7 @@ func spawn_target(text: String, at: Vector3, sways: bool = true, size: float = 1
 	target.position = at
 	if not sways:
 		target.move_distance = 0.0
-	target.move_speed *= level.get("target_speed", 1.0)
+	target.move_speed *= level.get("target_speed", 1.0) * (1.0 + level.get("speed_ramp", 0.0) * boss_progress())
 
 	target.speed_scale = Abilities.SLOW_FACTOR if slow_active else 1.0
 	targets_root.add_child(target)
@@ -736,7 +817,26 @@ func _on_levels_button_pressed() -> void:
 
 
 
+# The BOSS asks `questions` tasks taken evenly from every level's verified bank, in the order of
+# the eras and, within an era, from easier to harder, so the run builds up to the hardest material.
+func load_boss_questions() -> void:
+	var per_level := ceili(float(level.get("questions", 50)) / LevelDatabase.levels.size())
+	questions = []
+	for campaign_level in LevelDatabase.levels:
+		var bank: Array = QuestionValidator.load_file(campaign_level["question_file"]).questions
+		if GameState.shuffle_questions:
+			bank.shuffle()
+		var picked := bank.slice(0, per_level)
+		picked.sort_custom(func(a, b): return a.get("difficulty", 2) < b.get("difficulty", 2))
+		questions.append_array(picked)
+	questions = questions.slice(0, level.get("questions", 50)).map(func(q): return Locale.localize_question(q))
+	medkits = level.get("medkits", 0)
+
+
 func load_questions_from_file() -> void:
+	if is_boss():
+		load_boss_questions()
+		return
 	var result := QuestionValidator.load_file(question_file)
 
 	for error in result.errors:

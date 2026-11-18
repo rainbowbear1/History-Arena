@@ -8,6 +8,7 @@ extends Node
 # "unlock_score" in data/levels.json, and stays open from then on.
 
 const SAVE_PATH := "user://progress.json"
+const BOSS_ID := 11
 const VERSION := 1
 const MAX_HISTORY := 50
 
@@ -18,6 +19,13 @@ var history: Array = []
 var demo_unlock_all: bool = false
 var unlocked: Array = []  # Level ids opened so far (kept even if thresholds change later).
 var just_opened: Array = []  # Levels the last recorded attempt opened (for the results screen).
+var boss := {"best_score": 0, "attempts": 0, "defeated": false}  # Campaign progress: New Game clears it.
+var boss_just_unlocked := false  # The last attempt passed level 10 for the first time.
+# Permanent entitlements (not campaign progress): "Unlock Everything" is earned by defeating the
+# BOSS once and kept in its own file, which New Game never clears; for a Google account it is also
+# stored online (Backend), and administrators have it from their admin record in Firestore.
+var unlock_everything_earned := false
+var is_admin := false
 
 
 func _ready() -> void:
@@ -29,6 +37,8 @@ func load_data() -> void:
 	history = []
 	demo_unlock_all = false
 	unlocked = []
+	boss = {"best_score": 0, "attempts": 0, "defeated": false}
+	_load_entitlements()
 	if not FileAccess.file_exists(path):
 		return
 
@@ -54,6 +64,9 @@ func load_data() -> void:
 	demo_unlock_all = data.get("demo_unlock_all", false) == true
 	if data.get("unlocked") is Array:
 		unlocked = data["unlocked"].map(func(id): return int(id))
+	if data.get("boss") is Dictionary:
+		boss = {"best_score": int(data["boss"].get("best_score", 0)), "attempts": int(data["boss"].get("attempts", 0)),
+			"defeated": data["boss"].get("defeated", false) == true}
 	# Saves from before total-score unlocking: a passed level had opened the next one.
 	for key in levels:
 		if levels[key]["passed"] and not unlocked.has(int(key) + 1):
@@ -72,12 +85,16 @@ func save_data() -> void:
 		"history": history,
 		"demo_unlock_all": demo_unlock_all,
 		"unlocked": unlocked,
+		"boss": boss,
 	}, "  "))
 
 
 # Stores one finished attempt and returns true if it set a new best score for the level.
 func record_attempt(attempt: Dictionary) -> bool:
+	if int(attempt["level"]) == BOSS_ID:
+		return _record_boss(attempt)
 	var key := str(attempt["level"])
+	var boss_was_open := is_boss_unlocked()
 	var best: Dictionary = levels.get(key, {"best_score": 0, "stars": 0, "passed": false, "attempts": 0})
 	var new_best: bool = attempt["score"] > best["best_score"]
 
@@ -92,8 +109,58 @@ func record_attempt(attempt: Dictionary) -> bool:
 		history = history.slice(history.size() - MAX_HISTORY)
 
 	just_opened = refresh_unlocks()
+	boss_just_unlocked = not boss_was_open and is_boss_unlocked()
 	save_data()
 	return new_best
+
+
+# BOSS runs are kept apart from the levels, so they never change the total score.
+func _record_boss(attempt: Dictionary) -> bool:
+	var new_best: bool = attempt["score"] > boss["best_score"]
+	boss["best_score"] = maxi(boss["best_score"], attempt["score"])
+	boss["attempts"] = int(boss["attempts"]) + 1
+	boss["defeated"] = boss["defeated"] or attempt["passed"]
+	if attempt["passed"]:
+		earn_unlock_everything()
+	history.append(attempt)
+	if history.size() > MAX_HISTORY:
+		history = history.slice(history.size() - MAX_HISTORY)
+	just_opened = []
+	boss_just_unlocked = false
+	save_data()
+	return new_best
+
+
+# The BOSS tile appears once level 10 has been passed (or with Unlock Everything on).
+func is_boss_unlocked() -> bool:
+	return demo_unlock_all or level_result(10)["passed"]
+
+
+func can_unlock_everything() -> bool:
+	return unlock_everything_earned or is_admin
+
+
+func earn_unlock_everything() -> void:
+	if not unlock_everything_earned:
+		unlock_everything_earned = true
+		_save_entitlements()
+
+
+func _entitlements_path() -> String:
+	return path.get_basename() + "_entitlements.json"
+
+
+func _load_entitlements() -> void:
+	unlock_everything_earned = false
+	if FileAccess.file_exists(_entitlements_path()):
+		var data = JSON.parse_string(FileAccess.get_file_as_string(_entitlements_path()))
+		unlock_everything_earned = data is Dictionary and data.get("unlock_everything", false) == true
+
+
+func _save_entitlements() -> void:
+	var file := FileAccess.open(_entitlements_path(), FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify({"unlock_everything": unlock_everything_earned}))
 
 
 # Switches to the progress of one account ("" = guest) and loads it.
@@ -145,6 +212,8 @@ func unlock_score(id: int) -> int:
 
 
 func is_unlocked(id: int) -> bool:
+	if id == BOSS_ID:
+		return is_boss_unlocked()
 	return demo_unlock_all or id <= 1 or unlocked.has(id) or total_score() >= unlock_score(id)
 
 
@@ -182,11 +251,14 @@ func set_demo_unlock(enabled: bool) -> void:
 	save_data()
 
 
+# New Game: clears this device's campaign progress (levels, unlocks, BOSS results, history) for the
+# current profile. Permanent entitlements and everything stored online are not touched.
 func reset() -> void:
 	levels = {}
 	history = []
 	demo_unlock_all = false
 	unlocked = []
+	boss = {"best_score": 0, "attempts": 0, "defeated": false}
 	save_data()
 
 

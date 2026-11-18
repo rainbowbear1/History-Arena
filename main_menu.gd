@@ -94,13 +94,45 @@ func _on_leaderboard_pressed() -> void:
 
 
 func _on_settings_pressed() -> void:
-	demo_check.set_pressed_no_signal(ProgressStore.demo_unlock_all)
+	_refresh_unlock_everything()
 	reset_armed = false
-	reset_button.text = tr("Прогресті тазалау")
+	reset_button.text = tr("Жаңа ойын")
 	settings_status.text = ""
+	_show_progress_note()
 	$MenuCenter.hide()
 	settings_container.show()
-	demo_check.grab_focus()
+	(demo_check if not demo_check.disabled else reset_button).grab_focus()
+
+
+# "Unlock Everything" opens every level, the BOSS and every character. It is a permanent reward for
+# defeating the BOSS once (or an administrator's right); until then the switch stays locked.
+func _refresh_unlock_everything() -> void:
+	var allowed := ProgressStore.can_unlock_everything()
+	demo_check.disabled = not allowed
+	demo_check.set_pressed_no_signal(allowed and ProgressStore.demo_unlock_all)
+	demo_check.tooltip_text = "" if allowed else tr("BOSS-ты бір рет жеңгенде ашылады")
+
+
+# Explains what New Game touches (this device's campaign) and what it never does (online records and
+# permanent achievements), and lists the achievements.
+func _show_progress_note() -> void:
+	var note := settings_container.find_child("ProgressNote", true, false) as Label
+	if note == null:
+		note = Label.new()
+		note.name = "ProgressNote"
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(420, 0)
+		note.add_theme_font_size_override("font_size", 15)
+		note.add_theme_color_override("font_color", Color(0.78, 0.8, 0.84))
+		reset_button.add_sibling(note)
+	var lines := [tr("«Жаңа ойын» осы құрылғыдағы науқан прогресін басынан бастайды. Онлайн нәтижелер, рейтинг және тұрақты жетістіктер өшірілмейді.")]
+	if ProgressStore.is_admin:
+		lines.append(tr("Әкімші: «Барлығын ашу» қолжетімді."))
+	elif ProgressStore.unlock_everything_earned:
+		lines.append(tr("Тұрақты жетістік: BOSS жеңілді — «Барлығын ашу» ашық."))
+	else:
+		lines.append(tr("«Барлығын ашу» BOSS-ты бір рет жеңгенде ашылады."))
+	note.text = "\n".join(lines)
 
 
 func _on_sign_out_pressed() -> void:
@@ -127,20 +159,24 @@ func _close_settings() -> void:
 	settings_button.grab_focus()
 
 
-# Demo mode opens every level that has questions, for presentations.
+# Unlock Everything (the old demo mode) opens every level, the BOSS and every character.
 func _on_demo_toggled(enabled: bool) -> void:
+	if enabled and not ProgressStore.can_unlock_everything():
+		demo_check.set_pressed_no_signal(false)
+		return
 	ProgressStore.set_demo_unlock(enabled)
 	settings_status.text = tr("Барлық деңгей ашық") if enabled else tr("Деңгейлер кезекпен ашылады")
 
 
-# Two presses: the first asks for confirmation, the second clears saved results.
+# New Game, in two presses: the first asks for confirmation, the second restarts this device's
+# campaign. Nothing online is deleted.
 func _on_reset_pressed() -> void:
 	if not reset_armed:
 		reset_armed = true
-		reset_button.text = tr("Растау: барлық нәтиже өшіріледі")
+		reset_button.text = tr("Растау: науқан басынан басталады")
 		return
 	ProgressStore.reset()
 	demo_check.set_pressed_no_signal(false)
 	reset_armed = false
-	reset_button.text = tr("Прогресті тазалау")
-	settings_status.text = tr("Прогресс тазаланды")
+	reset_button.text = tr("Жаңа ойын")
+	settings_status.text = tr("Жаңа ойын басталды: 1-деңгейден бастаңыз")
