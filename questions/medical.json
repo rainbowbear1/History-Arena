@@ -147,10 +147,10 @@
     "id": "medical-17",
     "type": "single_choice",
     "difficulty": 2,
-    "question": "«Біржан – Сара» операсының авторы кім?",
-    "answers": ["Мұқан Төлебаев", "Евгений Брусиловский", "Нұрғиса Тілендиев", "Ғазиза Жұбанова"],
-    "correct": "Мұқан Төлебаев",
-    "en": {"question": "Who wrote the opera 'Birzhan and Sara'?", "answers": ["Mukan Tulebayev", "Yevgeny Brusilovsky", "Nurgisa Tlendiyev", "Gaziza Zhubanova"]}
+    "question": "1937 жылы Қиыр Шығыстан Қазақстанға күштеп жер аударылған халық қайсы?",
+    "answers": ["Корейлер", "Шешендер", "Немістер", "Қырым татарлары"],
+    "correct": "Корейлер",
+    "en": {"question": "Which people were forcibly deported from the Soviet Far East to Kazakhstan in 1937?", "answers": ["Koreans", "Chechens", "Germans", "Crimean Tatars"]}
   },
   {
     "id": "medical-18",
@@ -254,20 +254,20 @@
   {
     "id": "medical-29",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "«Қан мен тер» трилогиясының авторы кім?",
-    "answers": ["Әбдіжәміл Нұрпейісов", "Ілияс Есенберлин", "Ғабит Мүсірепов", "Тахауи Ахтанов"],
-    "correct": "Әбдіжәміл Нұрпейісов",
-    "en": {"question": "Who wrote the trilogy 'Blood and Sweat'?", "answers": ["Abdizhamil Nurpeisov", "Ilyas Yesenberlin", "Gabit Musrepov", "Takhaui Akhtanov"]}
+    "difficulty": 2,
+    "question": "Түркістан–Сібір темір жолы (Түрксіб) қай жылы салынып бітті?",
+    "answers": ["1930 ж.", "1927 ж.", "1936 ж.", "1941 ж."],
+    "correct": "1930 ж.",
+    "en": {"question": "In which year was the Turkestan–Siberia Railway (Turksib) completed?", "answers": ["1930", "1927", "1936", "1941"]}
   },
   {
     "id": "medical-30",
     "type": "single_choice",
     "difficulty": 2,
-    "question": "«Ұлпан» романының авторы кім?",
-    "answers": ["Ғабит Мүсірепов", "Ілияс Есенберлин", "Мұхтар Әуезов", "Сәбит Мұқанов"],
-    "correct": "Ғабит Мүсірепов",
-    "en": {"question": "Who wrote the novel 'Ulpan'?", "answers": ["Gabit Musrepov", "Ilyas Yesenberlin", "Mukhtar Auezov", "Sabit Mukanov"]}
+    "question": "Түркістан (Қоқан) автономиясы қай жылы жарияланды?",
+    "answers": ["1917 ж.", "1916 ж.", "1920 ж.", "1924 ж."],
+    "correct": "1917 ж.",
+    "en": {"question": "In which year was the Turkestan (Kokand) Autonomy proclaimed?", "answers": ["1917", "1916", "1920", "1924"]}
   },
   {
     "id": "medical-31",

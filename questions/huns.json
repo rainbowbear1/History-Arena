@@ -74,20 +74,20 @@
   {
     "id": "huns-09",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "451 жылы Каталаун алқабындағы шайқаста Аттилаға қарсы Рим әскерін басқарған қолбасшы кім?",
-    "answers": ["Аэций", "Стилихон", "Велизарий", "Одоакр"],
-    "correct": "Аэций",
-    "en": {"question": "Who commanded the Roman army against Attila at the Battle of the Catalaunian Plains in 451?", "answers": ["Aetius", "Stilicho", "Belisarius", "Odoacer"]}
+    "difficulty": 2,
+    "question": "Үйсін мемлекетінің жоғарғы билеушісі қалай аталды?",
+    "answers": ["Күнби", "Шаньюй", "Қаған", "Ябғу"],
+    "correct": "Күнби",
+    "en": {"question": "What was the supreme ruler of the Wusun state called?", "answers": ["Kunmo (Kunbi)", "Shanyu", "Khagan", "Yabgu"]}
   },
   {
     "id": "huns-10",
     "type": "fill_blank",
-    "difficulty": 2,
-    "question": "Еуропадағы ғұндардың орталығы ___ даласы (қазіргі Венгрия) болды.",
-    "answers": ["Паннония", "Галлия", "Фракия", "Дакия"],
-    "correct": "Паннония",
-    "en": {"question": "The centre of the Huns in Europe was the ___ plain (present-day Hungary).", "answers": ["Pannonia", "Gaul", "Thrace", "Dacia"]}
+    "difficulty": 1,
+    "question": "Ғұндар, үйсіндер мен қаңлылар қазіргі Қазақстан аумағында ___ дәуірінде өмір сүрді.",
+    "answers": ["ерте темір", "қола", "неолит", "энеолит"],
+    "correct": "ерте темір",
+    "en": {"question": "The Xiongnu, Wusun and Kangju lived on the territory of today's Kazakhstan in the ___ Age.", "answers": ["Early Iron", "Bronze", "Neolithic", "Eneolithic"]}
   },
   {
     "id": "huns-11",
@@ -106,8 +106,8 @@
     "type": "chronology",
     "difficulty": 2,
     "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Байдэн шайқасы", "Ғұн державасының екіге бөлінуі", "Ғұндардың остготтарды талқандауы", "Каталаун шайқасы"],
-    "en": {"question": "Put the events in chronological order", "items": ["Battle of Baideng", "Split of the Xiongnu state", "Huns defeat the Ostrogoths", "Battle of the Catalaunian Plains"]}
+    "items": ["Байдэн шайқасы", "Ғұн державасының екіге бөлінуі", "Ғұндардың батысқа қоныс аударуы", "Түрік қағанатының құрылуы"],
+    "en": {"question": "Put the events in chronological order", "items": ["Battle of Baideng", "Split of the Xiongnu state", "Westward migration of the Huns", "Founding of the Turkic Khaganate"]}
   },
   {
     "id": "huns-13",

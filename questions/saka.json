@@ -56,11 +56,11 @@
   {
     "id": "saka-08",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "Ахеменидтердің Бехистун жазуындағы бедерде тұтқын ретінде бейнеленген шошақ бөрікті сақ көсемі кім?",
-    "answers": ["Скунха", "Шырақ", "Ишпакай", "Мадий"],
-    "correct": "Скунха",
-    "en": {"question": "Which Saka chief in a pointed cap is shown as a captive on the Achaemenid Behistun relief?", "answers": ["Skunkha", "Shirak", "Ishpakai", "Madyes"]}
+    "difficulty": 2,
+    "question": "Солтүстік Қазақстандағы энеолиттік Ботай қонысын ұзақ жылдар зерттеп, жылқыны қолға үйрету туралы деректер тапқан археолог кім?",
+    "answers": ["Виктор Зайберт", "Әлкей Марғұлан", "Хамит Алпысбаев", "Карл Байпақов"],
+    "correct": "Виктор Зайберт",
+    "en": {"question": "Which archaeologist studied the Eneolithic Botai settlement in Northern Kazakhstan for decades and found evidence of horse domestication?", "answers": ["Viktor Zaibert", "Alkey Margulan", "Khamit Alpysbaev", "Karl Baipakov"]}
   },
   {
     "id": "saka-09",

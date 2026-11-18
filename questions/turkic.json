@@ -74,11 +74,11 @@
   {
     "id": "turkic-09",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "Арабтар «Әбу Мұзахим» (сүзеген) деп атаған, араб жаулаушыларына қарсы күрескен түргеш қағаны кім?",
-    "answers": ["Сұлу", "Үшлік", "Сақал", "Істемі"],
-    "correct": "Сұлу",
-    "en": {"question": "Which Türgesh khagan, called 'Abu Muzahim' (the butting one) by the Arabs, fought the Arab conquest?", "answers": ["Suluk", "Ushlik", "Saqal", "Istemi"]}
+    "difficulty": 2,
+    "question": "Қарахан мемлекетінің исламды алғаш қабылдаған ханы кім?",
+    "answers": ["Сатұқ Боғра хан", "Білге Күл Қадыр хан", "Сұлу қаған", "Тоныкөк"],
+    "correct": "Сатұқ Боғра хан",
+    "en": {"question": "Who was the first Karakhanid khan to accept Islam?", "answers": ["Satuq Bughra Khan", "Bilge Kul Qadir Khan", "Suluk Khagan", "Tonyukuk"]}
   },
   {
     "id": "turkic-10",

@@ -62,12 +62,12 @@
   {
     "id": "independence-07",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "1992 жылы БҰҰ Бас Ассамблеясының 47-сессиясында Қазақстан құруды ұсынған халықаралық форум қайсы?",
-    "answers": ["Азиядағы өзара іс-қимыл және сенім шаралары кеңесі", "Шанхай ынтымақтастық ұйымы", "Ұжымдық қауіпсіздік шарты ұйымы", "Түркі мемлекеттерінің ұйымы"],
-    "correct": "Азиядағы өзара іс-қимыл және сенім шаралары кеңесі",
-    "extra_answers": ["Еуразиялық экономикалық одақ"],
-    "en": {"question": "Which international forum did Kazakhstan propose at the 47th UN General Assembly in 1992?", "answers": ["Conference on Interaction and Confidence-Building Measures in Asia", "Shanghai Cooperation Organisation", "Collective Security Treaty Organization", "Organization of Turkic States"], "extra_answers": ["Eurasian Economic Union"]}
+    "difficulty": 2,
+    "question": "2017 жылы сәуірде жарияланып, қазақ әліпбиін латын графикасына көшіруді ұсынған бағдарламалық мақала қалай аталады?",
+    "answers": ["«Рухани жаңғыру»", "«Мәңгілік ел»", "«Ұлы даланың жеті қыры»", "«Нұрлы жол»"],
+    "correct": "«Рухани жаңғыру»",
+    "extra_answers": ["«Мәдени мұра»"],
+    "en": {"question": "Which programme article, published in April 2017, proposed moving the Kazakh alphabet to the Latin script?", "answers": ["'Rukhani Zhangyru' (Spiritual Modernization)", "'Mangilik El' (Eternal Nation)", "'Seven Facets of the Great Steppe'", "'Nurly Zhol' (Bright Path)"], "extra_answers": ["'Madeni Mura' (Cultural Heritage)"]}
   },
   {
     "id": "independence-08",
@@ -82,12 +82,12 @@
   {
     "id": "independence-09",
     "type": "single_choice",
-    "difficulty": 3,
-    "question": "Қазақстан Дүниежүзілік сауда ұйымына қай жылы мүше болды?",
-    "answers": ["2015 ж.", "2012 ж.", "2001 ж.", "2019 ж."],
-    "correct": "2015 ж.",
-    "extra_answers": ["2010 ж.", "2017 ж."],
-    "en": {"question": "In which year did Kazakhstan join the World Trade Organization?", "answers": ["2015", "2012", "2001", "2019"], "extra_answers": ["2010", "2017"]}
+    "difficulty": 2,
+    "question": "1993 жылы құрылған, дарынды жастарды шетелдің жетекші университеттерінде оқытатын халықаралық стипендия қалай аталады?",
+    "answers": ["«Болашақ»", "«Серпін»", "«Дарын»", "«Мәдени мұра»"],
+    "correct": "«Болашақ»",
+    "extra_answers": ["«Жасыл ел»"],
+    "en": {"question": "What is the international scholarship, founded in 1993, that sends talented young people to leading universities abroad?", "answers": ["'Bolashak'", "'Serpin'", "'Daryn'", "'Madeni Mura'"], "extra_answers": ["'Zhasyl El'"]}
   },
   {
     "id": "independence-10",

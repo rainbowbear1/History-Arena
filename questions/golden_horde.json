@@ -73,11 +73,11 @@
     "id": "golden_horde-08",
     "type": "single_choice",
     "difficulty": 3,
-    "question": "Моңғолдардың батыс жорығы кезінде 1241 жылы Мохи шайқасында қай елдің әскері талқандалды?",
-    "answers": ["Венгрия", "Польша", "Болгария", "Византия"],
-    "correct": "Венгрия",
-    "extra_answers": ["Чехия"],
-    "en": {"question": "During the Mongols' Western Campaign, the army of which country was crushed at the Battle of Mohi in 1241?", "answers": ["Hungary", "Poland", "Bulgaria", "Byzantium"], "extra_answers": ["Bohemia"]}
+    "question": "Қазақ хандығының негізін қалаған Керей мен Жәнібектің арғы атасы, XIV ғасырда Ақ Орданы басқарған хан кім?",
+    "answers": ["Ұрыс хан", "Тоқтамыс хан", "Әбілқайыр хан", "Өзбек хан"],
+    "correct": "Ұрыс хан",
+    "extra_answers": ["Мамай"],
+    "en": {"question": "Which 14th-century khan of the White Horde was the ancestor of Kerey and Janibek, founders of the Kazakh Khanate?", "answers": ["Urus Khan", "Tokhtamysh Khan", "Abulkhair Khan", "Özbeg Khan"], "extra_answers": ["Mamai"]}
   },
   {
     "id": "golden_horde-09",
@@ -106,8 +106,8 @@
     "type": "chronology",
     "difficulty": 2,
     "question": "Оқиғаларды хронологиялық ретпен қойыңыз",
-    "items": ["Мохи шайқасы", "Өзбек ханның таққа отыруы", "Куликово шайқасы", "Терек шайқасы"],
-    "en": {"question": "Put the events in chronological order", "items": ["Battle of Mohi", "Özbeg Khan takes the throne", "Battle of Kulikovo", "Battle of the Terek"]}
+    "items": ["Моңғолдардың батыс жорығы", "Өзбек ханның таққа отыруы", "Куликово шайқасы", "Терек шайқасы"],
+    "en": {"question": "Put the events in chronological order", "items": ["The Mongols' Western Campaign", "Özbeg Khan takes the throne", "Battle of Kulikovo", "Battle of the Terek"]}
   },
   {
     "id": "golden_horde-12",
