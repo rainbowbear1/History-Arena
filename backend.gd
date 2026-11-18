@@ -29,7 +29,8 @@ var upload_gap: float = 6.0  # The security rules accept one result per player e
 var last_error: String = ""
 var last_upload_ok: bool = false
 var boss_pending_path: String = BOSS_PENDING_PATH
-# BOSS victories not yet stored online, by uid (best score), so a lost connection loses nothing.
+# BOSS victories queued by builds before trophies (uid -> best score, no run details). They are still
+# sent once, as victories without a trophy; new BOSS runs travel through the outbox with the rest.
 var boss_pending: Dictionary = {}
 
 
@@ -194,8 +195,9 @@ func _after_sign_in() -> void:
 
 
 # Reads the account's permanent achievements and role: a BOSS victory stored online gives Unlock
-# Everything on this device too; administrators (admins/{uid} in Firestore, set by the project
-# owner) have it without beating the BOSS. A victory still waiting to be stored is sent first.
+# Everything and the best trophy on this device too; administrators (admins/{uid} in Firestore, set
+# by the project owner) have Unlock Everything without beating the BOSS. An old-style victory still
+# waiting on this device is sent first.
 func sync_entitlements() -> void:
 	if not is_online_player():
 		return
@@ -209,20 +211,8 @@ func sync_entitlements() -> void:
 		return
 	if result.get("bossDefeated") == true:
 		ProgressStore.earn_unlock_everything()
+		ProgressStore.earn_trophy(int(result.get("trophy", 0)))
 	ProgressStore.is_admin = result.get("admin") == true
-
-
-# A BOSS victory of a signed-in player: stored online as a permanent achievement (kept on the device
-# until the server accepts it). Guests keep it on this device only.
-func record_boss_victory(score: int) -> void:
-	if not is_signed_in() or is_guest():
-		return
-	var uid: String = user["uid"]
-	boss_pending[uid] = maxi(int(boss_pending.get(uid, 0)), score)
-	_save_boss_pending()
-	if is_online_player() and await transport.record_boss(score):
-		boss_pending.erase(uid)
-		_save_boss_pending()
 
 
 func _save_boss_pending() -> void:

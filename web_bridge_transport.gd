@@ -13,8 +13,9 @@ extends RefCounted
 #                                            "rejected": true when the security rules refused it})
 #   my_progress() -> Dictionary             (await; {"ok", "levels": {"1": {"score", "stars"}}})
 #   leaderboard(limit, board) -> Dictionary (await; board "campaign" or "allinone"; {"ok", "rows", "me"})
-#   entitlements() -> Dictionary            (await; {"ok", "bossDefeated", "bossBest", "admin"})
-#   record_boss(score) -> bool              (await; true when the server stored the BOSS victory)
+#   entitlements() -> Dictionary            (await; {"ok", "bossDefeated", "bossBest", "trophy", "admin"})
+#   record_boss(score) -> bool              (await; an old-style BOSS victory without run details,
+#                                            stored without a trophy; true when the server stored it)
 
 const BRIDGE := "HistoryArenaHub"
 const TIMEOUT := 30.0

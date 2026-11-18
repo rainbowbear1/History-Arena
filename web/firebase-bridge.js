@@ -10,6 +10,7 @@
   "use strict";
   var SDK = "https://www.gstatic.com/firebasejs/13.1.0/";
   var LEVELS = 10;
+  var BOSS = 11; // BOSS runs: achievements/{uid} (victory and trophy), never the campaign total.
   var ALL_IN_ONE = 12; // All-in-One runs: own leaderboard allinone/{uid}, never the campaign total.
   // Local testing against the Firebase Emulator Suite: http://localhost:<port>/?emulator=1
   var EMULATOR = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]emulator=1\b/.test(location.search);
@@ -146,6 +147,48 @@
     });
   }
 
+  // A BOSS run: the attempt, and for a victory (stars = trophy 1-3) the permanent achievement with
+  // the best score, best trophy and most correct answers, in one transaction. Nothing is lowered.
+  function saveBoss(user, a) {
+    var attemptRef = F.doc(F.collection(F.doc(db, "players", user.uid), "attempts"));
+    var ref = F.doc(db, "achievements", user.uid);
+    return F.runTransaction(db, function (tx) {
+      return tx.get(ref).then(function (snap) {
+        var prev = snap.exists() ? snap.data() : {};
+        tx.set(attemptRef, attemptDoc(a));
+        if (Math.round(a.stars) > 0) {
+          tx.set(ref, {
+            bossDefeated: true,
+            bossBest: Math.max(prev.bossBest || 0, Math.round(a.score)),
+            trophy: Math.max(prev.trophy || 0, Math.round(a.stars)),
+            bestCorrect: Math.max(prev.bestCorrect || 0, Math.round(a.correct)),
+            firstDefeated: prev.firstDefeated || F.serverTimestamp(),
+            updated: F.serverTimestamp(),
+            run: attemptRef.id,
+          });
+        }
+        return 0;
+      });
+    });
+  }
+
+  // {uid: trophy} of every account with a BOSS trophy (a class-sized list), for the leaderboards.
+  // Without it (e.g. older rules) the leaderboard still loads, only without trophies.
+  function trophies() {
+    return F.getDocs(F.query(F.collection(db, "achievements"), F.where("trophy", ">", 0)))
+      .then(function (snap) {
+        var map = {};
+        snap.forEach(function (d) {
+          map[d.id] = d.get("trophy");
+        });
+        return map;
+      })
+      .catch(function (e) {
+        console.warn("trophies unavailable", e);
+        return {};
+      });
+  }
+
   window.HistoryArenaHub = {
     configured: configured,
 
@@ -189,7 +232,9 @@
         .then(function () {
           var user = requireUser();
           var a = JSON.parse(payloadJson);
-          return Math.round(a.level) === ALL_IN_ONE ? saveAllInOne(user, a) : saveCampaign(user, a);
+          var level = Math.round(a.level);
+          if (level === BOSS) return saveBoss(user, a);
+          return level === ALL_IN_ONE ? saveAllInOne(user, a) : saveCampaign(user, a);
         })
         .then(function (total) {
           return JSON.stringify({ ok: true, total: total });
@@ -217,7 +262,7 @@
     },
 
     // Permanent achievements and roles of the signed-in account.
-    // -> Promise<string>: {"ok": true, "bossDefeated": bool, "bossBest": n, "admin": bool}
+    // -> Promise<string>: {"ok": true, "bossDefeated": bool, "bossBest": n, "trophy": 0-3, "admin": bool}
     // admin is true when an administrator document admins/{uid} exists; only the project owner can
     // create those (Firebase Console), the security rules forbid clients from writing them.
     getEntitlements: function () {
@@ -228,14 +273,16 @@
         })
         .then(function (r) {
           var a = r[0].exists() ? r[0].data() : {};
-          return JSON.stringify({ ok: true, bossDefeated: a.bossDefeated === true, bossBest: a.bossBest || 0, admin: r[1].exists() });
+          return JSON.stringify({ ok: true, bossDefeated: a.bossDefeated === true, bossBest: a.bossBest || 0, trophy: a.trophy || 0, admin: r[1].exists() });
         })
         .catch(function (e) {
           return JSON.stringify({ ok: false, error: message(e) });
         });
     },
 
-    // Marks the BOSS as defeated for this account (permanent) and raises the best BOSS score.
+    // A BOSS victory queued by a build from before trophies (only its score is known): marks the BOSS
+    // as defeated (permanent) and raises the best score; the trophy and best correct count stay as
+    // they are, since a score alone cannot prove a trophy.
     // -> Promise<string>: {"ok": true} or {"ok": false, "error": "..."}
     recordBossVictory: function (score) {
       return whenReady()
@@ -247,6 +294,8 @@
               tx.set(ref, {
                 bossDefeated: true,
                 bossBest: Math.max(prev.bossBest || 0, Math.round(score)),
+                trophy: prev.trophy || 0,
+                bestCorrect: prev.bestCorrect || 0,
                 firstDefeated: prev.firstDefeated || F.serverTimestamp(),
                 updated: F.serverTimestamp(),
               });
@@ -264,7 +313,8 @@
 
     // board "campaign" (default): players by total score; "allinone": All-in-One personal bests by
     // their ranking key. Rows carry the board's fields: campaign {"name","total","me"}, All-in-One
-    // {"name","correct","answered","acc","time","completed","me"}; "me" adds "rank" (0 = no result yet).
+    // {"name","correct","answered","acc","time","completed","me"}, and both the player's highest BOSS
+    // "trophy" (0-3); "me" adds "rank" (0 = no result yet).
     // -> Promise<string>: {"ok": true, "rows": [...], "me": {...}}
     getLeaderboard: function (limit, board) {
       var uid = "";
@@ -272,8 +322,9 @@
       var pool = board === "allinone";
       var col = pool ? "allinone" : "players";
       var field = pool ? "key" : "total";
+      var cups = {};
       function row(d) {
-        var r = { name: d.get("name"), me: d.id === uid };
+        var r = { name: d.get("name"), me: d.id === uid, trophy: cups[d.id] || 0 };
         if (pool) {
           ["correct", "answered", "acc", "time"].forEach(function (k) {
             r[k] = d.get(k) || 0;
@@ -288,9 +339,10 @@
         .then(function () {
           uid = requireUser().uid;
           var top = F.query(F.collection(db, col), F.orderBy(field, "desc"), F.limit(Math.min(Math.max(limit || 20, 1), 50)));
-          return Promise.all([F.getDocs(top), F.getDoc(F.doc(db, col, uid))]);
+          return Promise.all([F.getDocs(top), F.getDoc(F.doc(db, col, uid)), trophies()]);
         })
         .then(function (r) {
+          cups = r[2];
           r[0].forEach(function (d) {
             rows.push(row(d));
           });

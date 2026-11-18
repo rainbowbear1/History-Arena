@@ -4,8 +4,11 @@ rules_version = '2';
 //
 //   players/{uid}                 one row per Google account: name, best score s1..s10 and stars
 //                                 t1..t10 per level, total = s1 + ... + s10, last attempt id
-//   players/{uid}/attempts/{id}   every finished run, write-once (campaign levels 1-10, All-in-One 12)
+//   players/{uid}/attempts/{id}   every finished run, write-once (campaign levels 1-10, BOSS 11,
+//                                 All-in-One 12)
+//   achievements/{uid}            BOSS victory (permanent), best BOSS score and highest trophy
 //   allinone/{uid}                All-in-One personal best (own leaderboard, never in the total)
+//   admins/{uid}                  teacher accounts, created only in the Firebase Console
 //
 // The uid always comes from the verified Firebase ID token (request.auth), never from the game.
 // Scores are still produced in the player's browser; see docs/online.md for what these rules
@@ -33,8 +36,21 @@ service cloud.firestore {
       return 13300;
     }
 
+    // The BOSS asks 50 tasks (data/levels.json "boss": "questions").
+    function bossTasks() {
+      return 50;
+    }
+
     function maxScoreOf(level) {
-      return level == 12 ? poolMax() : maxScore(level);
+      return level == 12 ? poolMax() : level == 11 ? bossTasks() * 100 : maxScore(level);
+    }
+
+    // BOSS trophies by the share of correct answers: 1 bronze from 60 %, 2 silver from 75 %, 3 gold
+    // from 90 % (ProgressStore.trophy_for). Below 60 % the BOSS is not defeated.
+    function trophyFor(correct) {
+      return correct * 100 >= 90 * bossTasks() ? 3
+           : correct * 100 >= 75 * bossTasks() ? 2
+           : correct * 100 >= 60 * bossTasks() ? 1 : 0;
     }
 
     // The "double score" ability can add at most this much per run (2 uses x 100).
@@ -51,8 +67,9 @@ service cloud.firestore {
                                'playtime_sec', 'stars', 'passed', 'completed', 'revivals_used',
                                'finished_at', 'game_id', 'client_version', 'created', 'answered'])
           && a.keys().hasAll(['level', 'score', 'max_score', 'stars', 'playtime_sec', 'created'])
-          && a.level is int && ((a.level >= 1 && a.level <= 10) || a.level == 12)
+          && a.level is int && a.level >= 1 && a.level <= 12
           && a.max_score == maxScoreOf(a.level)
+          && (a.level != 11 || validBossRun(a))
           && (a.level != 12 || validPoolRun(a))
           && a.score is int && a.score >= 0 && a.score % 100 == 0
           && a.score <= a.max_score + doubleBonus()
@@ -69,6 +86,15 @@ service cloud.firestore {
           && a.get('game_id', 'history-arena') == 'history-arena'
           && a.get('client_version', '') is string && a.get('client_version', '').size() <= 16
           && a.created == request.time;
+    }
+
+    // A BOSS run: its "stars" are the trophy earned by its correct answers (none for an unfinished
+    // run); every point needs a correct task (plus the double-score bonus).
+    function validBossRun(a) {
+      return a.keys().hasAll(['correct', 'completed'])
+          && a.correct <= bossTasks()
+          && a.score >= a.correct * 100 && a.score <= a.correct * 100 + doubleBonus()
+          && a.stars == (a.completed ? trophyFor(a.correct) : 0);
     }
 
     // An All-in-One run is counted in tasks: answered of the pool, correct of answered, wrong = the
@@ -140,21 +166,44 @@ service cloud.firestore {
     }
 
     // Permanent achievements: defeating the BOSS (a 50-task run, max 5000 + double-score bonus).
-    // Once true it stays true; the best BOSS score can only rise; the first victory time is fixed.
-    function validAchievement(prev) {
+    // Once true it stays true; the best BOSS score, the trophy and the best correct count can only
+    // rise; the first victory time is fixed.
+    //  - With a run (the normal case): a winning BOSS attempt created in the same write; the trophy
+    //    and correct count are raised to that run's, never beyond.
+    //  - Without a run: a victory queued by a build from before trophies (only its score is known);
+    //    it may raise the best score but leaves the trophy and correct count as they are, so no
+    //    trophy is ever granted without a run that earned it.
+    function validAchievement(uid, prev) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['bossDefeated', 'bossBest', 'firstDefeated', 'updated'])
+      return d.keys().hasOnly(['bossDefeated', 'bossBest', 'trophy', 'bestCorrect', 'firstDefeated', 'updated', 'run'])
           && d.bossDefeated == true
           && d.bossBest is int && d.bossBest % 100 == 0
-          && d.bossBest >= prev.get('bossBest', 0) && d.bossBest <= 5000 + doubleBonus()
+          && d.bossBest >= prev.get('bossBest', 0) && d.bossBest <= bossTasks() * 100 + doubleBonus()
+          && d.get('trophy', 0) is int && d.get('bestCorrect', 0) is int
           && d.updated == request.time
-          && d.firstDefeated == prev.get('firstDefeated', request.time);
+          && d.firstDefeated == prev.get('firstDefeated', request.time)
+          && (d.keys().hasAny(['run']) ? achievementRun(uid, d, prev) : achievementKept(d, prev));
+    }
+
+    function achievementRun(uid, d, prev) {
+      let run = /databases/$(database)/documents/players/$(uid)/attempts/$(d.run);
+      let a = getAfter(run).data;
+      return d.run is string && !exists(run) && existsAfter(run)
+          && a.level == 11 && a.stars > 0
+          && best(d, prev, 'bossBest', a.score)
+          && best(d, prev, 'trophy', a.stars)
+          && best(d, prev, 'bestCorrect', a.correct);
+    }
+
+    function achievementKept(d, prev) {
+      return d.get('trophy', 0) == prev.get('trophy', 0) && d.get('bestCorrect', 0) == prev.get('bestCorrect', 0);
     }
 
     match /achievements/{uid} {
-      allow read: if isOwner(uid);
-      allow create: if isOwner(uid) && validAchievement({});
-      allow update: if isOwner(uid) && validAchievement(resource.data);
+      // Trophies are shown beside names on the leaderboards, so signed-in players can read them.
+      allow read: if signedIn();
+      allow create: if isOwner(uid) && validAchievement(uid, {});
+      allow update: if isOwner(uid) && validAchievement(uid, resource.data);
       allow delete: if false;
     }
 

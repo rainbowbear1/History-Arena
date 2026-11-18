@@ -102,8 +102,20 @@ e.g. «Сұрақ 12 / 50 · 6-деңгей — Қазақ хандығы» / "Q
 Over the run the timer shrinks to `time_floor` (55 %) of
 `time_per_question` and targets speed up by `speed_ramp` (+60 %); three enemies fight throughout.
 The player starts with `medkits` (2) medkits, gets one more every `medkit_every` (10) tasks, and
-uses one with **H** for `medkit_hp` (35) HP; medical help works as on the levels. Scoring at least
-`pass_percent` (60 %) defeats the BOSS.
+uses one with **H** for `medkit_hp` (35) HP; medical help works as on the levels. Answering at
+least `pass_percent` (60 %) of the 50 tasks correctly defeats the BOSS. (Until November 2026 this was
+60 % of the *score*; it now counts correct answers, so a character's double-score bonus can no longer
+turn a 58 % run into a victory, and every victory carries a trophy.)
+
+**Trophies** are measured in correct answers only (`ProgressStore.trophy_for`): **bronze** 60–74 %
+(30–37 of 50), **silver** 75–89 % (38–44), **gold** 90–100 % (45–50). The results screen shows the
+cup (`trophy_icon.gd`: bronze, silver and gold differ in colour and carry 1, 2 or 3 bands on the
+base). A run's `stars` field holds its trophy (0–3). The highest trophy is kept with the permanent
+entitlements (`boss_trophy`; New Game keeps it) and online in `achievements/{uid}` (`trophy`), is
+never lowered, and appears beside the player's name on the campaign and All-in-One leaderboards.
+**Older victories** — queued by builds from before trophies, which stored only a score — are sent
+as a victory *without* a trophy: a score alone (which may include bonus points) cannot prove the
+number of correct answers, so no trophy is invented; the player earns one with their next BOSS run.
 
 - **Reveal:** the first time level 10 is passed, the results screen is followed by «BOSS АШЫЛДЫ!» /
   "BOSS UNLOCKED", and the level screen shows a red BOSS tile centred beneath level 8.

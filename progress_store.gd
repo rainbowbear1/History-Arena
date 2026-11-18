@@ -30,6 +30,9 @@ var is_admin := false
 # All-in-One personal best ({"correct", "answered", "accuracy", "playtime_sec", "score", "completed",
 # "key"}, empty before the first run). Not campaign progress: kept with the entitlements.
 var all_in_one_best := {}
+# Highest BOSS trophy ever earned: 0 none, 1 bronze, 2 silver, 3 gold (trophy_for). Never lowered,
+# kept with the entitlements (New Game keeps it); online in achievements/{uid}.
+var best_trophy := 0
 
 
 func _ready() -> void:
@@ -128,6 +131,7 @@ func _record_boss(attempt: Dictionary) -> bool:
 	boss["defeated"] = boss["defeated"] or attempt["passed"]
 	if attempt["passed"]:
 		earn_unlock_everything()
+		earn_trophy(int(attempt["stars"]))
 	history.append(attempt)
 	if history.size() > MAX_HISTORY:
 		history = history.slice(history.size() - MAX_HISTORY)
@@ -189,6 +193,26 @@ func can_unlock_everything() -> bool:
 	return unlock_everything_earned or is_admin
 
 
+# BOSS trophies are measured in correct answers, so a character's score bonus never changes them:
+# bronze from 60 %, silver from 75 %, gold from 90 % of the tasks. A BOSS victory is a bronze or better.
+static func trophy_for(correct: int, total: int) -> int:
+	if total <= 0:
+		return 0
+	if correct * 100 >= 90 * total:
+		return 3
+	if correct * 100 >= 75 * total:
+		return 2
+	if correct * 100 >= 60 * total:
+		return 1
+	return 0
+
+
+func earn_trophy(level: int) -> void:
+	if level > best_trophy:
+		best_trophy = mini(level, 3)
+		_save_entitlements()
+
+
 func earn_unlock_everything() -> void:
 	if not unlock_everything_earned:
 		unlock_everything_earned = true
@@ -202,10 +226,12 @@ func _entitlements_path() -> String:
 func _load_entitlements() -> void:
 	unlock_everything_earned = false
 	all_in_one_best = {}
+	best_trophy = 0
 	if FileAccess.file_exists(_entitlements_path()):
 		var data = JSON.parse_string(FileAccess.get_file_as_string(_entitlements_path()))
 		if data is Dictionary:
 			unlock_everything_earned = data.get("unlock_everything", false) == true
+			best_trophy = clampi(int(data.get("boss_trophy", 0)), 0, 3)
 			if data.get("all_in_one_best") is Dictionary and not data["all_in_one_best"].is_empty():
 				var best: Dictionary = data["all_in_one_best"]
 				all_in_one_best = {}
@@ -217,7 +243,7 @@ func _load_entitlements() -> void:
 func _save_entitlements() -> void:
 	var file := FileAccess.open(_entitlements_path(), FileAccess.WRITE)
 	if file:
-		file.store_string(JSON.stringify({"unlock_everything": unlock_everything_earned, "all_in_one_best": all_in_one_best}))
+		file.store_string(JSON.stringify({"unlock_everything": unlock_everything_earned, "all_in_one_best": all_in_one_best, "boss_trophy": best_trophy}))
 
 
 # Switches to the progress of one account ("" = guest) and loads it.

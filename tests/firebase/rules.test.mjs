@@ -201,8 +201,10 @@ test("BOSS achievements: own account only, plausible scores only", async () => {
   await assertFails(bossVictory(alice(), "alice", 9900));
   await assertFails(bossVictory(alice(), "alice", 3650));
   await bossVictory(alice(), "alice", 3600);
-  await assertFails(getDoc(doc(bob(), "achievements", "alice")));
+  // Readable by signed-in players (trophies on the leaderboards), writable only by the owner.
+  await assertSucceeds(getDoc(doc(bob(), "achievements", "alice")));
   await assertSucceeds(getDoc(doc(alice(), "achievements", "alice")));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), "achievements", "alice")));
 });
 
 test("admin records: nobody can create them from the game; owners can read their own", async () => {
@@ -318,4 +320,97 @@ test("All-in-One leaderboard: signed-in players only", async () => {
   await poolRun(alice(), "alice", "Alice A", poolAttempt(60, 80));
   await assertSucceeds(getDocs(collection(bob(), "allinone")));
   await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(), "allinone")));
+});
+
+// ---- BOSS runs (level 11) and trophies in achievements/{uid} ----
+
+function bossAttempt(correct, extra = {}) {
+  const trophy = correct >= 45 ? 3 : correct >= 38 ? 2 : correct >= 30 ? 1 : 0;
+  return {
+    level: 11, character: "tomyris", score: correct * 100, max_score: 5000, correct, wrong: 50 - correct,
+    playtime_sec: 1500, stars: trophy, passed: trophy > 0, completed: true, revivals_used: 0,
+    finished_at: 1763200000, game_id: "history-arena", client_version: "1.0.0", ...extra,
+  };
+}
+
+// The same transaction as web/firebase-bridge.js saveBoss, with optional tampering.
+async function bossRun(fs, uid, a, tamper = (next) => next) {
+  const attemptRef = doc(collection(doc(fs, "players", uid), "attempts"));
+  const ref = doc(fs, "achievements", uid);
+  return runTransaction(fs, async (tx) => {
+    const snap = await tx.get(ref);
+    const prev = snap.exists() ? snap.data() : {};
+    tx.set(attemptRef, { ...a, created: serverTimestamp() });
+    if (a.stars > 0) {
+      tx.set(ref, tamper({
+        bossDefeated: true, bossBest: Math.max(prev.bossBest || 0, a.score), trophy: Math.max(prev.trophy || 0, a.stars),
+        bestCorrect: Math.max(prev.bestCorrect || 0, a.correct), firstDefeated: prev.firstDefeated || serverTimestamp(),
+        updated: serverTimestamp(), run: attemptRef.id,
+      }, prev));
+    }
+  });
+}
+
+test("BOSS trophies: earned by correct answers, never downgraded", async () => {
+  await assertSucceeds(bossRun(alice(), "alice", bossAttempt(39)));
+  let snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("trophy") !== 2 || snap.get("bestCorrect") !== 39) throw new Error("silver not stored");
+  await assertSucceeds(bossRun(alice(), "alice", bossAttempt(31)));
+  await assertSucceeds(bossRun(alice(), "alice", bossAttempt(20, { completed: false, stars: 0, passed: false })));
+  snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("trophy") !== 2 || snap.get("bestCorrect") !== 39 || snap.get("bossBest") !== 3900) throw new Error("trophy lowered");
+  await assertSucceeds(bossRun(alice(), "alice", bossAttempt(47)));
+  snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("trophy") !== 3) throw new Error("gold not stored");
+  // Explicitly lowering is refused.
+  await assertFails(bossRun(alice(), "alice", bossAttempt(31), (next) => ({ ...next, trophy: 1, bestCorrect: 31 })));
+  await assertFails(deleteDoc(doc(alice(), "achievements", "alice")));
+});
+
+test("BOSS trophies: the trophy must match the run's correct answers", async () => {
+  const tries = {
+    "gold for 35 correct": [bossAttempt(35, { stars: 3 })],
+    "bronze below 60 %": [bossAttempt(29, { stars: 1, passed: true })],
+    "trophy for an unfinished run": [bossAttempt(40, { completed: false })],
+    "more than 50 correct": [bossAttempt(51, { wrong: 0, score: 5100 })],
+    "score without the correct answers": [bossAttempt(35, { score: 4500 })],
+    "trophy above the run": [bossAttempt(32), (next) => ({ ...next, trophy: 3 })],
+    "correct count above the run": [bossAttempt(32), (next) => ({ ...next, bestCorrect: 50 })],
+    "best score above the run": [bossAttempt(32), (next) => ({ ...next, bossBest: 5000 })],
+  };
+  for (const [label, [a, tamper]] of Object.entries(tries)) {
+    try {
+      await assertFails(bossRun(alice(), "alice", a, tamper));
+    } catch (e) {
+      throw new Error("accepted: " + label);
+    }
+  }
+  // A trophy without a run in the same write, and another account's achievement.
+  await assertFails(setDoc(doc(alice(), "achievements", "alice"), {
+    bossDefeated: true, bossBest: 4500, trophy: 3, bestCorrect: 45, firstDefeated: serverTimestamp(), updated: serverTimestamp(),
+  }));
+  await assertFails(bossRun(bob(), "alice", bossAttempt(45)));
+});
+
+test("BOSS: an old victory without run details keeps no trophy and never removes one", async () => {
+  // Migration: a victory queued before trophies existed (score only) is stored without a trophy...
+  await assertSucceeds(bossVictory(alice(), "alice", 3600, (next) => ({ ...next, trophy: 0, bestCorrect: 0 })));
+  let snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("bossDefeated") !== true || (snap.get("trophy") || 0) !== 0) throw new Error("legacy victory wrong");
+  // ...and cannot claim one.
+  await assertFails(bossVictory(alice(), "alice", 3600, (next) => ({ ...next, trophy: 1, bestCorrect: 30 })));
+  // A later run earns the trophy; an old victory sent afterwards keeps it.
+  await assertSucceeds(bossRun(alice(), "alice", bossAttempt(40)));
+  await assertSucceeds(bossVictory(alice(), "alice", 3000, (next, prev) => ({ ...next, trophy: prev.trophy, bestCorrect: prev.bestCorrect })));
+  await assertFails(bossVictory(alice(), "alice", 3000, (next) => ({ ...next, trophy: 0, bestCorrect: 0 })));
+  snap = await getDoc(doc(alice(), "achievements", "alice"));
+  if (snap.get("trophy") !== 2) throw new Error("trophy lost");
+});
+
+test("BOSS trophies are visible to signed-in players for the leaderboards", async () => {
+  await bossRun(alice(), "alice", bossAttempt(46));
+  const list = await assertSucceeds(getDocs(query(collection(bob(), "achievements"), where("trophy", ">", 0))));
+  if (list.size !== 1) throw new Error("trophy list");
+  await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(), "achievements")));
+  await assertFails(setDoc(doc(bob(), "achievements", "alice"), { bossDefeated: true }));
 });

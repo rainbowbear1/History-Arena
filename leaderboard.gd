@@ -4,13 +4,15 @@ extends Control
 #   Campaign   — players by total score (sum of each level's best);
 #   All-in-One — personal bests ranked by correct answers, then accuracy, then active time
 #                (character score bonuses never decide the order).
-# Each board shows the top players and the current player's own best and rank.
+# Each board shows the top players and the current player's own best and rank; a bronze, silver or
+# gold cup beside a name is that player's highest BOSS trophy.
 
 const LIMIT := 20
 const ME_COLOR := Color(0.84, 0.68, 0.38)
 const HEADER_COLOR := Color(0.7, 0.7, 0.7)
 const BOARDS := ["campaign", "allinone"]
 const ProgressStoreScript := preload("res://progress_store.gd")
+const TrophyIcon := preload("res://trophy_icon.gd")
 
 var board := "campaign"
 var board_buttons := {}
@@ -75,15 +77,15 @@ func refresh() -> void:
 
 	var list: Array = result.get("rows", [])
 	var pool := board == "allinone"
-	rows.columns = 5 if pool else 3
+	rows.columns = 6 if pool else 4
 	if list.is_empty():
 		status_label.text = tr("Әлі нәтиже жоқ. «Бәрі бірге» сынағын өтіп, бірінші болыңыз!") if pool else tr("Әлі нәтиже жоқ. Деңгейді өтіп, бірінші болыңыз!")
 	else:
 		status_label.text = ""
-		_add_row(["#", tr("Ойыншы"), tr("Дұрыс"), tr("Дәлдік"), tr("Уақыт")] if pool else ["#", tr("Ойыншы"), tr("Ұпай")], HEADER_COLOR)
+		_add_row(["#", tr("Ойыншы"), tr("Дұрыс"), tr("Дәлдік"), tr("Уақыт")] if pool else ["#", tr("Ойыншы"), tr("Ұпай")], HEADER_COLOR, 0)
 	for i in list.size():
 		var row: Dictionary = list[i]
-		_add_row(_cells(str(i + 1), row), ME_COLOR if row.get("me", false) else Color.WHITE)
+		_add_row(_cells(str(i + 1), row), ME_COLOR if row.get("me", false) else Color.WHITE, int(row.get("trophy", 0)))
 
 	var me: Dictionary = result.get("me", {})
 	var pending := Backend.pending_uploads()
@@ -110,8 +112,15 @@ static func _percent(row: Dictionary) -> String:
 	return "%d%%" % roundi(int(row.get("acc", 0)) / 10.0)
 
 
-func _add_row(cells: Array, color: Color) -> void:
+# One table row; the trophy cup sits between the rank and the name.
+func _add_row(cells: Array, color: Color, trophy: int) -> void:
 	for column in cells.size():
+		if column == 1:
+			var cup := TrophyIcon.new()
+			cup.name = "Trophy%d" % rows.get_child_count()
+			cup.icon_size = 22.0
+			cup.level = trophy
+			rows.add_child(cup)
 		var label := Label.new()
 		label.text = cells[column]
 		label.add_theme_color_override("font_color", color)

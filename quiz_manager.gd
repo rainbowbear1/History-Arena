@@ -59,6 +59,7 @@ const MEDICAL_FILE := "res://questions/medical.json"
 const QuestionPools := preload("res://question_pools.gd")
 const SOURCE_COLOR := Color(0.84, 0.68, 0.38)
 const MAX_FRAME_TIME := 0.25
+const TrophyIcon := preload("res://trophy_icon.gd")
 
 var score: int = 0
 var level: Dictionary = {}
@@ -516,12 +517,9 @@ func finish_level() -> void:
 	last_attempt = build_attempt(true)
 	var unlock_before := ProgressStore.unlock_everything_earned
 	var new_best := ProgressStore.record_attempt(last_attempt)
-	# The BOSS is not a leaderboard level; a victory is a permanent achievement of the account.
-	if is_boss():
-		if last_attempt["passed"]:
-			Backend.record_boss_victory(last_attempt["score"])
-	else:
-		Backend.submit_attempt(last_attempt)  # All-in-One goes to its own leaderboard.
+	# Every run goes online; the bridge files it by level: campaign bests, the BOSS achievement and
+	# trophy (never in the total), or the All-in-One leaderboard.
+	Backend.submit_attempt(last_attempt)
 	var earned_unlock: bool = is_boss() and ProgressStore.unlock_everything_earned and not unlock_before
 
 	var fade_in := create_tween()
@@ -544,6 +542,10 @@ func build_attempt(completed: bool) -> Dictionary:
 	var max_score := questions.size() * POINTS
 	var pass_percent: float = level.get("pass_percent", 60)
 	var stars := ProgressStoreScript.stars_for(score, max_score, pass_percent, revivals_used) if completed else 0
+	# The BOSS is won by correct answers (pass_percent of the tasks), and its "stars" are the trophy:
+	# 1 bronze, 2 silver, 3 gold. Score bonuses of a character never count.
+	if is_boss():
+		stars = ProgressStoreScript.trophy_for(correct_count, questions.size()) if completed and correct_count * 100 >= pass_percent * questions.size() else 0
 	if is_all_in_one():
 		# Counted in tasks: the task on which the health ran out counts as answered (wrongly).
 		var answered := questions.size() if completed else mini(question_index + 1, questions.size())
@@ -618,16 +620,30 @@ func show_results(attempt: Dictionary, new_best: bool, earned_unlock: bool = fal
 
 func _show_boss_results(attempt: Dictionary, new_best: bool, earned_unlock: bool) -> void:
 	results_title.text = tr("BOSS жеңілді!") if attempt["passed"] else tr("BOSS жеңілмеді")
-	results_stars.stars = attempt["stars"]
+	# The trophy replaces the stars: bronze, silver or gold by the share of correct answers.
+	results_stars.hide()
+	var trophy := results_stars.get_parent().get_node_or_null("ResultsTrophy") as Control
+	if trophy == null:
+		trophy = TrophyIcon.new()
+		trophy.name = "ResultsTrophy"
+		trophy.icon_size = 64.0
+		results_stars.add_sibling(trophy)
+	trophy.level = attempt["stars"]
+	trophy.visible = attempt["stars"] > 0
 	var seconds: int = attempt["playtime_sec"]
-	var lines := [
+	var lines := []
+	if attempt["stars"] > 0:
+		lines.append(tr(TrophyIcon.NAMES[attempt["stars"]]) + "!")
+	lines.append_array([
+		tr("Дұрыс жауаптар: %d / %d (%d%%)") % [attempt["correct"], questions.size(), roundi(100.0 * attempt["correct"] / maxi(1, questions.size()))],
 		tr("Ұпай: %d / %d") % [attempt["score"], attempt["max_score"]],
-		tr("Дұрыс: %d    Қате: %d") % [attempt["correct"], attempt["wrong"]],
 		tr("Уақыт: %02d:%02d") % [seconds / 60, seconds % 60],
 		tr("Жаңа рекорд!") if new_best else tr("Үздік нәтиже: %d") % ProgressStore.boss["best_score"],
-	]
+	])
 	if not attempt["passed"]:
-		lines.append(tr("Жеңу үшін кемінде %d%% ұпай керек") % level.get("pass_percent", 60))
+		lines.append(tr("Жеңу үшін кемінде %d%% дұрыс жауап керек") % level.get("pass_percent", 60))
+	elif ProgressStore.best_trophy > attempt["stars"]:
+		lines.append(tr("Ең жоғары жүлдеңіз: %s") % tr(TrophyIcon.NAMES[ProgressStore.best_trophy]))
 	if earned_unlock:
 		lines.append(tr("Тұрақты жетістік: «Барлығын ашу» мүмкіндігі ашылды (Баптаулар)"))
 	results_label.text = "\n".join(lines)

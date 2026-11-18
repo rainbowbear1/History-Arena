@@ -16,6 +16,7 @@ const Soldier := preload("res://soldier.gd")
 const EnvironmentBuilder := preload("res://environment_builder.gd")
 const QuestionAudit := preload("res://question_audit.gd")
 const QuestionPools := preload("res://question_pools.gd")
+const TrophyIconScript := preload("res://trophy_icon.gd")
 
 var failures := 0
 var checks := 0
@@ -304,6 +305,7 @@ func test_localization() -> void:
 	for info in Abilities.INFO.values():
 		keys.append_array([info["name"], info["description"]])
 	keys.append_array(["Ретімен қойылды", "Табылған жұптар", "Жылдамдық", "Қорғаныс"])
+	keys.append_array(TrophyIconScript.NAMES.slice(1))
 	var missing := keys.filter(func(k): return not english.has(k))
 	check(missing.is_empty(), "every interface text has an English entry (%d texts) %s" % [keys.size(), str(missing)])
 
@@ -1789,15 +1791,48 @@ func test_boss() -> void:
 	check(quiz.results_container.visible and quiz.results_title.text == "BOSS жеңілді!", "finishing with 80 % defeats the BOSS")
 	check(progress.total_score() == total_before and not progress.levels.has("11"), "the BOSS never changes the total score")
 	check(progress.boss["defeated"] and progress.unlock_everything_earned and quiz.results_label.text.contains("Барлығын ашу"), "a first victory earns Unlock Everything and says so")
+	var cup = quiz.results_stars.get_parent().get_node_or_null("ResultsTrophy")
+	check(cup != null and cup.visible and cup.level == 2 and not quiz.results_stars.visible and quiz.results_label.text.begins_with("Күміс жүлде!")
+		and quiz.results_label.text.contains("40 / 50 (80%)"), "80 % correct earns a silver trophy, shown on the results")
+	check(quiz.last_attempt["stars"] == 2 and progress.best_trophy == 2, "the trophy is the run's \"stars\" and the best is kept")
 	arena.queue_free()
 	await process_frame
 
-	# New Game: the campaign starts over, the permanent entitlement stays.
+	# Trophies count correct answers only: a score bonus cannot earn one (nor the victory).
+	arena = await _load_arena()
+	quiz = arena.get_node("QuizManager")
+	quiz.score = 3100
+	quiz.correct_count = 29
+	quiz.question_index = 50
+	quiz.load_question()
+	await wait(1.5)
+	check(quiz.results_title.text == "BOSS жеңілмеді" and quiz.last_attempt["stars"] == 0 and not quiz.results_stars.get_parent().get_node("ResultsTrophy").visible
+		and quiz.results_label.text.contains("60% дұрыс жауап керек"), "29 of 50 correct is no victory, even with bonus points (62 % score)")
+	check(progress.best_trophy == 2, "a lost run never lowers the trophy")
+	arena.queue_free()
+	await process_frame
+	var S = ProgressStoreScript
+	check([29, 30, 37, 38, 44, 45, 50].map(func(c): return S.trophy_for(c, 50)) == [0, 1, 1, 2, 2, 3, 3], "bronze 60–74 %, silver 75–89 %, gold 90–100 %")
+	progress.record_attempt({"level": 11, "score": 4600, "max_score": 5000, "correct": 46, "stars": 3, "passed": true, "completed": true})
+	progress.record_attempt({"level": 11, "score": 3100, "max_score": 5000, "correct": 31, "stars": 1, "passed": true, "completed": true})
+	check(progress.best_trophy == 3, "gold replaces silver; a later bronze never downgrades it")
+	var cup_icon = TrophyIconScript.new()
+	root.add_child(cup_icon)
+	var looks := []
+	for level in [1, 2, 3]:
+		cup_icon.level = level
+		looks.append([cup_icon.COLORS[level], cup_icon.tooltip_text])
+	check(looks[0][0] != looks[1][0] and looks[1][0] != looks[2][0] and looks.map(func(l): return l[1]) == ["Қола жүлде", "Күміс жүлде", "Алтын жүлде"],
+		"bronze, silver and gold cups look different and are named")
+	cup_icon.queue_free()
+
+	# New Game: the campaign starts over, the permanent entitlement and trophy stay.
 	progress.reset()
 	progress.load_data()
 	check(progress.total_score() == 0 and not progress.is_boss_unlocked() and not progress.boss["defeated"], "New Game restarts the campaign and hides the BOSS again")
-	check(progress.unlock_everything_earned and progress.can_unlock_everything(), "Unlock Everything survives New Game")
+	check(progress.unlock_everything_earned and progress.can_unlock_everything() and progress.best_trophy == 3, "Unlock Everything and the trophy survive New Game")
 	progress.unlock_everything_earned = false
+	progress.best_trophy = 0
 	progress._save_entitlements()
 	progress.set_demo_unlock(was_demo)
 	game_state.selected_level = 1
@@ -1994,6 +2029,7 @@ func test_all_in_one() -> void:
 	check(progress.all_in_one_best == best and progress.is_unlocked(12), "the best and the unlock survive New Game")
 	progress.unlock_everything_earned = false
 	progress.all_in_one_best = {}
+	progress.best_trophy = 0
 	progress._save_entitlements()
 	progress.reset()
 	progress.set_demo_unlock(was_demo)
@@ -2232,7 +2268,7 @@ class FakeTransport:
 	var received: Array = []
 	var signed_out := false
 	var progress := {"ok": true, "levels": {}}
-	var board := {"ok": true, "rows": [{"name": "Айгерім", "total": 2400, "me": false}, {"name": "Тест Оқушы", "total": 1100, "me": true}], "me": {"total": 1100, "rank": 2}}
+	var board := {"ok": true, "rows": [{"name": "Айгерім", "total": 2400, "me": false, "trophy": 3}, {"name": "Тест Оқушы", "total": 1100, "me": true, "trophy": 0}], "me": {"total": 1100, "rank": 2}}
 
 	func is_configured() -> bool:
 		return configured
@@ -2258,6 +2294,11 @@ class FakeTransport:
 			return {"ok": false, "error": "сервер жазуға рұқсат бермеді", "rejected": true}
 		if accept:
 			received.append(payload)
+			# Like saveBoss in the bridge: a winning BOSS run raises the achievement, never lowers it.
+			if int(payload["level"]) == 11 and int(payload["stars"]) > 0:
+				achievements["bossDefeated"] = true
+				achievements["bossBest"] = maxi(achievements["bossBest"], int(payload["score"]))
+				achievements["trophy"] = maxi(int(achievements.get("trophy", 0)), int(payload["stars"]))
 		return {"ok": accept}
 
 	func my_progress() -> Dictionary:
@@ -2401,31 +2442,56 @@ func test_backend() -> void:
 	backend.sign_out()
 	check(not progress.is_admin and not progress.can_unlock_everything(), "the admin role ends with sign-out (it is never stored on the device)")
 	fake.sign_in_result = {"uid": "player-7", "name": "Ойыншы"}
-	fake.achievements = {"ok": true, "bossDefeated": false, "bossBest": 0, "admin": false}
+	fake.achievements = {"ok": true, "bossDefeated": false, "bossBest": 0, "trophy": 0, "admin": false}
 	await backend.sign_in_with_google()
+	# A BOSS run travels through the outbox like every run, so without a connection it waits.
+	var boss_run := {"level": 11, "character": "tomyris", "score": 3900, "max_score": 5000, "correct": 39, "wrong": 11,
+		"playtime_sec": 1500, "stars": 2, "passed": true, "completed": true, "revivals_used": 0, "finished_at": 5}
 	fake.accept = false
-	await backend.record_boss_victory(3600)
-	check(backend.boss_pending.get("player-7") == 3600 and fake.boss_records.is_empty(), "a BOSS victory without a connection waits on the device")
+	backend.submit_attempt(boss_run)
+	await wait(0.2)
+	check(backend.pending_uploads() == 1 and not fake.achievements["bossDefeated"], "a BOSS victory without a connection waits on the device")
 	fake.accept = true
+	backend.flush_outbox()
+	await wait(0.2)
+	check(backend.pending_uploads() == 0 and fake.achievements["bossDefeated"] and fake.achievements["trophy"] == 2, "the BOSS run is stored with its trophy")
+	backend.submit_attempt(_with(_with(_with(boss_run, "correct", 31), "score", 3100), "stars", 1))
+	await wait(0.2)
+	check(fake.achievements["trophy"] == 2 and fake.achievements["bossBest"] == 3900, "a weaker run never lowers the trophy or the best")
 	backend.sign_out()
 	progress.use_profile("player-7")
 	progress.unlock_everything_earned = false
+	progress.best_trophy = 0
 	progress._save_entitlements()
 	await backend.sign_in_with_google()
-	check(fake.boss_records == [3600] and backend.boss_pending.is_empty() and fake.achievements["bossDefeated"], "the waiting victory is stored at the next sign-in")
-	check(progress.unlock_everything_earned, "a victory stored online gives Unlock Everything on this device")
+	check(progress.unlock_everything_earned and progress.best_trophy == 2, "a victory stored online gives Unlock Everything and the trophy on this device")
 	progress.reset()
 	backend.sign_out()
 	await backend.sign_in_with_google()
-	check(progress.can_unlock_everything() and progress.total_score() == 0, "Unlock Everything survives New Game, sign-out and sign-in")
-	await backend.record_boss_victory(2000)
-	check(fake.achievements["bossBest"] == 3600, "a lower BOSS score never lowers the best")
+	check(progress.can_unlock_everything() and progress.best_trophy == 2 and progress.total_score() == 0, "Unlock Everything and the trophy survive New Game, sign-out and sign-in")
+	# Migration: a victory queued by an older build (score only) is sent once, without a trophy.
 	backend.sign_out()
-	backend.continue_as_guest()
-	check(not progress.can_unlock_everything(), "a guest does not inherit an account's entitlement")
+	fake.sign_in_result = {"uid": "player-8", "name": "Ойыншы 8"}
+	fake.achievements = {"ok": true, "bossDefeated": false, "bossBest": 0, "trophy": 0, "admin": false}
+	backend.boss_pending = {"player-8": 3600}
+	backend._save_boss_pending()
+	await backend.sign_in_with_google()
+	check(fake.boss_records == [3600] and backend.boss_pending.is_empty() and fake.achievements["bossDefeated"] and fake.achievements["trophy"] == 0,
+		"an old queued victory is stored once, without inventing a trophy")
+	check(progress.unlock_everything_earned and progress.best_trophy == 0, "...and still opens Unlock Everything")
 	progress.unlock_everything_earned = false
 	progress._save_entitlements()
 	backend.sign_out()
+	backend.continue_as_guest()
+	check(not progress.can_unlock_everything() and progress.best_trophy == 0, "a guest does not inherit an account's entitlement or trophy")
+	progress.unlock_everything_earned = false
+	progress._save_entitlements()
+	backend.sign_out()
+	progress.use_profile("player-7")
+	progress.unlock_everything_earned = false
+	progress.best_trophy = 0
+	progress._save_entitlements()
+	backend._set_user({})
 
 	# Screens: offline login, guest -> menu shows the player, sign out returns to login.
 	backend.transport = null
@@ -2465,13 +2531,15 @@ func test_backend() -> void:
 	check(current_scene.name == "MainMenu" and current_scene.user_label.text == "Ойыншы: Тест Оқушы", "Google sign-in reaches the menu with the player's name")
 	current_scene.leaderboard_button.pressed.emit()
 	await wait(0.1)
-	var names: Array = current_scene.rows.get_children().map(func(l): return l.text)
+	var names: Array = current_scene.rows.get_children().filter(func(c): return c is Label).map(func(l): return l.text)
+	var cups: Array = current_scene.rows.get_children().filter(func(c): return c is TrophyIconScript).map(func(c): return c.level)
+	check(cups == [0, 3, 0], "a player's highest BOSS trophy shows beside the name")
 	check(current_scene.name == "Leaderboard" and names.has("Айгерім") and names.has("Тест Оқушы"), "leaderboard lists players and scores")
 	check(current_scene.me_label.text.contains("1100") and current_scene.me_label.text.contains("орын: 2"), "leaderboard shows the player's personal best and rank")
 	current_scene.board_buttons["allinone"].pressed.emit()
 	await wait(0.2)
-	var pool_cells: Array = current_scene.rows.get_children().map(func(l): return l.text)
-	check(fake.boards_asked.has("allinone") and current_scene.rows.columns == 5 and pool_cells.has("120 / 133") and pool_cells.has("90%") and pool_cells.has("1:02:05"),
+	var pool_cells: Array = current_scene.rows.get_children().filter(func(c): return c is Label).map(func(l): return l.text)
+	check(fake.boards_asked.has("allinone") and current_scene.rows.columns == 6 and pool_cells.has("120 / 133") and pool_cells.has("90%") and pool_cells.has("1:02:05"),
 		"the All-in-One board lists correct answers, accuracy and time")
 	check(current_scene.me_label.text.contains("64") and current_scene.me_label.text.contains("орын: 2"), "the All-in-One board shows the player's own best and rank")
 	current_scene.queue_free()
