@@ -99,7 +99,7 @@
       <input id="search" type="search" data-t-placeholder="search">
       <span id="count" class="muted grow"></span>
       <button id="refresh" data-t="refresh"></button>
-      <button id="csv" data-t="csv"></button>
+      <button id="excel" class="primary" data-t="excel"></button>
       <button id="deleteAll" class="danger" data-t="deleteAll"></button>
     </div>
     <div class="table-wrap"><table id="players"></table></div>
@@ -143,7 +143,7 @@
       signInText: "Ойындағыдай Google аккаунтыңызбен кіріңіз. Деректерді тек әкімші ретінде тіркелген аккаунттар көре алады.",
       signInButton: "Google арқылы кіру", deniedTitle: "Рұқсат жоқ",
       deniedText: "Бұл аккаунт әкімші ретінде тіркелмеген. Жоба иесіне төмендегі UID-ті жіберіңіз: ол оны Firebase Console-да admins тізіміне қосады, содан кейін бетті жаңартыңыз.",
-      yourUid: "Сіздің UID:", search: "Ойыншы атын іздеу…", refresh: "Жаңарту", csv: "CSV жүктеу",
+      yourUid: "Сіздің UID:", search: "Ойыншы атын іздеу…", refresh: "Жаңарту", excel: "Excel жүктеу",
       footnote: "Нәтижелер мен ойын уақытын ойыншының браузері жібереді; ережелер оларды шынайы шектерде ұстайды, бірақ ойын шынымен ойналғанын дәлелдей алмайды. Ойын уақыты — белсенді ойын (мәзір мен үзіліс есептелмейді); ерте тоқтатылған ойындар да қосылады.",
       back: "← Барлық ойыншылар", uidLabel: "UID:", levelResults: "Деңгейлер бойынша нәтижелер", history: "Ойын тарихы",
       name: "Ойыншы", progress: "Науқан", total: "Жалпы ұпай", boss: "BOSS", trophy: "Жүлде", pool: "Бәрі бірге",
@@ -165,6 +165,9 @@
           "Бұл әрекетті қайтару мүмкін емес. Растау үшін ӨШІРУ деп жазыңыз:";
       },
       deleted: function (n) { return n + " ойыншы өшірілді."; },
+      sheetPlayers: "Ойыншылар", sheetRuns: "Ойын тарихы", maxScore: "Ең көп ұпай", correctOnly: "Дұрыс", wrongOnly: "Қате",
+      poolCorrect: "«Бәрі бірге»: дұрыс", poolAnswered: "«Бәрі бірге»: жауап берілген", poolAcc: "«Бәрі бірге»: дәлдік, %",
+      poolTime: "«Бәрі бірге»: уақыт", levelShort: function (n) { return n + "-деңгей"; },
       level_n: function (n) { return n + "-деңгей — " + ERAS.kk[n - 1]; },
     },
     en: {
@@ -172,7 +175,7 @@
       signInText: "Sign in with your Google account, as in the game. Only accounts registered as administrators can see the data.",
       signInButton: "Sign in with Google", deniedTitle: "No access",
       deniedText: "This account is not registered as an administrator. Send the UID below to the project owner, who adds it to the admins list in the Firebase Console, then reload this page.",
-      yourUid: "Your UID:", search: "Search player name…", refresh: "Refresh", csv: "Download CSV",
+      yourUid: "Your UID:", search: "Search player name…", refresh: "Refresh", excel: "Download Excel",
       footnote: "Scores and play time are reported by each player's browser; the security rules keep them within plausible limits but cannot prove a run was really played. Play time is active play (menus and pauses are not counted); runs left early are included.",
       back: "← All players", uidLabel: "UID:", levelResults: "Results by level", history: "Play history",
       name: "Player", progress: "Campaign", total: "Total score", boss: "BOSS", trophy: "Trophy", pool: "All-in-One",
@@ -194,6 +197,9 @@
           "This cannot be undone. Type DELETE to confirm:";
       },
       deleted: function (n) { return "Deleted " + n + " player(s)."; },
+      sheetPlayers: "Players", sheetRuns: "Play history", maxScore: "Max score", correctOnly: "Correct", wrongOnly: "Wrong",
+      poolCorrect: "All-in-One: correct", poolAnswered: "All-in-One: answered", poolAcc: "All-in-One: accuracy, %",
+      poolTime: "All-in-One: time", levelShort: function (n) { return "Level " + n; },
       level_n: function (n) { return "Level " + n + " — " + ERAS.en[n - 1]; },
     },
   };
@@ -485,27 +491,192 @@
     });
   }
 
-  function csv() {
-    var head = ["uid", "name", "levels_passed", "stars", "total"];
-    for (var i = 1; i <= 10; i++) head.push("level_" + i);
-    head.push("boss_defeated", "trophy", "boss_best", "all_in_one_correct", "all_in_one_answered", "all_in_one_accuracy_pct", "all_in_one_time_sec",
-      "play_time_sec", "runs", "last_activity");
-    var lines = [head];
-    filtered().forEach(function (p) {
-      var line = [p.uid, p.name, p.levelsPassed, p.starSum, p.total].concat(p.bests);
-      line.push(p.bossDefeated, ["", "bronze", "silver", "gold"][p.trophy || 0], p.bossBest,
-        p.pool ? p.pool.correct : "", p.pool ? p.pool.answered : "", p.pool ? Math.round(p.pool.acc / 10) : "", p.pool ? p.pool.time : "",
-        p.playtime, p.runs.length, p.last ? new Date(p.last).toISOString() : "");
-      lines.push(line);
+  // ---- Excel download ----
+  // A real .xlsx workbook (opens in Excel, Google Sheets and LibreOffice whatever the regional
+  // settings), written here without any outside library: a ZIP archive (stored, no compression) of
+  // the few XML parts Excel needs. Sheet 1 has one row per player, sheet 2 every run; headers follow
+  // the dashboard's language, numbers stay numbers, dates and durations are real Excel values.
+  var CRC_TABLE = (function () {
+    var table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      table.push(c >>> 0);
+    }
+    return table;
+  })();
+
+  function crc32(bytes) {
+    var c = 0xffffffff;
+    for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  // files: [{name, text}] -> Uint8Array of a ZIP archive.
+  function zip(files) {
+    var enc = new TextEncoder();
+    var parts = [], central = [], offset = 0;
+    var now = new Date();
+    var time = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    var date = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    function header(size) { var b = new Uint8Array(size); return { bytes: b, view: new DataView(b.buffer) }; }
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+      var local = header(30);
+      local.view.setUint32(0, 0x04034b50, true);
+      local.view.setUint16(4, 20, true);
+      local.view.setUint16(6, 0x0800, true); // UTF-8 names
+      local.view.setUint16(10, time, true);
+      local.view.setUint16(12, date, true);
+      local.view.setUint32(14, crc, true);
+      local.view.setUint32(18, data.length, true);
+      local.view.setUint32(22, data.length, true);
+      local.view.setUint16(26, name.length, true);
+      parts.push(local.bytes, name, data);
+      var entry = header(46);
+      entry.view.setUint32(0, 0x02014b50, true);
+      entry.view.setUint16(4, 20, true);
+      entry.view.setUint16(6, 20, true);
+      entry.view.setUint16(8, 0x0800, true);
+      entry.view.setUint16(12, time, true);
+      entry.view.setUint16(14, date, true);
+      entry.view.setUint32(16, crc, true);
+      entry.view.setUint32(20, data.length, true);
+      entry.view.setUint32(24, data.length, true);
+      entry.view.setUint16(28, name.length, true);
+      entry.view.setUint32(42, offset, true);
+      central.push(entry.bytes, name);
+      offset += 30 + name.length + data.length;
     });
-    var text = "﻿" + lines.map(function (l) {
-      return l.map(function (v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(",");
-    }).join("\r\n");
+    var centralSize = central.reduce(function (s, b) { return s + b.length; }, 0);
+    var end = header(22);
+    end.view.setUint32(0, 0x06054b50, true);
+    end.view.setUint16(8, files.length, true);
+    end.view.setUint16(10, files.length, true);
+    end.view.setUint32(12, centralSize, true);
+    end.view.setUint32(16, offset, true);
+    var all = parts.concat(central, [end.bytes]);
+    var out = new Uint8Array(all.reduce(function (s, b) { return s + b.length; }, 0));
+    var at = 0;
+    all.forEach(function (b) { out.set(b, at); at += b.length; });
+    return out;
+  }
+
+  function xmlText(v) {
+    return String(v).replace(/[^\x09\x0a\x0d\x20-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]/gu, "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function columnName(i) {
+    var s = "";
+    for (i += 1; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(65 + ((i - 1) % 26)) + s;
+    return s;
+  }
+
+  // Cell values: a number, a string, null (empty), {date: ms} or {seconds: n}.
+  // Styles (styles.xml cellXfs): 1 header, 2 duration [h]:mm:ss, 3 date dd.mm.yyyy hh:mm.
+  function sheetXml(header, rows, widths) {
+    function cell(v, r, c) {
+      var ref = columnName(c) + (r + 1);
+      if (v === null || v === undefined || v === "") return "";
+      if (r === 0) return '<c r="' + ref + '" t="inlineStr" s="1"><is><t xml:space="preserve">' + xmlText(v) + "</t></is></c>";
+      if (typeof v === "number") return '<c r="' + ref + '"><v>' + v + "</v></c>";
+      if (v.seconds !== undefined) return '<c r="' + ref + '" s="2"><v>' + v.seconds / 86400 + "</v></c>";
+      if (v.date !== undefined) {
+        // Excel counts days from 1899-12-30 in local time.
+        var local = v.date - new Date(v.date).getTimezoneOffset() * 60000;
+        return '<c r="' + ref + '" s="3"><v>' + (local / 86400000 + 25569) + "</v></c>";
+      }
+      return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xmlText(v) + "</t></is></c>";
+    }
+    var data = [header].concat(rows).map(function (row, r) {
+      return '<row r="' + (r + 1) + '">' + row.map(function (v, c) { return cell(v, r, c); }).join("") + "</row>";
+    }).join("");
+    var cols = widths.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join("");
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      "<cols>" + cols + "</cols><sheetData>" + data + "</sheetData></worksheet>";
+  }
+
+  function workbook(sheets) {
+    var ns = 'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"';
+    var rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    var files = [
+      { name: "[Content_Types].xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        sheets.map(function (s, i) {
+          return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+        }).join("") + "</Types>" },
+      { name: "_rels/.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="' + rel + '/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: "xl/workbook.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        "<workbook " + ns + ' xmlns:r="' + rel + '"><sheets>' +
+        sheets.map(function (s, i) { return '<sheet name="' + xmlText(s.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join("") +
+        "</sheets></workbook>" },
+      { name: "xl/_rels/workbook.xml.rels", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        sheets.map(function (s, i) {
+          return '<Relationship Id="rId' + (i + 1) + '" Type="' + rel + '/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>';
+        }).join("") +
+        '<Relationship Id="rId' + (sheets.length + 1) + '" Type="' + rel + '/styles" Target="styles.xml"/></Relationships>' },
+      { name: "xl/styles.xml", text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        "<styleSheet " + ns + ">" +
+        '<numFmts count="2"><numFmt numFmtId="164" formatCode="[h]:mm:ss"/><numFmt numFmtId="165" formatCode="dd.mm.yyyy hh:mm"/></numFmts>' +
+        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+        '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+        '<fill><patternFill patternType="solid"><fgColor rgb="FFF2E3C2"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+        '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+        '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>' +
+        '<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+    ];
+    sheets.forEach(function (s, i) {
+      files.push({ name: "xl/worksheets/sheet" + (i + 1) + ".xml", text: sheetXml(s.header, s.rows, s.widths) });
+    });
+    return zip(files);
+  }
+
+  function excel() {
+    var list = filtered();
+    var playerHeader = [t("name"), t("levelsPassed"), t("stars"), t("total")];
+    for (var n = 1; n <= 10; n++) playerHeader.push(t("levelShort")(n));
+    playerHeader.push(t("boss"), t("trophy"), t("bossBest"), t("poolCorrect"), t("poolAnswered"), t("poolAcc"), t("poolTime"),
+      t("playtime"), t("runs"), t("last"), "UID");
+    var playerRows = list.map(function (p) {
+      return [p.name, p.levelsPassed, p.starSum, p.total].concat(p.bests).concat([
+        p.bossDefeated ? t("defeated") : "", p.trophy ? trophyName(p.trophy) : "", p.bossBest || null,
+        p.pool ? p.pool.correct : null, p.pool ? p.pool.answered : null, p.pool ? Math.round(p.pool.acc / 10) : null,
+        p.pool ? { seconds: p.pool.time } : null, { seconds: p.playtime }, p.runs.length, p.last ? { date: p.last } : null, p.uid]);
+    });
+    var runRows = [];
+    list.forEach(function (p) {
+      p.runs.forEach(function (a) {
+        runRows.push([p.name, a.createdMs ? { date: a.createdMs } : null, modeName(a.level), a.character || "", a.score || 0, a.max_score || 0,
+          a.correct || 0, a.wrong || 0, a.level === ALL_IN_ONE ? a.answered || 0 : null, { seconds: a.playtime_sec || 0 }, outcome(a).text]);
+      });
+    });
+    var bytes = workbook([
+      { name: t("sheetPlayers"), header: playerHeader, rows: playerRows,
+        widths: [28, 12, 9, 11, 9, 9, 9, 9, 9, 9, 9, 9, 9, 10, 11, 11, 13, 14, 14, 14, 14, 13, 9, 18, 30] },
+      { name: t("sheetRuns"), header: [t("name"), t("date"), t("mode"), t("character"), t("score"), t("maxScore"), t("correctOnly"),
+        t("wrongOnly"), t("poolAnswered"), t("time"), t("outcome")], rows: runRows, widths: [28, 18, 34, 13, 9, 11, 9, 9, 14, 12, 22] },
+    ]);
+    var day = new Date();
     var link = el("a");
-    link.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
-    link.download = "history-arena-players.csv";
+    link.href = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    link.download = "history-arena-" + day.getFullYear() + "-" + String(day.getMonth() + 1).padStart(2, "0") + "-" + String(day.getDate()).padStart(2, "0") + ".xlsx";
     link.click();
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+    return bytes;
   }
 
   // ---- deleting players (administrators only; firestore.rules refuse it to anyone else) ----
@@ -593,7 +764,7 @@
   });
   $("signout").addEventListener("click", function () { A.signOut(auth); });
   $("refresh").addEventListener("click", function () { load().then(renderTable).catch(function (e) { status(t("loadError") + e.message); }); });
-  $("csv").addEventListener("click", csv);
+  $("excel").addEventListener("click", excel);
   $("deletePlayer").addEventListener("click", function () {
     var p = current;
     if (!p || !window.confirm(t("confirmOne")(p.name, p.runs.length))) return;

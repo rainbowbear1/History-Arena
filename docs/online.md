@@ -91,17 +91,24 @@ Activity from before this version was never recorded, and nothing is back-filled
 uses the same Firebase project and Google sign-in as the game — no separate password. After sign-in
 it checks `admins/{uid}`; administrators get a searchable, sortable table of every player (campaign
 progress, best score per level, total, BOSS status, highest trophy, All-in-One best, total play
-time, last activity, CSV download) and a details view with per-level results and the full attempt
+time, last activity) with an **«Excel жүктеу» / Download Excel** button, and a details view with per-level results and the full attempt
 history. Access is enforced by `firestore.rules` (`isAdmin()` = an `admins/{uid}` document exists for
 the signed-in Google account), not by the page: for anyone else every read fails. Administrators
 can read but not change results, and the game also gives them Unlock Everything.
+
+**Excel download.** «Excel жүктеу» saves `history-arena-<date>.xlsx`, a real Excel workbook
+(written by the page itself, no outside library) with two sheets in the dashboard's language:
+*Ойыншылар / Players* (one row per listed player: levels passed, stars, total, best per level, BOSS,
+trophy, All-in-One best, play time, runs, last activity, UID) and *Ойын тарихы / Play history* (every
+run). Numbers, dates and durations are real Excel values; the header row is frozen. It follows the
+search box, so a filtered table downloads only those players.
 
 **Deleting players.** In a player's details, **«Ойыншыны өшіру» / Delete player** (after a
 confirmation) deletes all of that player's records: every attempt, `players/{uid}` (campaign
 leaderboard), `achievements/{uid}` (BOSS victory and trophy), `allinone/{uid}` and `profiles/{uid}`.
 **«Барлық ойыншыны өшіру» / Delete all players** does the same for every listed player after the
 administrator types «ӨШІРУ» / DELETE. Neither touches `admins/`, so administrators keep their access.
-Deletion cannot be undone (export a CSV first if needed). It removes only what is stored online: the
+Deletion cannot be undone (download the Excel file first if needed). It removes only what is stored online: the
 progress kept in the player's own browser stays, and a deleted player who signs in and plays again
 reappears with the results of their new runs only. Only administrators may delete (`allow delete:
 if isAdmin()`); players cannot delete anything, not even their own records.
