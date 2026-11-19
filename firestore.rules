@@ -12,8 +12,8 @@ rules_version = '2';
 //   admins/{uid}                  teacher accounts, created only in the Firebase Console
 //
 // Administrators (an admins/{uid} document, which no client can write) may read every player's
-// records for the teacher dashboard (web/admin.html); nobody else may read other players' attempt
-// history or profile.
+// records for the teacher dashboard (web/admin.html) and delete a player's records from it; nobody
+// else may read other players' attempt history or profile, and players cannot delete anything.
 //
 // The uid always comes from the verified Firebase ID token (request.auth), never from the game.
 // Scores are still produced in the player's browser; see docs/online.md for what these rules
@@ -215,7 +215,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isOwner(uid) && validAchievement(uid, {});
       allow update: if isOwner(uid) && validAchievement(uid, resource.data);
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     // Administrators (teachers): one document per uid, created only by the project owner in the
@@ -234,7 +234,7 @@ service cloud.firestore {
                             && request.resource.data.name == playerName()
                             && request.resource.data.lastSeen == request.time
                             && request.resource.data.firstSeen == (resource == null ? request.time : resource.data.firstSeen);
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     // The teacher dashboard reads every player's runs at once (a collection-group query).
@@ -247,7 +247,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isOwner(uid) && validPoolBest(uid, {});
       allow update: if isOwner(uid) && validPoolBest(uid, resource.data);
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
     match /players/{uid} {
@@ -257,12 +257,14 @@ service cloud.firestore {
       // At most one result every 5 seconds per player.
       allow update: if isOwner(uid) && validPlayer(uid, resource.data)
                     && request.time > resource.data.updated + duration.value(5, 's');
-      allow delete: if false;
+      // Removing a player (teacher dashboard): administrators only.
+      allow delete: if isAdmin();
 
       match /attempts/{attemptId} {
         allow read: if isOwner(uid) || isAdmin();
         allow create: if isOwner(uid) && validAttempt(request.resource.data);
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if isAdmin();
       }
     }
   }

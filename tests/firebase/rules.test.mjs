@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { assertFails, assertSucceeds, initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import {
   collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, runTransaction,
-  serverTimestamp, setDoc, Timestamp, updateDoc, where,
+  serverTimestamp, setDoc, Timestamp, updateDoc, where, writeBatch,
 } from "firebase/firestore";
 
 let env;
@@ -485,9 +485,50 @@ test("nobody can make themselves an administrator, and administrators cannot rew
   await assertFails(deleteDoc(doc(t, "admins", "teacher")));
   await assertFails(updateDoc(doc(t, "players", "alice"), { s1: 0, total: 0, updated: serverTimestamp() }));
   await assertFails(setDoc(doc(t, "profiles", "alice"), { name: "Teacher T", firstSeen: serverTimestamp(), lastSeen: serverTimestamp() }));
-  await assertFails(deleteDoc(doc(t, "achievements", "alice")));
+  await assertFails(setDoc(doc(t, "achievements", "alice"), { bossDefeated: true, bossBest: 5000, trophy: 3, bestCorrect: 50,
+    firstDefeated: serverTimestamp(), updated: serverTimestamp() }));
   const run = (await getDocs(collection(t, "players", "alice", "attempts"))).docs[0];
-  await assertFails(deleteDoc(run.ref));
+  await assertFails(updateDoc(run.ref, { score: 0 }));
+});
+
+// The same deletes as web/admin.html removePlayers: every attempt, then the player's documents.
+async function removePlayer(fs, uid) {
+  const runs = await getDocs(collection(fs, "players", uid, "attempts"));
+  const batch = writeBatch(fs);
+  runs.docs.forEach((d) => batch.delete(d.ref));
+  ["players", "achievements", "allinone", "profiles"].forEach((col) => batch.delete(doc(fs, col, uid)));
+  return batch.commit();
+}
+
+test("an administrator can delete a player's records; the player can come back later", async () => {
+  await seedClass();
+  await makeAdmin("teacher");
+  const t = teacher();
+  await assertSucceeds(removePlayer(t, "alice"));
+  for (const col of ["players", "achievements", "allinone", "profiles"]) {
+    if ((await getDoc(doc(t, col, "alice"))).exists()) throw new Error(col + " left behind");
+  }
+  if ((await getDocs(collection(t, "players", "alice", "attempts"))).size !== 0) throw new Error("runs left behind");
+  if (!(await getDoc(doc(t, "players", "bob"))).exists()) throw new Error("another player was deleted");
+  // Deleting a player who has no All-in-One or BOSS record (missing documents) also works.
+  await assertSucceeds(removePlayer(t, "bob"));
+  // The administrator list itself cannot be changed from the dashboard.
+  await assertFails(deleteDoc(doc(t, "admins", "teacher")));
+  // A deleted player who plays again starts a new row.
+  await assertSucceeds(submit(alice(), "alice", "Alice A", attempt(2, 900)));
+  if ((await getDoc(doc(t, "players", "alice"))).get("total") !== 900) throw new Error("new row");
+});
+
+test("players without an admin record cannot delete anyone's records, not even their own", async () => {
+  await seedClass();
+  await assertFails(removePlayer(bob(), "alice"));
+  await assertFails(removePlayer(alice(), "alice"));
+  await assertFails(deleteDoc(doc(alice(), "profiles", "alice")));
+  await assertFails(removePlayer(env.unauthenticatedContext().firestore(), "alice"));
+  // An admin record for a non-Google account does not count.
+  await makeAdmin("eve");
+  await assertFails(removePlayer(db("eve", "Eve", { firebase: { sign_in_provider: "password" } }), "alice"));
+  if (!(await getDoc(doc(alice(), "players", "alice"))).exists()) throw new Error("row deleted");
 });
 
 test("profiles: written by their owner at sign-in with server times; the first sign-in is kept", async () => {

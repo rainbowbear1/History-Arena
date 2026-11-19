@@ -67,8 +67,8 @@ abandoned run is stored as an attempt only — always in one transaction with th
 ## Data in Firestore
 | Path | Contents | Who can read | Who can write |
 |---|---|---|---|
-| `players/{uid}` | `name` (Google name), `s1`…`s10` best score per level, `t1`…`t10` best stars, `total` = s1+…+s10, `last` (attempt id), `updated` (server time) | any signed-in Google player (campaign leaderboard) | only that player, through the checks below |
-| `players/{uid}/attempts/{id}` | every run, including BOSS, All-in-One and runs left early (payload + server time `created`) | that player and administrators | only that player; create once, never edit or delete |
+| `players/{uid}` | `name` (Google name), `s1`…`s10` best score per level, `t1`…`t10` best stars, `total` = s1+…+s10, `last` (attempt id), `updated` (server time) | any signed-in Google player (campaign leaderboard) | only that player, through the checks below; administrators may delete it |
+| `players/{uid}/attempts/{id}` | every run, including BOSS, All-in-One and runs left early (payload + server time `created`) | that player and administrators | only that player, create once, never edit; only administrators may delete |
 | `achievements/{uid}` | `bossDefeated` (always true), `bossBest`, `trophy` (1 bronze, 2 silver, 3 gold; 0 = an old victory without run details), `bestCorrect`, `firstDefeated`, `updated`, `run` (the winning attempt) | any signed-in player (trophies on the leaderboards) | only that player: permanent, nothing is ever lowered, no delete |
 | `allinone/{uid}` | All-in-One personal best: `name`, `correct`, `answered`, `wrong`, `acc` (correct per thousand answered), `time` (active seconds), `score`, `completed`, `pool` (tasks in the pool), `key` (ranking), `run`, `updated` | any signed-in player (All-in-One leaderboard) | only that player, and only with a better run |
 | `profiles/{uid}` | `name`, `firstSeen`, `lastSeen` (server times of the first and latest sign-in) | that player and administrators | only that player, at sign-in |
@@ -95,6 +95,16 @@ time, last activity, CSV download) and a details view with per-level results and
 history. Access is enforced by `firestore.rules` (`isAdmin()` = an `admins/{uid}` document exists for
 the signed-in Google account), not by the page: for anyone else every read fails. Administrators
 can read but not change results, and the game also gives them Unlock Everything.
+
+**Deleting players.** In a player's details, **«Ойыншыны өшіру» / Delete player** (after a
+confirmation) deletes all of that player's records: every attempt, `players/{uid}` (campaign
+leaderboard), `achievements/{uid}` (BOSS victory and trophy), `allinone/{uid}` and `profiles/{uid}`.
+**«Барлық ойыншыны өшіру» / Delete all players** does the same for every listed player after the
+administrator types «ӨШІРУ» / DELETE. Neither touches `admins/`, so administrators keep their access.
+Deletion cannot be undone (export a CSV first if needed). It removes only what is stored online: the
+progress kept in the player's own browser stays, and a deleted player who signs in and plays again
+reappears with the results of their new runs only. Only administrators may delete (`allow delete:
+if isAdmin()`); players cannot delete anything, not even their own records.
 
 **Adding your teacher as administrator** (after the updated rules are published):
 1. The teacher opens `admin.html` and signs in with their Innotech Google account. The page answers
@@ -129,10 +139,10 @@ owner (in the console) can create one.
 - The stored name must equal the name in the Google ID token.
 - At most one campaign result per player every 5 seconds.
 
-These are tested by `tests/firebase/rules.test.mjs` against the Firestore emulator (27 tests),
+These are tested by `tests/firebase/rules.test.mjs` against the Firestore emulator (29 tests),
 including another account trying to overwrite, edit, delete or read someone's records, an ordinary
-player trying to read the class or make themselves an administrator, and an administrator trying to
-change results.
+player trying to read the class, delete records or make themselves an administrator, an
+administrator trying to change results, and an administrator deleting a player.
 
 ## Honest limitations (score tampering)
 The game runs in the player's browser, and Firestore rules can check a result's shape and limits

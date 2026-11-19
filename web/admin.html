@@ -33,6 +33,9 @@
   button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
   button:hover, button:focus-visible { border-color: var(--gold); outline: none; }
   button.primary { background: var(--gold); color: #1b1408; border-color: var(--gold); font-weight: 600; }
+  button.danger { color: var(--bad); border-color: #7a3a33; }
+  button.danger:hover, button.danger:focus-visible { background: #4a2420; border-color: var(--bad); }
+  button:disabled { opacity: 0.5; cursor: wait; }
   button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
   input[type="search"] { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; min-width: 260px; }
   .muted { color: var(--muted); }
@@ -97,6 +100,7 @@
       <span id="count" class="muted grow"></span>
       <button id="refresh" data-t="refresh"></button>
       <button id="csv" data-t="csv"></button>
+      <button id="deleteAll" class="danger" data-t="deleteAll"></button>
     </div>
     <div class="table-wrap"><table id="players"></table></div>
     <p class="muted" data-t="footnote"></p>
@@ -106,6 +110,7 @@
     <button id="back" data-t="back"></button>
     <h2 id="detailName"></h2>
     <div class="muted"><span data-t="uidLabel"></span> <span id="detailUid" class="uid"></span></div>
+    <p><button id="deletePlayer" class="danger" data-t="deletePlayer"></button></p>
     <div id="detailStats" class="stats"></div>
     <h3 data-t="levelResults"></h3>
     <div class="table-wrap"><table id="levels"></table></div>
@@ -149,6 +154,17 @@
       defeated: "Жеңді", notDefeated: "—", bossBest: "BOSS үздік ұпайы", poolBest: "«Бәрі бірге» үздігі",
       runs: "Барлық ойын", levelsPassed: "Өтілген деңгейлер", none: "—", bronze: "Қола", silver: "Күміс", gold: "Алтын",
       allInOne: "Бәрі бірге", empty: "Әзірге ойыншы жоқ.", loadError: "Деректер жүктелмеді: ", signInError: "Кіру сәтсіз: ",
+      deletePlayer: "Ойыншыны өшіру", deleteAll: "Барлық ойыншыны өшіру", confirmWord: "ӨШІРУ", deleting: "Өшірілуде…",
+      deleteError: "Өшіру сәтсіз: ",
+      confirmOne: function (name, runs) {
+        return "«" + name + "» ойыншысының барлық деректері өшіріледі: деңгей нәтижелері, BOSS жүлдесі, «Бәрі бірге» нәтижесі және " +
+          runs + " ойын жазбасы.\n\nБұл әрекетті қайтару мүмкін емес. Ойыншы қайта кіріп ойнаса, тек жаңа нәтижелері пайда болады.\n\nЖалғастырасыз ба?";
+      },
+      confirmAll: function (n) {
+        return n + " ойыншының БАРЛЫҚ деректері өшіріледі (рейтингтер, жүлделер, ойын тарихы, белсенділік). Әкімшілер тізімі өзгермейді.\n\n" +
+          "Бұл әрекетті қайтару мүмкін емес. Растау үшін ӨШІРУ деп жазыңыз:";
+      },
+      deleted: function (n) { return n + " ойыншы өшірілді."; },
       level_n: function (n) { return n + "-деңгей — " + ERAS.kk[n - 1]; },
     },
     en: {
@@ -167,6 +183,17 @@
       defeated: "Defeated", notDefeated: "—", bossBest: "BOSS best score", poolBest: "All-in-One best",
       runs: "All runs", levelsPassed: "Levels passed", none: "—", bronze: "Bronze", silver: "Silver", gold: "Gold",
       allInOne: "All-in-One", empty: "No players yet.", loadError: "Could not load the data: ", signInError: "Sign-in failed: ",
+      deletePlayer: "Delete player", deleteAll: "Delete all players", confirmWord: "DELETE", deleting: "Deleting…",
+      deleteError: "Delete failed: ",
+      confirmOne: function (name, runs) {
+        return "All records of “" + name + "” will be deleted: level results, BOSS trophy, All-in-One best and " + runs +
+          " recorded runs.\n\nThis cannot be undone. If the player signs in and plays again, only their new results will appear.\n\nContinue?";
+      },
+      confirmAll: function (n) {
+        return "ALL records of " + n + " players will be deleted (leaderboards, trophies, play history, activity). The administrator list is not changed.\n\n" +
+          "This cannot be undone. Type DELETE to confirm:";
+      },
+      deleted: function (n) { return "Deleted " + n + " player(s)."; },
       level_n: function (n) { return "Level " + n + " — " + ERAS.en[n - 1]; },
     },
   };
@@ -481,6 +508,39 @@
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   }
 
+  // ---- deleting players (administrators only; firestore.rules refuse it to anyone else) ----
+  // A player's records: every attempt (read again now, so runs uploaded since the page loaded go
+  // too), the campaign row, the BOSS achievement, the All-in-One best and the sign-in profile.
+  // admins/ is never touched. Writes go in batches (Firestore allows 500 per batch).
+  function playerRefs(uid) {
+    return F.getDocs(F.collection(db, "players", uid, "attempts")).then(function (snap) {
+      var refs = snap.docs.map(function (d) { return d.ref; });
+      ["players", "achievements", "allinone", "profiles"].forEach(function (col) { refs.push(F.doc(db, col, uid)); });
+      return refs;
+    });
+  }
+
+  function removePlayers(list) {
+    var buttons = [$("deletePlayer"), $("deleteAll")];
+    buttons.forEach(function (b) { b.disabled = true; });
+    status(t("deleting"));
+    return Promise.all(list.map(function (p) { return playerRefs(p.uid); }))
+      .then(function (groups) {
+        var refs = [].concat.apply([], groups);
+        var batches = [];
+        for (var i = 0; i < refs.length; i += 400) {
+          var batch = F.writeBatch(db);
+          refs.slice(i, i + 400).forEach(function (ref) { batch.delete(ref); });
+          batches.push(batch.commit());
+        }
+        return Promise.all(batches);
+      })
+      .then(load)
+      .then(function () { status(t("deleted")(list.length)); })
+      .catch(function (e) { status(t("deleteError") + (e && e.code ? e.code : e)); return load(); })
+      .finally(function () { buttons.forEach(function (b) { b.disabled = false; }); });
+  }
+
   // ---- sign-in ----
   function onUser(user) {
     $("who").textContent = user ? user.displayName || "" : "";
@@ -534,6 +594,17 @@
   $("signout").addEventListener("click", function () { A.signOut(auth); });
   $("refresh").addEventListener("click", function () { load().then(renderTable).catch(function (e) { status(t("loadError") + e.message); }); });
   $("csv").addEventListener("click", csv);
+  $("deletePlayer").addEventListener("click", function () {
+    var p = current;
+    if (!p || !window.confirm(t("confirmOne")(p.name, p.runs.length))) return;
+    removePlayers([p]).then(function () { current = null; show("dashboard"); renderTable(); });
+  });
+  $("deleteAll").addEventListener("click", function () {
+    if (!players.length) return;
+    var answer = window.prompt(t("confirmAll")(players.length), "");
+    if (answer === null || answer.trim().toLocaleUpperCase() !== t("confirmWord")) return;
+    removePlayers(players.slice()).then(renderTable);
+  });
   $("search").addEventListener("input", renderTable);
   $("back").addEventListener("click", function () { current = null; show("dashboard"); renderTable(); });
   document.querySelectorAll("[data-lang]").forEach(function (b) {
